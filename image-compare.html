@@ -362,7 +362,11 @@ function grayPatch(src,N,sc,rot,fh,fv,wOut,hOut){// render src into N×N (fittin
   for(let y=0;y<N;y++){const wy=.5-.5*Math.cos(2*Math.PI*y/(N-1));for(let x=0;x<N;x++){const wx=.5-.5*Math.cos(2*Math.PI*x/(N-1));g[y*N+x]=(g[y*N+x]-mean)*wx*wy}}return {g,f}}
 function phaseCorr(ga,gb,N){const ar=Float64Array.from(ga),ai=new Float64Array(N*N),br=Float64Array.from(gb),bi=new Float64Array(N*N);fft2d(ar,ai,N,false);fft2d(br,bi,N,false);
   for(let i=0;i<N*N;i++){const r=ar[i]*br[i]+ai[i]*bi[i],m=ai[i]*br[i]-ar[i]*bi[i];const mag=Math.hypot(r,m)||1e-9;ar[i]=r/mag;ai[i]=m/mag}fft2d(ar,ai,N,true);
-  let best=-1,bi2=0,sum=0;for(let i=0;i<N*N;i++){const v=ar[i];sum+=v*v;if(v>best){best=v;bi2=i}}let dx=bi2%N,dy=(bi2-dx)/N;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;return {dx,dy,peak:best,psr:best/Math.sqrt(sum/(N*N))}}
+  let best=-1,bi2=0,sum=0;for(let i=0;i<N*N;i++){const v=ar[i];sum+=v*v;if(v>best){best=v;bi2=i}}const px=bi2%N,py=(bi2-px)/N,at=(x,y)=>ar[((y+N)%N)*N+((x+N)%N)];
+  /* 抛物线插值求亚像素峰值，避免位移被量化到工作分辨率的整数格（否则对齐会有 1–2px 误差，还会让缩放/旋转搜索去“补偿”这个误差） */
+  const sub=(l,c,r)=>{const den=l-2*c+r;if(!(den<0))return [0,c];const d=Math.max(-.5,Math.min(.5,.5*(l-r)/den));return [d,c-.25*(l-r)*d]};
+  const [fx,hx]=sub(at(px-1,py),best,at(px+1,py)),[fy,hy]=sub(at(px,py-1),best,at(px,py+1));
+  let dx=px+fx,dy=py+fy;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;const peak=hx+hy-best;return {dx,dy,peak,psr:peak/Math.sqrt(sum/(N*N))}}
 async function autoAlign(A,B,allow){
   if(window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
   const W=Math.max(A.width,B.width),H=Math.max(A.height,B.height);const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -371,17 +375,20 @@ async function autoAlign(A,B,allow){
   // 1) coarse search 128²
   let N=128,pa=grayPatch(A,N,1,0,false,false,W,H),best=null,n=0;
   const scales=allow.scale?[0.85,0.9,0.95,1,1.05,1.1,1.15].map(s=>s*baseScale):[baseScale];const rots=allow.rot?[-6,-4,-2,-1,0,1,2,4,6]:[0];
-  for(const sc of scales)for(const rot of rots){const r=evalAt(N,pa,sc,rot);if(!best||r.psr>best.psr)best=r;if(++n%10===0)await tick()}
+  best=evalAt(N,pa,baseScale,0);/* 只有明显优于“不旋转不缩放”时才采用其他候选，避免噪声导致虚假的缩放 */
+  for(const sc of scales)for(const rot of rots){const r=evalAt(N,pa,sc,rot);if(r.psr>best.psr*1.05)best=r;if(++n%10===0)await tick()}
   // 2) refine 256² around best
-  N=256;pa=grayPatch(A,N,1,0,false,false,W,H);let ref=null;
+  N=256;pa=grayPatch(A,N,1,0,false,false,W,H);let ref=evalAt(N,pa,best.sc,best.rot);
   const scales2=allow.scale?[-0.03,-0.015,0,0.015,0.03].map(d=>best.sc*(1+d)):[best.sc];const rots2=allow.rot?[-1,-0.5,0,0.5,1].map(d=>best.rot+d):[0];
-  for(const sc of scales2)for(const rot of rots2){const r=evalAt(N,pa,sc,rot);if(!ref||r.psr>ref.psr)ref=r;if(++n%6===0)await tick()}
+  for(const sc of scales2)for(const rot of rots2){const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0)await tick()}
   if(!ref||ref.psr<4)return null;
   // 3) final translation at 512²
-  N=512;pa=grayPatch(A,N,1,0,false,false,W,H);const fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
+  N=512;pa=grayPatch(A,N,1,0,false,false,W,H);let fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
+  /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显更优才替换 */
+  for(const dr of allow.rot?[-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick()}
   // Both patches are drawn with their top-left at the frame origin (same as drawAligned with dx=dy=0), so the
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
-  return {dx:fin.dx/f,dy:fin.dy/f,rot:ref.rot,scale:ref.sc,fh:false,fv:false,conf:Math.min(1,fin.psr/40)};
+  return {dx:fin.dx/f,dy:fin.dy/f,rot:fin.rot,scale:fin.sc,fh:false,fv:false,conf:Math.min(1,fin.psr/40)};
 }
 function alignWithOpenCV(A,B){const cv=window.cv;const ma=cv.imread(A),mb=cv.imread(B),ga=new cv.Mat(),gb=new cv.Mat();cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20);const k1=new cv.KeyPointVector(),k2=new cv.KeyPointVector(),d1=new cv.Mat(),d2=new cv.Mat();orb.detectAndCompute(ga,new cv.Mat(),k1,d1);orb.detectAndCompute(gb,new cv.Mat(),k2,d2);
   const bf=new cv.BFMatcher(cv.NORM_HAMMING,false),mm=new cv.DMatchVectorVector();bf.knnMatch(d2,d1,mm,2);const src=[],dst=[];for(let i=0;i<mm.size();i++){const m=mm.get(i);if(m.size()<2)continue;const a=m.get(0),b=m.get(1);if(a.distance<.75*b.distance){const p2=k2.get(a.queryIdx).pt,p1=k1.get(a.trainIdx).pt;src.push(p2.x,p2.y);dst.push(p1.x,p1.y)}}
