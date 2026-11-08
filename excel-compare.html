@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src blob: data:; form-action 'none'; base-uri 'none'" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Compare Excel — Diffchecker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2320a464'/%3E%3Cpath d='M9 9h6v14H9zM17 9h6v14h-6z' fill='%23fff' opacity='.9'/%3E%3C/svg%3E" />
+<style>
+:root{--bg:#fff;--bg2:#f6f8f7;--bg3:#eef1f0;--fg:#202329;--fg2:#626971;--fg3:#9aa1a8;--border:#e6e8eb;--border2:#d5d9dd;--accent:#20a464;--accent2:#15834a;--accent-bg:#ecf8f1;--danger:#d13415;--shadow:0 6px 28px rgba(0,0,0,.08);--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+--ins-block:rgba(0,180,144,.13);--ins-hl:rgba(0,180,144,.36);--ins-fg:#0d5c4c;--del-block:rgba(255,46,0,.09);--del-hl:rgba(255,46,0,.32);--del-fg:#6b1a0a;--chg-block:rgba(255,190,0,.16);--mov-block:rgba(120,90,255,.12)}
+[data-theme="dark"]{--bg:#17191c;--bg2:#1f2226;--bg3:#262a2f;--fg:#ebedef;--fg2:#aeb6be;--fg3:#7d858d;--border:#353a3f;--border2:#454a50;--accent:#5bd494;--accent2:#5bd494;--accent-bg:#1c2b23;--shadow:0 6px 28px rgba(0,0,0,.4);--ins-fg:#c8f5e6;--del-fg:#ffd7cc;--chg-block:rgba(255,190,0,.14)}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;min-height:100vh}
+html[lang="zh"] body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
+button,select,input{font:inherit;color:inherit}button{cursor:pointer}
+.offline-header{flex:none;width:100%;background:var(--bg);border-bottom:1px solid var(--border)}
+.offline-navigation{display:flex;align-items:center;min-height:64px;gap:32px;padding:0 28px}
+.offline-brand{display:inline-flex;align-items:center;gap:9px;color:inherit;text-decoration:none;font-size:20px;font-weight:700;letter-spacing:-.65px;white-space:nowrap}
+.offline-tools{display:flex;align-self:stretch;gap:28px}
+.offline-tools a{display:inline-flex;align-items:center;padding:0 2px;border-bottom:2px solid transparent;color:var(--fg2);font-size:14px;font-weight:500;text-decoration:none}
+.offline-tools a[aria-current="page"]{color:var(--accent2);border-bottom-color:var(--accent)}.offline-tools a:hover{color:var(--accent2)}
+.offline-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.offline-badge{display:inline-flex;align-items:center;gap:6px;color:var(--fg2);font-size:12px;white-space:nowrap}.offline-badge>span{color:#22a06b;font-size:9px}
+.offline-language{min-height:32px;padding:5px 11px;border:1px solid var(--border2);border-radius:7px;background:transparent;font-size:13px;white-space:nowrap}.offline-language:hover{background:var(--bg2)}
+:focus-visible{outline:2px solid #159b58;outline-offset:2px}
+main{flex:1;width:100%;max-width:1700px;margin:0 auto;padding:22px 28px 50px}
+.hero{text-align:center;margin:6px 0 20px}.hero h1{font-size:30px;margin:0 0 4px;letter-spacing:-.5px}.hero p{margin:0;color:var(--fg2)}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{border:1px solid var(--border);border-radius:14px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+.card-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg2);font-size:13px}
+.card-head .title{font-weight:600;margin-right:auto}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:170px;margin:12px;border:2px dashed var(--border2);border-radius:12px;background:var(--bg2);cursor:pointer;text-align:center;padding:16px;transition:.15s}
+.drop:hover,.drop.drag{border-color:var(--accent);background:var(--accent-bg)}.drop .big{font-size:15px;font-weight:600}.drop .hint{font-size:12px;color:var(--fg2)}
+.details{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 12px;font-size:13px;border-top:1px solid var(--border)}
+.details label{display:inline-flex;align-items:center;gap:6px;color:var(--fg2)}
+.details select,.details input[type=number]{border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--bg);max-width:200px}
+.details input[type=number]{width:70px}
+.details .note{flex-basis:100%;font-size:12px;color:var(--accent2)}
+.preview{overflow:auto;max-height:220px;margin:0 12px 12px;border:1px solid var(--border);border-radius:8px}
+.preview table{border-collapse:collapse;font:11.5px/1.4 var(--mono);white-space:nowrap}.preview td,.preview th{border:1px solid var(--border);padding:1px 6px;max-width:220px;overflow:hidden;text-overflow:ellipsis}.preview th{background:var(--bg2);color:var(--fg2);font-weight:500;position:sticky;top:0}
+.preview tr.hdr td{background:var(--accent-bg);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);font-weight:500;font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--bg2)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:8px 22px;min-height:40px;font-size:15px}.btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn.sm{min-height:28px;padding:3px 9px;font-size:12px;border-radius:6px}.btn.ghost{border-color:transparent;background:transparent}.btn.ghost:hover{background:var(--bg3)}.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;justify-content:center;align-items:center;gap:12px;margin:18px 0 8px;flex-wrap:wrap}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--border)}
+.seg{display:inline-flex;border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 12px;font-size:13px;color:var(--fg2)}.seg button+button{border-left:1px solid var(--border2)}
+.seg button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent2);font-weight:600}
+.stats{display:flex;gap:12px;align-items:center;font-size:12.5px;margin-left:auto;flex-wrap:wrap}
+.stat{display:inline-flex;align-items:center;gap:5px}.stat i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.stat.del i{background:var(--del-hl)}.stat.ins i{background:var(--ins-hl)}.stat.chg i{background:#f5c542}
+.grid-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;margin-top:14px;max-height:calc(100vh - 150px);background:var(--bg)}
+table.grid{border-collapse:separate;border-spacing:0;font:12.5px/1.45 var(--mono);min-width:100%}
+table.grid th,table.grid td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 8px;vertical-align:top;white-space:pre-wrap;word-break:break-word;max-width:360px;text-align:left}
+table.grid th{position:sticky;top:0;background:var(--bg2);font-weight:600;z-index:2;color:var(--fg)}
+table.grid th.num,table.grid td.num{width:46px;min-width:46px;text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;user-select:none;font-size:11px}
+table.grid th.num{z-index:3}
+td.num.a,th.num.a{left:0}td.num.b,th.num.b{left:46px;border-right:2px solid var(--border2)}
+th.col-ins{background:var(--ins-block);color:var(--ins-fg)}th.col-del{background:var(--del-block);color:var(--del-fg);text-decoration:line-through}th.col-mov{background:var(--mov-block)}
+tr.del td{background:var(--del-block)}tr.ins td{background:var(--ins-block)}tr.del td.num{color:var(--del-fg)}tr.ins td.num{color:var(--ins-fg)}
+td.chg{background:var(--chg-block)}td.cdel{background:var(--del-block)}td.cins{background:var(--ins-block)}
+td.colx{background:repeating-linear-gradient(135deg,rgba(100,110,120,.08) 0 6px,transparent 6px 12px)}
+mark.d{background:var(--del-hl);color:var(--del-fg);border-radius:2px;text-decoration:line-through}mark.i{background:var(--ins-hl);color:var(--ins-fg);border-radius:2px}
+.old{opacity:.8}.arrow{color:var(--fg3);padding:0 4px}
+tr.collapsed td{background:var(--bg2);color:var(--fg2);text-align:center;font-family:system-ui,sans-serif;font-size:12px;cursor:pointer;padding:4px}
+tr.focus td{box-shadow:inset 0 -2px 0 var(--accent)}
+.identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
+.identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
+.identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
+.panel{position:fixed;top:0;right:0;height:100%;width:320px;background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);transition:transform .2s;z-index:50;display:flex;flex-direction:column}
+.panel.open{transform:none}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600}
+.panel-body{overflow:auto;padding:8px 16px 24px}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px}
+.switch{position:relative;width:34px;height:20px;flex:none;border-radius:20px;background:var(--border2);border:0;transition:.15s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:.15s}
+.switch[aria-checked="true"]{background:var(--accent)}.switch[aria-checked="true"]::after{left:16px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:100}.modal-bg.open{display:flex}
+.modal{background:var(--bg);border-radius:14px;width:440px;max-width:94vw;box-shadow:var(--shadow);padding:20px 22px}.modal h3{margin:0 0 12px;font-size:17px}
+.modal label{display:block;font-size:12px;color:var(--fg2);margin:12px 0 6px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.choice{border:1px solid var(--border2);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--bg);text-align:left}.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-bg)}
+.choice b{display:block;font-size:13px}.choice small{color:var(--fg2);font-size:11px;line-height:1.3;display:block;margin-top:2px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.offline-notice{position:fixed;z-index:10000;bottom:24px;left:50%;width:max-content;max-width:calc(100vw - 32px);transform:translateX(-50%);padding:12px 18px;border:1px solid #d8e8de;border-radius:10px;background:#f2fcf5;color:#195735;box-shadow:0 5px 24px #00000010;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}.offline-notice.show{opacity:1}
+.err{color:var(--danger);font-size:13px;padding:0 12px 10px}
+footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top:1px solid var(--border)}
+.hidden{display:none!important}
+@media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{gap:14px;padding:0 14px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px}}
+@media print{.offline-header,.inputs,.actions,.toolbar .btn,.panel,footer,.modal-bg,.offline-notice{display:none!important}main{padding:0;max-width:none}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px}body{font-size:11px}}
+</style>
+</head>
+<body>
+<header class="offline-header"><nav class="offline-navigation">
+  <a class="offline-brand" href="text-compare.html"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#20a464"/><path d="M9 9h6v14H9zM17 9h6v14h-6z" fill="#fff" opacity=".9"/></svg><span>Diffchecker</span></a>
+  <div class="offline-tools"><a href="text-compare.html" data-i18n="nav.text">Text</a><a href="image-compare.html" data-i18n="nav.images">Images</a><a href="excel-compare.html" aria-current="page" data-i18n="nav.excel">Excel</a></div>
+  <div class="offline-actions"><span class="offline-badge"><span>●</span><span data-i18n="offline">Offline · no network</span></span><button class="offline-language" id="themeBtn">Dark</button><button class="offline-language" id="langBtn">中文</button></div>
+</nav></header>
+<main>
+  <section class="hero"><h1 data-i18n="hero.title">Compare Excel</h1><p data-i18n="hero.desc">Find the difference between two spreadsheets (.xlsx, .csv, .tsv)</p></section>
+  <section class="inputs">
+    <div class="card" id="cardA"><div class="card-head"><span class="title" data-i18n="original">Original spreadsheet</span><span id="nameA" style="color:var(--fg2)"></span><button class="btn sm" data-open="A" data-i18n="openFile">Open file</button><button class="btn sm ghost" data-clear="A" data-i18n="clear">Clear</button></div>
+      <div class="drop" id="dropA"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
+      <div class="details hidden" id="detA"></div><div class="preview hidden" id="prevA"></div><div class="err" id="errA"></div></div>
+    <div class="card" id="cardB"><div class="card-head"><span class="title" data-i18n="changed">Changed spreadsheet</span><span id="nameB" style="color:var(--fg2)"></span><button class="btn sm" data-open="B" data-i18n="openFile">Open file</button><button class="btn sm ghost" data-clear="B" data-i18n="clear">Clear</button></div>
+      <div class="drop" id="dropB"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
+      <div class="details hidden" id="detB"></div><div class="preview hidden" id="prevB"></div><div class="err" id="errB"></div></div>
+  </section>
+  <input type="file" id="fileInput" class="hidden" accept=".xlsx,.xlsm,.xltx,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
+  <div class="actions">
+    <button class="btn primary" id="findBtn" data-i18n="find">Find difference</button>
+    <button class="btn" id="exampleBtn" data-i18n="tryExample">Try example</button>
+    <button class="btn" id="swapBtn" data-i18n="swap">Swap</button>
+    <button class="btn" id="toolsBtn">⚙ <span data-i18n="tools">Tools</span></button>
+  </div>
+  <section id="result" class="hidden">
+    <div class="toolbar">
+      <div class="seg" id="modeSeg"><button data-mode="table" aria-pressed="true" data-i18n-title="tipTable" title="Match up rows and columns using the header row, best for structured tables" data-i18n="table">Table</button><button data-mode="rows" aria-pressed="false" data-i18n-title="tipRows" title="Compare row by row in order, works with any layout" data-i18n="rows">Rows</button></div>
+      <div class="seg" id="valSeg"><button data-val="standard" aria-pressed="true" data-i18n="standard">Standard</button><button data-val="formulas" aria-pressed="false" data-i18n="formulas">Formulas</button></div>
+      <button class="btn sm" id="prevBtn">↑ <span data-i18n="prev">Previous</span></button><button class="btn sm" id="nextBtn">↓ <span data-i18n="next">Next</span></button>
+      <button class="btn sm" id="exportBtn" data-i18n="export">Export</button>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="grid-wrap" id="gridWrap"></div>
+  </section>
+</main>
+<footer>Diffchecker · <span data-i18n="footer">rewritten as a dependency-free single page — all processing happens locally in your browser</span></footer>
+
+<aside class="panel" id="panel"><div class="panel-head"><span data-i18n="tools">Tools</span><button class="btn sm ghost" id="panelClose">✕</button></div>
+  <div class="panel-body">
+    <h4 data-i18n="compOptions">Comparison options</h4>
+    <div class="row"><span data-i18n="matchHeaders">Match columns by headers</span><button class="switch" data-opt="matchHeaders" role="switch"></button></div>
+    <div class="row"><span data-i18n="ignoreWs">Ignore white space</span><button class="switch" data-opt="ignoreWs" role="switch"></button></div>
+    <div class="row"><span data-i18n="ignoreCase">Ignore case changes</span><button class="switch" data-opt="ignoreCase" role="switch"></button></div>
+    <div class="row"><span data-i18n="normDates">Normalize dates</span><button class="switch" data-opt="normDates" role="switch"></button></div>
+    <div class="row"><span data-i18n="sortRows">Sort rows</span><button class="switch" data-opt="sortRows" role="switch"></button></div>
+    <div class="row"><span data-i18n="sortCols">Sort columns</span><button class="switch" data-opt="sortCols" role="switch"></button></div>
+    <h4 data-i18n="appearance">Appearance</h4>
+    <div class="row"><span data-i18n="hideRows">Hide unchanged rows</span><button class="switch" data-opt="hideRows" role="switch"></button></div>
+    <div class="row"><span data-i18n="hideCols">Hide unchanged columns</span><button class="switch" data-opt="hideCols" role="switch"></button></div>
+    <div class="row"><span data-i18n="showOld">Show old value in changed cells</span><button class="switch" data-opt="showOld" role="switch"></button></div>
+  </div></aside>
+
+<div class="modal-bg" id="exportModal"><div class="modal" role="dialog" aria-modal="true"><h3 data-i18n="export">Export</h3><label data-i18n="format">Format</label>
+  <div class="choices" id="fmtChoices"><button class="choice" data-fmt="xlsx" aria-pressed="true"><b>Excel</b><small data-i18n="fmtXlsx">Merged comparison sheet with coloured rows and cells.</small></button><button class="choice" data-fmt="csv" aria-pressed="false"><b>CSV</b><small data-i18n="fmtCsv">Plain comparison table.</small></button><button class="choice" data-fmt="pdf" aria-pressed="false"><b>PDF</b><small data-i18n="fmtPdf">Print the comparison via your browser's PDF printer.</small></button><button class="choice" data-fmt="diffchecker" aria-pressed="false"><b data-i18n="fmtDiff">Diffchecker file</b><small data-i18n="fmtDiffDesc">Save a .diffchecker file that reopens this diff later.</small></button></div>
+  <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div></div></div>
+<div class="offline-notice" id="notice"></div>
+
+<script>
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+
+/* ===================== i18n ===================== */
+const I18N={en:{'nav.text':'Text','nav.images':'Images','nav.excel':'Excel',offline:'Offline · no network',dark:'Dark',light:'Light','hero.title':'Compare Excel','hero.desc':'Find the difference between two spreadsheets (.xlsx, .csv, .tsv)',original:'Original spreadsheet',changed:'Changed spreadsheet',openFile:'Open file',clear:'Clear',dropHere:'Drop Excel here',browse:'or click to browse files (.xlsx, .xlsm, .csv, .tsv)',find:'Find difference',tryExample:'Try example',swap:'Swap',tools:'Tools',table:'Table',rows:'Rows',standard:'Standard',formulas:'Formulas',prev:'Previous',next:'Next',export:'Export',sheet:'Sheet',headerLine:'Header line',headerTip:'The line number of the header row for this sheet.',headerDetected:'Header line set to {line} because the rows above it look like a title.',compOptions:'Comparison options',matchHeaders:'Match columns by headers',ignoreWs:'Ignore white space',ignoreCase:'Ignore case changes',normDates:'Normalize dates',sortRows:'Sort rows',sortCols:'Sort columns',appearance:'Appearance',hideRows:'Hide unchanged rows',hideCols:'Hide unchanged columns',showOld:'Show old value in changed cells',format:'Format',cancel:'Cancel',fmtXlsx:'Merged comparison sheet with coloured rows and cells.',fmtCsv:'Plain comparison table.',fmtPdf:"Print the comparison via your browser's PDF printer.",fmtDiff:'Diffchecker file',fmtDiffDesc:'Save a .diffchecker file that reopens this diff later.',identicalTitle:'The two sheets are identical',identicalMsg:'There is no difference to show between these two sheets',rowsRemoved:'rows removed',rowsAdded:'rows added',rowsChanged:'rows changed',cellsChanged:'cells changed',colsAdded:'columns added',colsRemoved:'columns removed',unchangedRows:'{n} unchanged rows — click to expand',needTwo:'Please add two spreadsheets first.',loaded:'Loaded {name}',parseError:'Could not read {name}: {msg}',rowsCols:'{r} rows × {c} columns',footer:'dependency-free single page · all processing happens locally in your browser · Made with love by lingyicute',restored:'Restored saved comparison',origRow:'Row (original)',chgRow:'Row (changed)',inserted:'inserted',deleted:'deleted',moved:'moved'},
+zh:{'nav.text':'文本','nav.images':'图片','nav.excel':'Excel',offline:'离线运行 · 无需联网',dark:'深色',light:'浅色','hero.title':'Excel 对比','hero.desc':'找出两个表格文件之间的差异（.xlsx、.csv、.tsv）',original:'原始表格',changed:'修改后的表格',openFile:'打开文件',clear:'清空',dropHere:'把表格文件拖到这里',browse:'或点击选择文件（.xlsx、.xlsm、.csv、.tsv）',find:'查找差异',tryExample:'试试示例',swap:'交换左右',tools:'工具',table:'按表头',rows:'按行',standard:'显示值',formulas:'显示公式',prev:'上一处',next:'下一处',export:'导出',sheet:'工作表',headerLine:'表头行',headerTip:'此工作表中表头所在的行号。',headerDetected:'表头上方的几行看起来像标题，已将表头行设为第 {line} 行。',compOptions:'比较选项',matchHeaders:'按表头匹配列',ignoreWs:'忽略空白字符',ignoreCase:'忽略大小写差异',normDates:'统一日期格式',sortRows:'对行排序后再比较',sortCols:'对列排序后再比较',appearance:'外观',hideRows:'隐藏未修改的行',hideCols:'隐藏未修改的列',showOld:'在修改的单元格中显示旧值',format:'格式',cancel:'取消',fmtXlsx:'合并后的对比工作表，用颜色标出改动的行和单元格。',fmtCsv:'纯文本对比表。',fmtPdf:'通过浏览器的“打印为 PDF”功能输出对比结果。',fmtDiff:'Diffchecker 文件',fmtDiffDesc:'保存为 .diffchecker 文件，之后可重新打开此次对比。',identicalTitle:'两个工作表完全相同',identicalMsg:'两个工作表之间没有任何差异',rowsRemoved:'行删除',rowsAdded:'行新增',rowsChanged:'行修改',cellsChanged:'个单元格修改',colsAdded:'列新增',colsRemoved:'列删除',unchangedRows:'{n} 行未修改，点击展开',needTwo:'请先添加两个表格文件。',loaded:'已加载 {name}',parseError:'无法读取 {name}：{msg}',rowsCols:'{r} 行 × {c} 列',footer:'零依赖单页应用 · 所有处理均在浏览器本地完成 · Made with love by lingyicute',restored:'已还原保存的对比结果',origRow:'行号（原始）',chgRow:'行号（修改后）',inserted:'新增',deleted:'删除',moved:'已移动'}};
+Object.assign(I18N.en,{hiddenSheet:'hidden',tipTable:'Match up rows and columns using the header row, best for structured tables',tipRows:'Compare row by row in order, works with any layout',wrongFile:'This .diffchecker file was not created by the Excel comparison tool',legacyXls:'Legacy .xls files are not supported. Please save as .xlsx or .csv first.',badZip:'Not a valid .xlsx file',xlSheet:'Comparison'});
+Object.assign(I18N.zh,{hiddenSheet:'已隐藏',tipTable:'按表头对齐行和列，适合结构化的表格',tipRows:'按顺序逐行比较，适用于任意布局',wrongFile:'此 .diffchecker 文件不是由 Excel 对比工具生成的',legacyXls:'不支持旧版 .xls 文件，请先另存为 .xlsx 或 .csv。',badZip:'不是有效的 .xlsx 文件',xlSheet:'对比结果'});
+let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
+const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
+const $=id=>document.getElementById(id);
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)render()}
+function applyTheme(){document.documentElement.dataset.theme=theme;$('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
+$('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
+$('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-theme',theme);applyTheme()};
+const notice=m=>{const n=$('notice');n.textContent=m;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),2600)};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ===================== inflate (RFC1951) & ZIP reader ===================== */
+function inflate(src,expected){let pos=0,bb=0,bc=0;let out=new Uint8Array(expected||Math.max(1024,src.length*4)),op=0;
+  const grow=n=>{if(op+n>out.length){const o=new Uint8Array(Math.max(out.length*2,op+n));o.set(out);out=o}};
+  const bit=()=>{if(bc===0){if(pos>=src.length)throw new Error(t('badZip'));bb=src[pos++];bc=8}const b=bb&1;bb>>>=1;bc--;return b};
+  const bits=n=>{while(bc<n){if(pos>=src.length)throw new Error(t('badZip'));bb|=src[pos++]<<bc;bc+=8}const v=bb&((1<<n)-1);bb>>>=n;bc-=n;return v};
+  const tree=l=>{const count=new Uint16Array(16),symbol=new Uint16Array(l.length),offs=new Uint16Array(16);for(const x of l)count[x]++;count[0]=0;for(let i=1;i<16;i++)offs[i]=offs[i-1]+count[i-1];for(let i=0;i<l.length;i++)if(l[i])symbol[offs[l[i]]++]=i;return{count,symbol}};
+  const sym=tr=>{let sum=0,cur=0,len=0;do{cur=2*cur+bit();len++;if(len>15)throw new Error(t('badZip'));sum+=tr.count[len];cur-=tr.count[len]}while(cur>=0);return tr.symbol[sum+cur]};
+  const LB=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258],LE=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0],DB=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577],DE=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13],CLO=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+  const fl=new Uint8Array(288);for(let i=0;i<144;i++)fl[i]=8;for(let i=144;i<256;i++)fl[i]=9;for(let i=256;i<280;i++)fl[i]=7;for(let i=280;i<288;i++)fl[i]=8;const fd=new Uint8Array(30).fill(5);const FL=tree(fl),FD=tree(fd);
+  const inflateBlock=(lt,dt)=>{for(;;){let s=sym(lt);if(s===256)return;if(s<256){grow(1);out[op++]=s}else{s-=257;if(!(s>=0&&s<29))throw new Error(t('badZip'));const len=LB[s]+bits(LE[s]);const d=sym(dt);if(!(d>=0&&d<30))throw new Error(t('badZip'));const dist=DB[d]+bits(DE[d]);if(dist>op)throw new Error(t('badZip'));grow(len);for(let i=0;i<len;i++){out[op]=out[op-dist];op++}}}};
+  let final;do{final=bits(1);const type=bits(2);
+    if(type===0){bb=0;bc=0;const len=src[pos]|(src[pos+1]<<8);pos+=4;grow(len);out.set(src.subarray(pos,pos+len),op);op+=len;pos+=len}
+    else if(type===1)inflateBlock(FL,FD);
+    else if(type===2){const hlit=bits(5)+257,hdist=bits(5)+1,hclen=bits(4)+4;const cl=new Uint8Array(19);for(let i=0;i<hclen;i++)cl[CLO[i]]=bits(3);const ct=tree(cl);const lens=new Uint8Array(hlit+hdist);
+      for(let i=0;i<hlit+hdist;){const s=sym(ct);if(s<16)lens[i++]=s;else if(s===16){const p=lens[i-1];let r=3+bits(2);while(r--)lens[i++]=p}else if(s===17){let r=3+bits(3);while(r--)lens[i++]=0}else{let r=11+bits(7);while(r--)lens[i++]=0}}
+      inflateBlock(tree(lens.subarray(0,hlit)),tree(lens.subarray(hlit)))}
+    else throw new Error(t('badZip'))}while(!final);
+  return out.subarray(0,op)}
+function readZip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf);let eocd=-1;for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}}if(eocd<0)throw new Error(t('badZip'));
+  const count=dv.getUint16(eocd+10,true);let p=dv.getUint32(eocd+16,true);const files={};const dec=new TextDecoder();
+  for(let i=0;i<count;i++){if(dv.getUint32(p,true)!==0x02014b50)break;const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),usize=dv.getUint32(p+24,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);const name=dec.decode(u8.subarray(p+46,p+46+nl));
+    files[name]={method,csize,usize,lo};p+=46+nl+el+cl}
+  return {get(name){const f=files[name];if(!f)return null;const nl=dv.getUint16(f.lo+26,true),el=dv.getUint16(f.lo+28,true),start=f.lo+30+nl+el;const data=u8.subarray(start,start+f.csize);return f.method===0?data:f.method===8?inflate(data,f.usize):(()=>{throw new Error('unsupported compression '+f.method)})()},text(name){const d=this.get(name);return d?dec.decode(d):null},names:Object.keys(files)}}
+
+/* ===================== XLSX parsing ===================== */
+const DATE_IDS=new Set([14,15,16,17,18,19,20,21,22,27,28,29,30,31,32,33,34,35,36,45,46,47,50,51,52,53,54,55,56,57,58]);
+const xml=s=>new DOMParser().parseFromString(s,'application/xml');
+function colIndex(ref){let n=0;for(let i=0;i<ref.length;i++){const c=ref.charCodeAt(i);if(c<65||c>90)break;n=n*26+(c-64)}return n-1}
+function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=(i-m-1)/26}return s}
+function serialToDate(v,d1904){const base=Date.UTC(1899,11,30)+(d1904?1462*86400000:0);const d=new Date(base+Math.round(v*86400000));const p=n=>String(n).padStart(2,'0');let s=`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;if(Math.abs(v-Math.floor(v))>1e-9)s+=` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;return s}
+function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);
+  const d1904=wb.querySelector('workbookPr')?.getAttribute('date1904')==='1';
+  const rels={};const rx=z.text('xl/_rels/workbook.xml.rels');if(rx)for(const r of xml(rx).getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
+  const sst=[];const sx=z.text('xl/sharedStrings.xml');if(sx){for(const si of xml(sx).getElementsByTagName('si')){let s='';for(const tn of si.getElementsByTagName('t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(s)}}
+  const dateStyles=new Set();const stx=z.text('xl/styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of st.getElementsByTagName('numFmt')){const code=(nf.getAttribute('formatCode')||'').replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[+nf.getAttribute('numFmtId')]=/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
+    const xfs=st.querySelector('cellXfs');if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i)})}}
+  const sheets=[];for(const sh of wb.getElementsByTagName('sheet')){const rid=sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sh.getAttribute('r:id');let target=rels[rid]||'';if(target.startsWith('/'))target=target.slice(1);else if(!target.startsWith('xl/'))target='xl/'+target;
+    sheets.push({name:sh.getAttribute('name'),target,hidden:sh.getAttribute('state')==='hidden'})}
+  const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];let cols=0;
+    for(const r of doc.getElementsByTagName('row')){const ri=+r.getAttribute('r')-1;const cells=[];let ci=-1;
+      for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
+        for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f')f='='+ch.textContent;else if(ch.localName==='is')raw=[...ch.getElementsByTagName('t')].map(x=>x.textContent).join('')}
+        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(raw!=null){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?serialToDate(n,d1904):String(n)):raw}else v='';
+        cells[ci]={v,f,d:dateStyles.has(s)};if(ci+1>cols)cols=ci+1}
+      if(cells.length){rows[ri]=cells}}
+    for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];sheet.grid={rows,cols};return sheet.grid};
+  return {sheets,load,type:'xlsx'}}
+function parseCsv(text,delim){if(!delim){const first=text.split(/\r?\n/)[0]||'';delim=[',','\t',';','|'].map(d=>[d,first.split(d).length]).sort((a,b)=>b[1]-a[1])[0][0]}
+  const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}else if(ch==='"')q=true;else if(ch===delim){row.push(cell);cell=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell=''}else cell+=ch}
+  if(cell!==''||row.length){row.push(cell);rows.push(row)}let cols=0;const grid=rows.map(r=>{cols=Math.max(cols,r.length);return r.map(v=>({v,f:null,d:false}))});
+  const sheet={name:'Sheet1',target:'',grid:{rows:grid,cols}};return {sheets:[sheet],load:s=>s.grid,type:'csv'}}
+
+/* ===================== diff core (shared with text tool) ===================== */
+const EQ=0,DEL=1,INS=2;
+function diffSeq(a,b,eq){eq=eq||((x,y)=>x===y);const out=[];const stack=[{a0:0,a1:a.length,b0:0,b1:b.length}];
+  while(stack.length){const it=stack.pop();if(it.eqs){for(const p of it.eqs)out.push([EQ,p[0],p[1]]);continue}let {a0,a1,b0,b1}=it;
+    while(a0<a1&&b0<b1&&eq(a[a0],b[b0])){out.push([EQ,a0,b0]);a0++;b0++}const tail=[];while(a1>a0&&b1>b0&&eq(a[a1-1],b[b1-1])){a1--;b1--;tail.push([a1,b1])}tail.reverse();
+    if(a0===a1){for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}if(b0===b1){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
+    const s=midSnake(a,b,a0,a1,b0,b1,eq);if(!s||(s.x===0&&s.y===0&&s.u===a1-a0&&s.v===b1-b0)){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
+    const snake=[];for(let k=0;k<s.u-s.x;k++)snake.push([a0+s.x+k,b0+s.y+k]);if(tail.length)stack.push({eqs:tail});stack.push({a0:a0+s.u,a1,b0:b0+s.v,b1});if(snake.length)stack.push({eqs:snake});stack.push({a0,a1:a0+s.x,b0,b1:b0+s.y})}
+  return out}
+function midSnake(a,b,a0,a1,b0,b1,eq){const N=a1-a0,M=b1-b0,MAX=Math.ceil((N+M)/2),delta=N-M,odd=(delta&1)!==0,off=MAX+1;const vf=new Int32Array(2*MAX+4),vb=new Int32Array(2*MAX+4);vf[off+1]=0;vb[off+1]=0;
+  for(let d=0;d<=MAX;d++){for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vf[off+k-1]<vf[off+k+1]))?vf[off+k+1]:vf[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a0+x],b[b0+y])){x++;y++}vf[off+k]=x;if(odd){const kr=delta-k;if(kr>=-(d-1)&&kr<=d-1&&x+vb[off+kr]>=N)return{x:xs,y:ys,u:x,v:y}}}
+    for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vb[off+k-1]<vb[off+k+1]))?vb[off+k+1]:vb[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a1-1-x],b[b1-1-y])){x++;y++}vb[off+k]=x;if(!odd){const kf=delta-k;if(kf>=-d&&kf<=d&&x+vf[off+kf]>=N)return{x:N-x,y:M-y,u:N-xs,v:M-ys}}}}return null}
+const WORD_RE=/[A-Za-z0-9_\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]+|[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|\s+|[^\sA-Za-z0-9_]/gu;
+function inlineDiff(l,r){const A=l.length+r.length>400?(l.match(WORD_RE)||[]):Array.from(l),B=l.length+r.length>400?(r.match(WORD_RE)||[]):Array.from(r);const ops=diffSeq(A,B);const m=[];for(const [op,i,j] of ops){const s={t:op,a:op===INS?'':A[i],b:op===DEL?'':B[j]};const p=m[m.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else m.push(s)}return m}
+
+/* ===================== comparison engine ===================== */
+const opts={mode:'table',val:'standard',matchHeaders:true,ignoreWs:false,ignoreCase:false,normDates:true,sortRows:false,sortCols:false,hideRows:false,hideCols:false,showOld:true};
+function mergeOpts(src){if(!src||typeof src!=='object')return;for(const k of Object.keys(opts)){if(!Object.prototype.hasOwnProperty.call(src,k))continue;const v=src[k];if(k==='mode'){if(v==='table'||v==='rows')opts.mode=v}else if(k==='val'){if(v==='standard'||v==='formulas')opts.val=v}else if(typeof v==='boolean')opts[k]=v}}
+try{mergeOpts(JSON.parse(lsGet('excel-opts')||'{}'))}catch(e){}
+const saveOpts=()=>lsSet('excel-opts',JSON.stringify(opts));
+const DATE_RX=/^\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$|^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*$/;
+function cellText(c){if(!c)return '';if(opts.val==='formulas'&&c.f)return c.f;return c.v??''}
+function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);if(m){const p=n=>String(n).padStart(2,'0');if(m[1])s=`${m[1]}-${p(m[2])}-${p(m[3])}`+(m[4]?` ${p(m[4])}:${m[5]}:${m[6]||'00'}`:'');else s=`${m[9]}-${p(m[8])}-${p(m[7])}`}}
+  if(opts.ignoreWs)s=s.replace(/\s+/g,' ').trim();if(opts.ignoreCase)s=s.toLowerCase();return s}
+function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&String(c.v).trim()!=='').length;counts.push(n);if(n>bestN)bestN=n}
+  for(let i=0;i<lim;i++)if(counts[i]>=2&&counts[i]>=.6*bestN){best=i;break}return best}
+function trimRows(rows){let n=rows.length;while(n>0&&!(rows[n-1]||[]).some(c=>c&&(String(c.v).trim()!==''||c.f)))n--;return rows.slice(0,n)}
+function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns ordered entries {type:'del'|'ins'|'chg',ai,bi}
+  const out=[];if(!delIdx.length||!insIdx.length){delIdx.forEach(i=>out.push({type:'del',ai:i}));insIdx.forEach(j=>out.push({type:'ins',bi:j}));return out}
+  if(delIdx.length*insIdx.length>2500){const n=Math.max(delIdx.length,insIdx.length);for(let k=0;k<n;k++){if(k<delIdx.length&&k<insIdx.length)out.push({type:'chg',ai:delIdx[k],bi:insIdx[k]});else if(k<delIdx.length)out.push({type:'del',ai:delIdx[k]});else out.push({type:'ins',bi:insIdx[k]})}return out}
+  const sim=(i,j)=>{const a=cellsA[i],b=cellsB[j];const n=Math.max(a.length,b.length);if(!n)return 1;let eq=0,nonEmpty=0;for(let k=0;k<n;k++){const x=a[k]||'',y=b[k]||'';if(x||y)nonEmpty++;if(x===y&&(x||y))eq++}return nonEmpty?eq/nonEmpty:1};
+  const cand=[];for(const i of delIdx)for(const j of insIdx){const s=sim(i,j);if(s>=.34)cand.push([s,i,j])}cand.sort((p,q)=>q[0]-p[0]||p[1]-q[1]||p[2]-q[2]);
+  const usedA=new Set(),usedB=new Set(),pairs=new Map();for(const [s,i,j] of cand){if(usedA.has(i)||usedB.has(j))continue;usedA.add(i);usedB.add(j);pairs.set(i,j)}
+  let bp=0;const insSorted=insIdx.slice();for(const i of delIdx){if(pairs.has(i)){const j=pairs.get(i);while(bp<insSorted.length&&insSorted[bp]<j){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}out.push({type:'chg',ai:i,bi:j});if(bp<insSorted.length&&insSorted[bp]===j)bp++}else out.push({type:'del',ai:i})}
+  while(bp<insSorted.length){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}return out}
+function compare(gA,gB,hA,hB){
+  const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows);let columns=[];let dataA,dataB,startA,startB;
+  if(opts.mode==='table'){const headA=(rowsA[hA]||[]),headB=(rowsB[hB]||[]);const nA=Math.max(gA.cols,headA.length),nB=Math.max(gB.cols,headB.length);const nameOf=(h,i)=>normalize(String(cellText(h[i])||'')).trim()||('__col'+i);
+    if(opts.matchHeaders){const usedB=new Set();const mapAB=new Map();for(let i=0;i<nA;i++){const n=nameOf(headA,i);for(let j=0;j<nB;j++)if(!usedB.has(j)&&nameOf(headB,j)===n){mapAB.set(i,j);usedB.add(j);break}}
+      // moved detection via LIS over matched B indices
+      const seqA=[...mapAB.keys()],seqB=seqA.map(i=>mapAB.get(i));const lisIdx=(()=>{const n=seqB.length,tails=[],prev=new Array(n).fill(-1),tailIdx=[];for(let i=0;i<n;i++){let lo=0,hi=tails.length;while(lo<hi){const m=(lo+hi)>>1;if(tails[m]<seqB[i])lo=m+1;else hi=m}tails[lo]=seqB[i];tailIdx[lo]=i;prev[i]=lo?tailIdx[lo-1]:-1}const r=new Set();let k=tailIdx[tails.length-1];while(k!=null&&k>=0){r.add(k);k=prev[k]}return r})();
+      const movedA=new Set(seqA.filter((_,k)=>!lisIdx.has(k)));
+      // build union: walk A columns; insert B-only columns after their predecessor
+      const bOnly=[];for(let j=0;j<nB;j++)if(!usedB.has(j))bOnly.push(j);const bPred=j=>{for(let k=j-1;k>=0;k--)if(usedB.has(k))return k;return -1};
+      const byPred=new Map();for(const j of bOnly){const p=bPred(j);if(!byPred.has(p))byPred.set(p,[]);byPred.get(p).push(j)}
+      (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
+      for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)?'mov':'eq'});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
+    }else{const n=Math.max(nA,nB);for(let i=0;i<n;i++)columns.push({name:String(cellText(headA[i])||cellText(headB[i])||colName(i)),ia:i<nA?i:-1,ib:i<nB?i:-1,st:i>=nA?'ins':i>=nB?'del':'eq'})}
+    if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
+    dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
+  }else{const n=Math.max(gA.cols,gB.cols);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<gA.cols?i:-1,ib:i<gB.cols?i:-1,st:i>=gA.cols?'ins':i>=gB.cols?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
+  const proj=(row,side)=>columns.map(c=>{const idx=side==='A'?c.ia:c.ib;return idx<0?'':String(cellText(row[idx]))});
+  const shared=columns.map((c,k)=>c.ia>=0&&c.ib>=0?k:-1).filter(k=>k>=0);
+  let idxA=dataA.map((_,i)=>i),idxB=dataB.map((_,i)=>i);
+  const cellsA=dataA.map(r=>proj(r,'A')),cellsB=dataB.map(r=>proj(r,'B'));const normA=cellsA.map(r=>r.map(normalize)),normB=cellsB.map(r=>r.map(normalize));
+  const keyOf=(nr)=>shared.map(k=>nr[k]).join('\u0001').replace(/\u0001+$/,'');
+  if(opts.sortRows){const sk=i=>normA[i].slice().join('\u0001'),skB=i=>normB[i].slice().join('\u0001');idxA.sort((x,y)=>sk(x)<sk(y)?-1:sk(x)>sk(y)?1:x-y);idxB.sort((x,y)=>skB(x)<skB(y)?-1:skB(x)>skB(y)?1:x-y)}
+  const keysA=idxA.map(i=>keyOf(normA[i])),keysB=idxB.map(i=>keyOf(normB[i]));
+  const ops=diffSeq(keysA,keysB);const outRows=[];let D=[],I=[];const sharedNormA=normA.map(r=>shared.map(k=>r[k])),sharedNormB=normB.map(r=>shared.map(k=>r[k]));
+  const flush=()=>{if(D.length||I.length){for(const e of pairBlock(D,I,null,null,sharedNormA,sharedNormB))outRows.push(e);D=[];I=[]}};
+  for(const [op,i,j] of ops){if(op===EQ){flush();outRows.push({type:'eq',ai:idxA[i],bi:idxB[j]})}else if(op===DEL)D.push(idxA[i]);else I.push(idxB[j])}flush();
+  const stats={rowsDel:0,rowsIns:0,rowsChg:0,cells:0,colsIns:columns.filter(c=>c.st==='ins').length,colsDel:columns.filter(c=>c.st==='del').length};const colChanged=new Set();
+  const result=outRows.map(e=>{const r={type:e.type,ai:e.ai,bi:e.bi,na:e.ai!=null?e.ai+startA:null,nb:e.bi!=null?e.bi+startB:null,cells:[]};
+    for(let k=0;k<columns.length;k++){const c=columns[k];const a=e.ai!=null?cellsA[e.ai][k]:'',b=e.bi!=null?cellsB[e.bi][k]:'';let st='eq',segs=null;
+      if(e.type==='del')st='rdel';else if(e.type==='ins')st='rins';else if(c.ia<0||c.ib<0){st=c.ia<0?'cins':'cdel';if((a||b))colChanged.add(k)}else{const na=normA[e.ai][k],nb=normB[e.bi][k];if(na!==nb){st=!a?'cins':!b?'cdel':'chg';segs=st==='chg'?inlineDiff(a,b):null;stats.cells++;colChanged.add(k)}}
+      r.cells.push({a,b,st,segs})}
+    if(e.type==='del')stats.rowsDel++;else if(e.type==='ins')stats.rowsIns++;else if(e.type==='chg'){if(!r.cells.some(c=>c.st!=='eq'&&c.st!=='cins'&&c.st!=='cdel'))r.type='eq';else stats.rowsChg++}return r});
+  for(const r of result)if(r.type==='chg')r.cells.forEach((c,k)=>{if(c.st!=='eq')colChanged.add(k)});
+  return {columns,rows:result,stats,colChanged,identical:result.every(r=>r.type==='eq'&&r.cells.every(c=>c.st==='eq'))&&!stats.colsIns&&!stats.colsDel&&stats.cells===0}}
+
+/* ===================== UI: loading ===================== */
+const WB={A:null,B:null},SEL={A:{sheet:0,header:0,auto:true},B:{sheet:0,header:0,auto:true}},NAMES={A:'',B:''};let RES=null,expanded=new Set(),focusIdx=-1;
+let openTarget='A';document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
+for(const s of ['A','B']){const d=$('drop'+s);d.onclick=()=>{openTarget=s;$('fileInput').value='';$('fileInput').click()};const card=$('card'+s);card.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag')});card.addEventListener('dragleave',()=>d.classList.remove('drag'));card.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,s)})}
+$('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
+document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>clearSide(b.dataset.clear));
+function clearSide(s){WB[s]=null;NAMES[s]='';$('name'+s).textContent='';$('det'+s).classList.add('hidden');$('prev'+s).classList.add('hidden');$('drop'+s).classList.remove('hidden');$('err'+s).textContent='';RES=null;$('result').classList.add('hidden')}
+const readBuf=f=>f.arrayBuffer?f.arrayBuffer():new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=j;fr.readAsArrayBuffer(f)});function decodeBuf(buf){const u=new Uint8Array(buf);if(u[0]===0xFF&&u[1]===0xFE)return new TextDecoder('utf-16le').decode(u);if(u[0]===0xFE&&u[1]===0xFF)return new TextDecoder('utf-16be').decode(u);try{return new TextDecoder('utf-8',{fatal:true}).decode(u)}catch(e){try{return new TextDecoder('gb18030').decode(u)}catch(e2){return new TextDecoder().decode(u)}}}
+const readText=async f=>decodeBuf(await readBuf(f));
+async function loadFile(f,side){$('err'+side).textContent='';try{let wb;if(/\.xls$/i.test(f.name))throw new Error(t('legacyXls'));if(/\.(xlsx|xlsm|xltx|xltm)$/i.test(f.name)||f.type.includes('spreadsheetml')||f.type.includes('zip')){wb=parseXlsx(await readBuf(f))}
+    else if(/\.diffchecker$/i.test(f.name)){const j=JSON.parse(await readText(f));if(j.type!=='excel')throw new Error(t('wrongFile'));setWorkbook('A',fromJsonGrid(j.left),String(j.leftName||''));setWorkbook('B',fromJsonGrid(j.right),String(j.rightName||''));mergeOpts(j.options);saveOpts();syncUI();notice(t('restored'));run();return}
+    else{wb=parseCsv(await readText(f),/\.tsv$/i.test(f.name)?'\t':undefined)}
+    setWorkbook(side,wb,f.name);notice(t('loaded',{name:f.name}))}catch(e){console.error(e);$('err'+side).textContent=t('parseError',{name:f.name,msg:e.message})}}
+const fromJsonGrid=g=>({type:'json',sheets:[{name:g.name||'Sheet1',grid:{rows:g.rows.map(r=>r.map(v=>v&&typeof v==='object'?{v:v.v==null?'':String(v.v),f:typeof v.f==='string'?v.f:null,d:false}:{v:v==null?'':String(v),f:null,d:false})),cols:Number(g.cols)||0}}],load:s=>s.grid});
+function setWorkbook(side,wb,name){WB[side]=wb;NAMES[side]=name;$('name'+side).textContent=name;$('drop'+side).classList.add('hidden');const visible=wb.sheets.findIndex(s=>!s.hidden);SEL[side]={sheet:visible<0?0:visible,header:0,auto:true};autoHeader(side);renderDetails(side);
+  // auto-select a sheet with the same name on the other side
+  const other=side==='A'?'B':'A';if(WB[other]){const o=WB[other].sheets.findIndex(s=>s.name===wb.sheets[SEL[side].sheet].name);if(o>=0&&o!==SEL[other].sheet){SEL[other].sheet=o;autoHeader(other);renderDetails(other)}}}
+function autoHeader(side){const g=WB[side].load(WB[side].sheets[SEL[side].sheet]);SEL[side].header=detectHeader(g.rows);SEL[side].auto=true}
+function renderDetails(side){const wb=WB[side],sel=SEL[side],det=$('det'+side);const g=wb.load(wb.sheets[sel.sheet]);det.classList.remove('hidden');
+  det.innerHTML=`<label>${t('sheet')} <select data-sheet>${wb.sheets.map((s,i)=>`<option value="${i}" ${i===sel.sheet?'selected':''}>${esc(s.name)}${s.hidden?` (${esc(t('hiddenSheet'))})`:''}</option>`).join('')}</select></label><label title="${esc(t('headerTip'))}">${t('headerLine')} <input type="number" min="1" data-header value="${sel.header+1}"></label><span style="color:var(--fg2)">${t('rowsCols',{r:trimRows(g.rows).length,c:g.cols})}</span>${sel.auto&&sel.header>0?`<span class="note">${esc(t('headerDetected',{line:sel.header+1}))}</span>`:''}`;
+  det.querySelector('[data-sheet]').onchange=e=>{sel.sheet=+e.target.value;autoHeader(side);renderDetails(side);if(RES)run()};det.querySelector('[data-header]').onchange=e=>{sel.header=Math.max(0,(+e.target.value||1)-1);sel.auto=false;renderDetails(side);if(RES)run()};
+  const pv=$('prev'+side);pv.classList.remove('hidden');const rows=trimRows(g.rows).slice(0,30);let h='<table><tr><th></th>';for(let c=0;c<Math.min(g.cols,40);c++)h+=`<th>${colName(c)}</th>`;h+='</tr>';rows.forEach((r,i)=>{h+=`<tr class="${i===sel.header&&opts.mode==='table'?'hdr':''}"><th>${i+1}</th>`;for(let c=0;c<Math.min(g.cols,40);c++)h+=`<td title="${esc(r[c]?.f||'')}">${esc(cellText(r[c]))}</td>`;h+='</tr>'});pv.innerHTML=h+'</table>'}
+$('swapBtn').onclick=()=>{if(!WB.A||!WB.B)return;[WB.A,WB.B]=[WB.B,WB.A];[NAMES.A,NAMES.B]=[NAMES.B,NAMES.A];[SEL.A,SEL.B]=[SEL.B,SEL.A];for(const s of ['A','B']){$('name'+s).textContent=NAMES[s];renderDetails(s)}if(RES)run()};
+$('findBtn').onclick=()=>{if(!WB.A||!WB.B)return notice(t('needTwo'));run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
+function run(){if(!WB.A||!WB.B)return;const gA=WB.A.load(WB.A.sheets[SEL.A.sheet]),gB=WB.B.load(WB.B.sheets[SEL.B.sheet]);RES=compare(gA,gB,SEL.A.header,SEL.B.header);expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render()}
+
+/* ===================== rendering ===================== */
+function renderCell(c){if(c.st==='chg'&&c.segs){const old=c.segs.filter(s=>s.t!==INS).map(s=>s.t===EQ?esc(s.a):`<mark class="d">${esc(s.a)}</mark>`).join(''),nw=c.segs.filter(s=>s.t!==DEL).map(s=>s.t===EQ?esc(s.b):`<mark class="i">${esc(s.b)}</mark>`).join('');return opts.showOld?`<span class="old">${old}</span><span class="arrow">→</span>${nw}`:nw}
+  if(c.st==='cdel')return `<mark class="d">${esc(c.a)}</mark>`;if(c.st==='cins')return `<mark class="i">${esc(c.b)}</mark>`;if(c.st==='rdel')return esc(c.a);return esc(c.b||c.a)}
+function render(){const R=RES,wrap=$('gridWrap');const s=R.stats;$('stats').innerHTML=`<span class="stat del"><i></i><b>${s.rowsDel}</b> ${t('rowsRemoved')}</span><span class="stat ins"><i></i><b>${s.rowsIns}</b> ${t('rowsAdded')}</span><span class="stat chg"><i></i><b>${s.rowsChg}</b> ${t('rowsChanged')}</span><span class="stat"><b>${s.cells}</b> ${t('cellsChanged')}</span>${s.colsIns?`<span class="stat"><b>${s.colsIns}</b> ${t('colsAdded')}</span>`:''}${s.colsDel?`<span class="stat"><b>${s.colsDel}</b> ${t('colsRemoved')}</span>`:''}`;
+  $('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)));
+  if(R.identical){wrap.dataset.changes=0;wrap.innerHTML=`<div class="identical"><div class="ic">✓</div><h3>${esc(t('identicalTitle'))}</h3><p>${esc(t('identicalMsg'))}</p></div>`;return}
+  const cols=R.columns.map((c,k)=>({...c,k})).filter(c=>!opts.hideCols||c.st!=='eq'||R.colChanged.has(c.k));
+  let h=`<table class="grid"><thead><tr><th class="num a">#A</th><th class="num b">#B</th>${cols.map(c=>`<th class="col-${c.st}" title="${c.st==='eq'?'':t(c.st==='ins'?'inserted':c.st==='del'?'deleted':'moved')}">${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`).join('')}</tr></thead><tbody>`;
+  let changeNo=0,i=0;const rows=R.rows,CTX=2;
+  while(i<rows.length){const r=rows[i];
+    if(r.type==='eq'&&opts.hideRows){let j=i;while(j<rows.length&&rows[j].type==='eq')j++;const run=j-i;if(run>CTX*2+1&&!expanded.has(i)){const head=i===0?0:CTX,tail=j===rows.length?0:CTX;for(let k=i;k<i+head;k++)h+=rowHtml(rows[k],cols);h+=`<tr class="collapsed" data-i="${i}"><td colspan="${cols.length+2}">⋯ ${esc(t('unchangedRows',{n:run-head-tail}))}</td></tr>`;for(let k=j-tail;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}for(let k=i;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}
+    const id=r.type!=='eq'?`focus-${changeNo++}`:'';h+=rowHtml(r,cols,id);i++}
+  wrap.innerHTML=h+'</tbody></table>';wrap.dataset.changes=changeNo;wrap.querySelectorAll('tr.collapsed').forEach(tr=>tr.onclick=()=>{expanded.add(+tr.dataset.i);render()})}
+function rowHtml(r,cols,id){return `<tr class="${r.type}" ${id?`id="${id}"`:''}><td class="num a">${r.na??''}</td><td class="num b">${r.nb??''}</td>${cols.map(c=>{const cell=r.cells[c.k];const cls=r.type==='eq'||r.type==='chg'?(cell.st==='chg'?'chg':cell.st==='cdel'?'cdel':cell.st==='cins'?'cins':(c.st==='ins'||c.st==='del')&&!cell.a&&!cell.b?'colx':''):'';return `<td class="${cls}">${renderCell(cell)}</td>`}).join('')}</tr>`}
+function goChange(dir){const n=+$('gridWrap').dataset.changes||0;if(!n)return;focusIdx=((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
+$('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
+$('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.mode=b.dataset.mode;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
+$('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();if(RES)run()};
+$('toolsBtn').onclick=()=>$('panel').classList.toggle('open');$('panelClose').onclick=()=>$('panel').classList.remove('open');
+document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{opts[sw.dataset.opt]=!opts[sw.dataset.opt];saveOpts();syncUI();if(RES)run()});
+function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));$('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)))}
+
+/* ===================== export ===================== */
+let exportFmt='xlsx';$('exportBtn').onclick=()=>$('exportModal').classList.add('open');$('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
+$('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
+function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+const baseName=()=>((NAMES.A||'original').replace(/\.[^.]+$/,'')+'-vs-'+(NAMES.B||'changed').replace(/\.[^.]+$/,'')).replace(/[<>:"/\\|?*\u0000]/g,'_').slice(0,100);
+$('exportGo').onclick=()=>{$('exportModal').classList.remove('open');if(!RES)return;if(exportFmt==='pdf')window.print();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()};
+function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?`${c.a} → ${c.b}`:c.st==='cdel'?c.a:c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
+function exportCsv(){const {head,body}=tableRows();const q=v=>{v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};download(new Blob(['\ufeff'+[head,...body].map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}),baseName()+'.csv')}
+function exportDiffFile(){const toGrid=(s)=>{const g=WB[s].load(WB[s].sheets[SEL[s].sheet]);return {name:WB[s].sheets[SEL[s].sheet].name,cols:g.cols,rows:trimRows(g.rows).map(r=>Array.from({length:g.cols},(_,i)=>r[i]?(r[i].f?{v:r[i].v,f:r[i].f}:r[i].v):''))}};download(new Blob([JSON.stringify({type:'excel',version:1,left:toGrid('A'),right:toGrid('B'),leftName:NAMES.A,rightName:NAMES.B,options:{...opts},createdAt:new Date().toISOString()})],{type:'application/json'}),baseName()+'.diffchecker')}
+/* minimal xlsx writer (STORE zip, inline strings; styles 0 normal 1 bold 2 red 3 green 4 yellow) */
+const CRC_T=(()=>{const T=new Int32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c}return T})();
+function crc32(u8){let c=-1;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^-1)>>>0}
+function zipStore(files){const enc=new TextEncoder(),parts=[],cd=[];let off=0;const d=new Date(),dt=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1))&0xffff,dd=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate())&0xffff;const u32=v=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255],u16=v=>[v&255,(v>>>8)&255];
+  for(const f of files){const name=enc.encode(f.name),crc=crc32(f.data),n=f.data.length;const lh=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x800),...u16(0),...u16(dt),...u16(dd),...u32(crc),...u32(n),...u32(n),...u16(name.length),...u16(0),...name]);parts.push(lh,f.data);cd.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x800),...u16(0),...u16(dt),...u16(dd),...u32(crc),...u32(n),...u32(n),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off),...name]));off+=lh.length+n}
+  const cdLen=cd.reduce((s,c)=>s+c.length,0);return new Blob([...parts,...cd,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cdLen),...u32(off),...u16(0)])],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
+const xe=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
+function makeXlsx(sheets){const enc=new TextEncoder();const files=[];
+  files.push({name:'[Content_Types].xml',data:enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`)});
+  files.push({name:'_rels/.rels',data:enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`)});
+  files.push({name:'xl/workbook.xml',data:enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${xe(s.name.slice(0,31))}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`)});
+  files.push({name:'xl/_rels/workbook.xml.rels',data:enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`)});
+  files.push({name:'xl/styles.xml',data:enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFDE2E2"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDDF4E4"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF4CC"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`)});
+  sheets.forEach((s,i)=>{let x=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>`;
+    s.rows.forEach((row,ri)=>{x+=`<row r="${ri+1}">`;row.forEach((c,ci)=>{if(c==null)return;const v=c.v==null?'':c.v,st=c.s||0;if(v==='')x+=`<c r="${colName(ci)}${ri+1}" s="${st}"/>`;else if(typeof v==='number'&&isFinite(v))x+=`<c r="${colName(ci)}${ri+1}" s="${st}"><v>${v}</v></c>`;else x+=`<c r="${colName(ci)}${ri+1}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${xe(String(v).slice(0,32767))}</t></is></c>`});x+='</row>'});
+    files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:enc.encode(x+'</sheetData></worksheet>')})});
+  return zipStore(files)}
+function exportXlsx(){const R=RES;const rows=[[{v:t('origRow'),s:1},{v:t('chgRow'),s:1},...R.columns.map(c=>({v:c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':''),s:c.st==='ins'?3:c.st==='del'?2:1}))]];
+  for(const r of R.rows){const rs=r.type==='del'?2:r.type==='ins'?3:0;rows.push([{v:r.na??''},{v:r.nb??''},...r.cells.map(c=>({v:c.st==='chg'?`${c.a} → ${c.b}`:c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a),s:rs||(c.st==='chg'?4:c.st==='cdel'?2:c.st==='cins'?3:0)}))])}
+  download(makeXlsx([{name:t('xlSheet'),rows}]),baseName()+'.xlsx')}
+
+/* ===================== example ===================== */
+function exampleWb(v){const H=['Order ID','Site','Severity','Assigned within (h)','Attachment limit (MB)','Rule','Review date','Owner'];const base=[['WO-1047','North Depot B','High',8,20,'VR-12','2026-05-12','R. Okafor'],['WO-1048','East Yard','Low',24,20,'VR-03','2026-05-13','M. Chen'],['WO-1049','Harbour Gate','Critical',2,20,'VR-12','2026-05-13','S. Patel'],['WO-1050','North Depot A','Medium',16,20,'VR-07','2026-05-14','R. Okafor'],['WO-1051','West Plant','High',8,20,'VR-12','2026-05-15','L. Novak'],['WO-1052','Harbour Gate','Low',24,20,'VR-03','2026-05-16','S. Patel']];
+  let rows=[['Atlas Field Operations — work order register'],[],H,...base];if(v){rows=[['Atlas Field Operations — work order register'],[],[...H.slice(0,6),'Review date','Owner','Status'],['WO-1047','North Depot B','Major',6,25,'VR-14','2026-06-09','R. Okafor','Approved'],['WO-1048','East Yard','Low',24,25,'VR-03','2026-05-13','M. Chen','Closed'],['WO-1050','North Depot A','Medium',16,25,'VR-07','2026-05-14','R. Okafor','Scheduled'],['WO-1051','West Plant','High',6,25,'VR-14','2026-05-15','L. Novák','In Progress'],['WO-1052','Harbour Gate','Low',24,25,'VR-03','2026-05-16','S. Patel','Closed'],['WO-1053','South Ring','Critical',2,25,'VR-14','2026-06-10','D. Haddad','Awaiting Approval']]}
+  const cols=Math.max(...rows.map(r=>r.length));return {type:'json',sheets:[{name:'Work orders',grid:{rows:rows.map(r=>r.map(x=>({v:String(x),f:null,d:false}))),cols}}],load:s=>s.grid}}
+$('exampleBtn').onclick=()=>{setWorkbook('A',exampleWb(0),'work-orders-v1.xlsx');setWorkbook('B',exampleWb(1),'work-orders-v2.xlsx');run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
+['dragover','drop'].forEach(n=>window.addEventListener(n,e=>e.preventDefault()));
+applyTheme();syncUI();applyLang();
+</script>
+</body>
+</html>
