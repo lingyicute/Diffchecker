@@ -178,7 +178,7 @@ function inflate(src,expected){let pos=0,bb=0,bc=0;let out=new Uint8Array(expect
   const fl=new Uint8Array(288);for(let i=0;i<144;i++)fl[i]=8;for(let i=144;i<256;i++)fl[i]=9;for(let i=256;i<280;i++)fl[i]=7;for(let i=280;i<288;i++)fl[i]=8;const fd=new Uint8Array(30).fill(5);const FL=tree(fl),FD=tree(fd);
   const inflateBlock=(lt,dt)=>{for(;;){let s=sym(lt);if(s===256)return;if(s<256){grow(1);out[op++]=s}else{s-=257;if(!(s>=0&&s<29))throw new Error(t('badZip'));const len=LB[s]+bits(LE[s]);const d=sym(dt);if(!(d>=0&&d<30))throw new Error(t('badZip'));const dist=DB[d]+bits(DE[d]);if(dist>op)throw new Error(t('badZip'));grow(len);for(let i=0;i<len;i++){out[op]=out[op-dist];op++}}}};
   let final;do{final=bits(1);const type=bits(2);
-    if(type===0){bb=0;bc=0;const len=src[pos]|(src[pos+1]<<8);pos+=4;grow(len);out.set(src.subarray(pos,pos+len),op);op+=len;pos+=len}
+    if(type===0){bb=0;bc=0;const len=src[pos]|(src[pos+1]<<8),nlen=src[pos+2]|(src[pos+3]<<8);if(pos+4+len>src.length||(len^nlen)!==0xFFFF)throw new Error(t('badZip'));pos+=4;grow(len);out.set(src.subarray(pos,pos+len),op);op+=len;pos+=len}
     else if(type===1)inflateBlock(FL,FD);
     else if(type===2){const hlit=bits(5)+257,hdist=bits(5)+1,hclen=bits(4)+4;const cl=new Uint8Array(19);for(let i=0;i<hclen;i++)cl[CLO[i]]=bits(3);const ct=tree(cl);const lens=new Uint8Array(hlit+hdist);
       for(let i=0;i<hlit+hdist;){const s=sym(ct);if(s<16)lens[i++]=s;else if(s===16){const p=lens[i-1];let r=3+bits(2);while(r--)lens[i++]=p}else if(s===17){let r=3+bits(3);while(r--)lens[i++]=0}else{let r=11+bits(7);while(r--)lens[i++]=0}}

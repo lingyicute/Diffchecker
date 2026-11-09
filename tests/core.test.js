@@ -256,3 +256,9 @@ test('excel.normalize: 日期统一成 ISO；x/y/yyyy 在第二位大于 12 时�
   assert.equal(excel.normalize('2024-03-15 8:05'), '2024-03-15 08:05:00');
   assert.equal(excel.normalize('1.2.3'), '1.2.3');
 });
+
+test('inflate: 无压缩块的长度与补码不符或数据被截断时抛错，而不是静默补零', () => {
+  assert.equal(Buffer.from(inflate(Uint8Array.from([0x01, 0x03, 0x00, 0xfc, 0xff, 0x61, 0x62, 0x63]))).toString(), 'abc');
+  assert.throws(() => inflate(Uint8Array.from([0x01, 0x10, 0x00, 0xef, 0xff, 0x61])), /badZip/);
+  assert.throws(() => inflate(Uint8Array.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x61, 0x62, 0x63])), /badZip/);
+});
