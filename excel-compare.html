@@ -157,8 +157,8 @@ const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=
 /* ===================== i18n ===================== */
 const I18N={en:{'nav.text':'Text','nav.images':'Images','nav.excel':'Excel',offline:'Offline · no network',dark:'Dark',light:'Light','hero.title':'Compare Excel','hero.desc':'Find the difference between two spreadsheets (.xlsx, .csv, .tsv)',original:'Original spreadsheet',changed:'Changed spreadsheet',openFile:'Open file',clear:'Clear',dropHere:'Drop Excel here',browse:'or click to browse files (.xlsx, .xlsm, .csv, .tsv)',find:'Find difference',tryExample:'Try example',swap:'Swap',tools:'Tools',table:'Table',rows:'Rows',standard:'Standard',formulas:'Formulas',prev:'Previous',next:'Next',export:'Export',sheet:'Sheet',headerLine:'Header line',headerTip:'The line number of the header row for this sheet.',headerDetected:'Header line set to {line} because the rows above it look like a title.',compOptions:'Comparison options',matchHeaders:'Match columns by headers',ignoreWs:'Ignore white space',ignoreCase:'Ignore case changes',normDates:'Normalize dates',sortRows:'Sort rows',sortCols:'Sort columns',appearance:'Appearance',hideRows:'Hide unchanged rows',hideCols:'Hide unchanged columns',showOld:'Show old value in changed cells',format:'Format',cancel:'Cancel',fmtXlsx:'Merged comparison sheet with coloured rows and cells.',fmtCsv:'Plain comparison table.',fmtPdf:"Print the comparison via your browser's PDF printer.",fmtDiff:'Diffchecker file',fmtDiffDesc:'Save a .diffchecker file that reopens this diff later.',identicalTitle:'The two sheets are identical',identicalMsg:'There is no difference to show between these two sheets',rowsRemoved:'rows removed',rowsAdded:'rows added',rowsChanged:'rows changed',cellsChanged:'cells changed',colsAdded:'columns added',colsRemoved:'columns removed',unchangedRows:'{n} unchanged rows — click to expand',needTwo:'Please add two spreadsheets first.',loaded:'Loaded {name}',parseError:'Could not read {name}: {msg}',rowsCols:'{r} rows × {c} columns',footer:'dependency-free single page · all processing happens locally in your browser · Made with love by lingyicute',restored:'Restored saved comparison',origRow:'Row (original)',chgRow:'Row (changed)',inserted:'inserted',deleted:'deleted',moved:'moved'},
 zh:{'nav.text':'文本','nav.images':'图片','nav.excel':'Excel',offline:'离线运行 · 无需联网',dark:'深色',light:'浅色','hero.title':'Excel 对比','hero.desc':'找出两个表格文件之间的差异（.xlsx、.csv、.tsv）',original:'原始表格',changed:'修改后的表格',openFile:'打开文件',clear:'清空',dropHere:'把表格文件拖到这里',browse:'或点击选择文件（.xlsx、.xlsm、.csv、.tsv）',find:'查找差异',tryExample:'试试示例',swap:'左右互换',tools:'工具',table:'按表头',rows:'按行',standard:'显示值',formulas:'显示公式',prev:'上一处',next:'下一处',export:'导出',sheet:'工作表',headerLine:'表头行',headerTip:'此工作表中表头所在的行号。',headerDetected:'表头上方的几行看起来像标题，已将表头行设为第 {line} 行。',compOptions:'比较选项',matchHeaders:'按表头匹配列',ignoreWs:'忽略空白字符',ignoreCase:'忽略大小写差异',normDates:'统一日期格式',sortRows:'对行排序后再比较',sortCols:'对列排序后再比较',appearance:'外观',hideRows:'隐藏未修改的行',hideCols:'隐藏未修改的列',showOld:'在修改的单元格中显示旧值',format:'格式',cancel:'取消',fmtXlsx:'合并后的对比工作表，用颜色标出改动的行和单元格。',fmtCsv:'纯文本对比表。',fmtPdf:'通过浏览器的“打印为 PDF”功能输出对比结果。',fmtDiff:'Diffchecker 文件',fmtDiffDesc:'保存为 .diffchecker 文件，之后可重新打开此次对比。',identicalTitle:'两个工作表完全相同',identicalMsg:'两个工作表之间没有任何差异',rowsRemoved:'行删除',rowsAdded:'行新增',rowsChanged:'行修改',cellsChanged:'个单元格修改',colsAdded:'列新增',colsRemoved:'列删除',unchangedRows:'{n} 行未修改，点击展开',needTwo:'请先添加两个表格文件。',loaded:'已加载 {name}',parseError:'无法读取 {name}：{msg}',rowsCols:'{r} 行 × {c} 列',footer:'零依赖单页应用 · 所有处理均在浏览器本地完成 · 由 lingyicute 倾情呈现',restored:'已恢复保存的对比结果',origRow:'行号（原始）',chgRow:'行号（修改后）',inserted:'新增的列',deleted:'已删除的列',moved:'已移动的列'}};
-Object.assign(I18N.en,{hiddenSheet:'hidden',tipTable:'Match up rows and columns using the header row, best for structured tables',tipRows:'Compare row by row in order, works with any layout',wrongFile:'This .diffchecker file was not created by the Excel comparison tool',legacyXls:'Legacy .xls files are not supported. Please save as .xlsx or .csv first.',badZip:'Not a valid .xlsx file',xlSheet:'Comparison',encrypted:'This workbook is encrypted or password-protected. Remove the password in Excel and try again.'});
-Object.assign(I18N.zh,{hiddenSheet:'已隐藏',tipTable:'按表头对齐行和列，适合结构化的表格',tipRows:'按顺序逐行比较，适用于任意布局',wrongFile:'此 .diffchecker 文件不是由 Excel 对比工具生成的',legacyXls:'不支持旧版 .xls 文件，请先另存为 .xlsx 或 .csv。',badZip:'不是有效的 .xlsx 文件',xlSheet:'对比结果',encrypted:'此工作簿已加密或设有打开密码，请先在 Excel 中取消密码后重试。'});
+Object.assign(I18N.en,{hiddenSheet:'hidden',tipTable:'Match up rows and columns using the header row, best for structured tables',tipRows:'Compare row by row in order, works with any layout',wrongFile:'This .diffchecker file was not created by the Excel comparison tool',legacyXls:'Legacy .xls files are not supported. Please save as .xlsx or .csv first.',badZip:'Not a valid .xlsx file',xlSheet:'Comparison',colsMoved:'columns moved',encrypted:'This workbook is encrypted or password-protected. Remove the password in Excel and try again.'});
+Object.assign(I18N.zh,{hiddenSheet:'已隐藏',tipTable:'按表头对齐行和列，适合结构化的表格',tipRows:'按顺序逐行比较，适用于任意布局',wrongFile:'此 .diffchecker 文件不是由 Excel 对比工具生成的',legacyXls:'不支持旧版 .xls 文件，请先另存为 .xlsx 或 .csv。',badZip:'不是有效的 .xlsx 文件',xlSheet:'对比结果',colsMoved:'列移动',encrypted:'此工作簿已加密或设有打开密码，请先在 Excel 中取消密码后重试。'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -183,7 +183,7 @@ function inflate(src,expected){let pos=0,bb=0,bc=0;/* 压缩头里的 usize 可�
     if(type===0){bb=0;bc=0;const len=src[pos]|(src[pos+1]<<8),nlen=src[pos+2]|(src[pos+3]<<8);if(pos+4+len>src.length||(len^nlen)!==0xFFFF)throw new Error(t('badZip'));pos+=4;grow(len);out.set(src.subarray(pos,pos+len),op);op+=len;pos+=len}
     else if(type===1)inflateBlock(FL,FD);
     else if(type===2){const hlit=bits(5)+257,hdist=bits(5)+1,hclen=bits(4)+4;const cl=new Uint8Array(19);for(let i=0;i<hclen;i++)cl[CLO[i]]=bits(3);const ct=tree(cl);const lens=new Uint8Array(hlit+hdist);
-      for(let i=0;i<hlit+hdist;){const s=sym(ct);if(s<16)lens[i++]=s;else if(s===16){const p=lens[i-1];let r=3+bits(2);while(r--)lens[i++]=p}else if(s===17){let r=3+bits(3);while(r--)lens[i++]=0}else{let r=11+bits(7);while(r--)lens[i++]=0}}
+      for(let i=0;i<hlit+hdist;){const s=sym(ct);if(s<16)lens[i++]=s;else{let p=0,r;if(s===16){if(!i)throw new Error(t('badZip'));p=lens[i-1];r=3+bits(2)}else if(s===17)r=3+bits(3);else r=11+bits(7);if(i+r>hlit+hdist)throw new Error(t('badZip'));while(r--)lens[i++]=p}}
       inflateBlock(tree(lens.subarray(0,hlit)),tree(lens.subarray(hlit)))}
     else throw new Error(t('badZip'))}while(!final);
   return out.subarray(0,op)}
@@ -214,19 +214,20 @@ const isZipSig=u=>u[0]===0x50&&u[1]===0x4B&&((u[2]===3&&u[3]===4)||(u[2]===5&&u[
 // OOXML 部件可能使用带前缀的命名空间（<x:sheet>、<x:row>…），getElementsByTagName 只按限定名匹配，会把这类文件读成空工作簿；统一按本地名匹配
 const els=(n,name)=>n.getElementsByTagNameNS('*',name);
 function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);
-  const d1904=els(wb,'workbookPr')[0]?.getAttribute('date1904')==='1';
+  const d1904=/^(1|true)$/i.test(els(wb,'workbookPr')[0]?.getAttribute('date1904')||'');
   const rels={};const rx=z.text('xl/_rels/workbook.xml.rels');if(rx)for(const r of els(xml(rx),'Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
   const sst=[];const sx=z.text('xl/sharedStrings.xml');if(sx){for(const si of els(xml(sx),'si')){let s='';for(const tn of els(si,'t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(s)}}
   const dateStyles=new Set(),elapsedStyles=new Set(),elapsedIds=new Set();const stx=z.text('xl/styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of els(st,'numFmt')){const fc=nf.getAttribute('formatCode')||'',nid=+nf.getAttribute('numFmtId');if(/\[(?:h+|m+|s+)\]/i.test(fc.replace(/"[^"]*"/g,'')))elapsedIds.add(nid);const code=fc.replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[nid]=elapsedIds.has(nid)||/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
     const xfs=els(st,'cellXfs')[0];if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i);if(id===46||elapsedIds.has(id))elapsedStyles.add(i)})}}
-  const sheets=[];for(const sh of els(wb,'sheet')){const rid=sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sh.getAttribute('r:id');let target=rels[rid]||'';if(target.startsWith('/'))target=target.slice(1);else if(!target.startsWith('xl/'))target='xl/'+target;
+  const sheets=[];for(const sh of els(wb,'sheet')){const rid=sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sh.getAttribute('r:id');let target=rels[rid]||'';
+    const segs=(target.startsWith('/')?target.slice(1):target.startsWith('xl/')?target:'xl/'+target).split('/'),norm=[];for(const p of segs){if(!p||p==='.')continue;if(p==='..')norm.pop();else norm.push(p)}target=norm.join('/');
     sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
   if(!sheets.length)throw new Error(t('badZip'));
   const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];const sharedF=Object.create(null);let cols=0;
     let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=rn>0?rn-1:lastRi+1;lastRi=ri;const cells=[];let ci=-1;
       for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
         for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF[si]={f:ch.textContent,r:ri,c:ci}}else if(sh&&sharedF[si]){const mf=sharedF[si];f='='+shiftFormula(mf.f,ri-mf.r,ci-mf.c)}}else if(ch.localName==='is')raw=[...els(ch,'t')].filter(x=>x.parentNode.localName!=='rPh').map(x=>x.textContent).join('')/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
-        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
+        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
         cells[ci]={v,f,d:dateStyles.has(s)};if(ci+1>cols)cols=ci+1}
       if(cells.length){rows[ri]=cells}}
     for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];sheet.grid={rows,cols};return sheet.grid};
@@ -254,19 +255,20 @@ function diffSeq(a,b,eq){
         else{const j=ib[y];flushB(j);out.push([INS,-1,j]);pb=j+1}}
       flushA(a.length);flushB(b.length);return out}}
   return diffSeqCore(a,b,eq)}
-function diffSeqCore(a,b,eq){eq=eq||((x,y)=>x===y);const out=[];const stack=[{a0:0,a1:a.length,b0:0,b1:b.length}];
-  while(stack.length){const it=stack.pop();if(it.eqs){for(const p of it.eqs)out.push([EQ,p[0],p[1]]);continue}let {a0,a1,b0,b1}=it;
+function diffSeqCore(a,b,eq){eq=eq||((x,y)=>x===y);const out=[];const stack=[{a0:0,a1:a.length,b0:0,b1:b.length,lim:MYERS_LIMIT}];
+  while(stack.length){const it=stack.pop();if(it.eqs){for(const p of it.eqs)out.push([EQ,p[0],p[1]]);continue}let {a0,a1,b0,b1,lim}=it;
     while(a0<a1&&b0<b1&&eq(a[a0],b[b0])){out.push([EQ,a0,b0]);a0++;b0++}const tail=[];while(a1>a0&&b1>b0&&eq(a[a1-1],b[b1-1])){a1--;b1--;tail.push([a1,b1])}tail.reverse();
     if(a0===a1){for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}if(b0===b1){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
-    const s=midSnake(a,b,a0,a1,b0,b1,eq);if(!s||(s.x===0&&s.y===0&&s.u===a1-a0&&s.v===b1-b0)){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
-    const snake=[];for(let k=0;k<s.u-s.x;k++)snake.push([a0+s.x+k,b0+s.y+k]);if(tail.length)stack.push({eqs:tail});stack.push({a0:a0+s.u,a1,b0:b0+s.v,b1});if(snake.length)stack.push({eqs:snake});stack.push({a0,a1:a0+s.x,b0,b1:b0+s.y})}
+    const s=midSnake(a,b,a0,a1,b0,b1,eq,lim);if(!s||(s.x===0&&s.y===0&&s.u===a1-a0&&s.v===b1-b0)){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
+    const nextLim=s.h?Math.max(128,lim>>2):lim;
+    const snake=[];for(let k=0;k<s.u-s.x;k++)snake.push([a0+s.x+k,b0+s.y+k]);if(tail.length)stack.push({eqs:tail});stack.push({a0:a0+s.u,a1,b0:b0+s.v,b1,lim:nextLim});if(snake.length)stack.push({eqs:snake});stack.push({a0,a1:a0+s.x,b0,b1:b0+s.y,lim:nextLim})}
   return out}
-// 代价上限：d 超过它时放弃“最优”，改在前向路径走得最远的点处切开继续递归（类似 GNU diff 的 --speed-large-files）。
+// 代价上限：d 超过它时放弃“最优”，改在前向路径走得最远的点处切开继续递归（类似 GNU diff 的 --speed-large-files），且子问题缩减代价上限避免反复 O(ND)。
 // 重复行很多的大文件（日志、列表）上 Myers 的 O(ND) 会退化到数十秒；切分后得到的仍是合法的差异脚本，只是未必是最短的。
 const MYERS_LIMIT=2500;
-function heuristicSplit(vf,off,d,N,M){let bx=-1,by=-1,best=0;for(let k=-(d-1);k<=d-1;k+=2){const x=vf[off+k],y=x-k;if(x<0||y<0||x>N||y>M)continue;if(x+y>best&&x+y<N+M){best=x+y;bx=x;by=y}}return best>0?{x:bx,y:by,u:bx,v:by}:null}
-function midSnake(a,b,a0,a1,b0,b1,eq){const N=a1-a0,M=b1-b0,MAX=Math.ceil((N+M)/2),delta=N-M,odd=(delta&1)!==0,off=MAX+1;const vf=new Int32Array(2*MAX+4),vb=new Int32Array(2*MAX+4);vf[off+1]=0;vb[off+1]=0;
-  for(let d=0;d<=MAX;d++){if(d>MYERS_LIMIT){const h=heuristicSplit(vf,off,d,N,M);if(h)return h}for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vf[off+k-1]<vf[off+k+1]))?vf[off+k+1]:vf[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a0+x],b[b0+y])){x++;y++}vf[off+k]=x;if(odd){const kr=delta-k;if(kr>=-(d-1)&&kr<=d-1&&x+vb[off+kr]>=N)return{x:xs,y:ys,u:x,v:y}}}
+function heuristicSplit(vf,off,d,N,M){let bx=-1,by=-1,best=0;for(let k=-(d-1);k<=d-1;k+=2){const x=vf[off+k],y=x-k;if(x<0||y<0||x>N||y>M)continue;if(x+y>best&&x+y<N+M){best=x+y;bx=x;by=y}}return best>0?{x:bx,y:by,u:bx,v:by,h:1}:null}
+function midSnake(a,b,a0,a1,b0,b1,eq,lim=MYERS_LIMIT){const N=a1-a0,M=b1-b0,MAX=Math.ceil((N+M)/2),delta=N-M,odd=(delta&1)!==0,off=MAX+1;const vf=new Int32Array(2*MAX+4),vb=new Int32Array(2*MAX+4);vf[off+1]=0;vb[off+1]=0;
+  for(let d=0;d<=MAX;d++){if(d>lim){const h=heuristicSplit(vf,off,d,N,M);if(h)return h}for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vf[off+k-1]<vf[off+k+1]))?vf[off+k+1]:vf[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a0+x],b[b0+y])){x++;y++}vf[off+k]=x;if(odd){const kr=delta-k;if(kr>=-(d-1)&&kr<=d-1&&x+vb[off+kr]>=N)return{x:xs,y:ys,u:x,v:y}}}
     for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vb[off+k-1]<vb[off+k+1]))?vb[off+k+1]:vb[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a1-1-x],b[b1-1-y])){x++;y++}vb[off+k]=x;if(!odd){const kf=delta-k;if(kf>=-d&&kf<=d&&x+vf[off+kf]>=N)return{x:N-x,y:M-y,u:N-xs,v:M-ys}}}}return null}
 const WORD_RE=/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|(?:(?![\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF])[\p{L}\p{M}\p{N}_])+|\s+|[^\s\p{L}\p{M}\p{N}_]/gu;
 const INLINE_MAX_TOKENS=20000;
@@ -281,13 +283,14 @@ const opts={mode:'table',val:'standard',matchHeaders:true,ignoreWs:false,ignoreC
 function mergeOpts(src){if(!src||typeof src!=='object')return;for(const k of Object.keys(opts)){if(!Object.prototype.hasOwnProperty.call(src,k))continue;const v=src[k];if(k==='mode'){if(v==='table'||v==='rows')opts.mode=v}else if(k==='val'){if(v==='standard'||v==='formulas')opts.val=v}else if(typeof v==='boolean')opts[k]=v}}
 try{mergeOpts(JSON.parse(lsGet('excel-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('excel-opts',JSON.stringify(opts));
-const DATE_RX=/^\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$|^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*$/;
+const DATE_RX=/^\s*(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})|(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}))(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$/;
 function cellText(c){if(!c)return '';if(opts.val==='formulas'&&c.f)return c.f;return c.v??''}
 const TIME_RX=/^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/;
-function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);const p=n=>String(n).padStart(2,'0');if(!m){const tm=TIME_RX.exec(s);if(tm)s=p(tm[1])+':'+tm[2]+':'+(tm[3]||'00')}// 纯时间统一成 HH:MM:SS，与 .xlsx 里的时间单元格一致
-    if(m){if(m[1]){s=`${m[1]}-${p(m[2])}-${p(m[3])}`+(m[4]?` ${p(m[4])}:${m[5]}:${m[6]||'00'}`:'');if(s.endsWith(' 00:00:00'))s=s.slice(0,-9)/* 午夜时刻等同于纯日期：.xlsx 的日期单元格午夜时只显示日期 */}else{const a=+m[7],b=+m[8],[mo,dy]=a<=12&&b>12?[a,b]:[b,a];/* 第二位 >12 时只可能是 月/日/年；否则按 日/月/年 */s=`${m[9]}-${p(mo)}-${p(dy)}`}}}
+function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);const p=n=>String(n).padStart(2,'0');if(!m){const tm=TIME_RX.exec(s);if(tm&&+tm[1]<=23&&+tm[2]<=59&&+(tm[3]||0)<=59)s=p(tm[1])+':'+tm[2]+':'+(tm[3]||'00')}// 纯时间统一成 HH:MM:SS，与 .xlsx 里的时间单元格一致
+    if(m){const yr=m[1]||m[6],[mo,dy]=m[1]?[+m[2],+m[3]]:(+m[4]<=12&&+m[5]>12?[+m[4],+m[5]]:[+m[5],+m[4]]);/* 第二位 >12 时只可能是 月/日/年；否则按 日/月/年 */
+      if(mo>=1&&mo<=12&&dy>=1&&dy<=31&&(!m[7]||(+m[7]<=23&&+m[8]<=59&&+(m[9]||0)<=59))){s=`${yr}-${p(mo)}-${p(dy)}`+(m[7]?` ${p(m[7])}:${m[8]}:${m[9]||'00'}`:'');if(s.endsWith(' 00:00:00'))s=s.slice(0,-9)/* 午夜时刻等同于纯日期：.xlsx 的日期单元格午夜时只显示日期 */}}}
   if(opts.ignoreWs)s=s.replace(/\s+/g,' ').trim();if(opts.ignoreCase)s=s.toLowerCase();return s}
-function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&String(c.v).trim()!=='').length;counts.push(n);if(n>bestN)bestN=n}
+function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&(String(c.v).trim()!==''||c.f)).length;counts.push(n);if(n>bestN)bestN=n}
   for(let i=0;i<lim;i++)if(counts[i]>=2&&counts[i]>=.6*bestN){best=i;break}return best}
 function trimRows(rows){let n=rows.length;while(n>0&&!(rows[n-1]||[]).some(c=>c&&(String(c.v).trim()!==''||c.f)))n--;return rows.slice(0,n)}
 function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns ordered entries {type:'del'|'ins'|'chg',ai,bi}
@@ -317,7 +320,7 @@ function compare(gA,gB,hA,hB){
       const byPred=new Map();for(const j of bOnly){const p=bPred(j);if(!byPred.has(p))byPred.set(p,[]);byPred.get(p).push(j)}
       (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
       for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)?'mov':'eq'});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
-    }else{const n=Math.max(nA,nB);for(let i=0;i<n;i++)columns.push({name:String(cellText(headA[i])||cellText(headB[i])||colName(i)),ia:i<nA?i:-1,ib:i<nB?i:-1,st:i>=nA?'ins':i>=nB?'del':'eq'})}
+    }else{const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ha=i<nA?String(cellText(headA[i])||''):'',hb=i<nB?String(cellText(headB[i])||''):'',hc=i<nA&&i<nB&&normalize(ha)!==normalize(hb);columns.push({name:(hc&&ha&&hb?`${ha} → ${hb}`:(hb||ha))||colName(i),ia:i<nA?i:-1,ib:i<nB?i:-1,st:i>=nA?'ins':i>=nB?'del':'eq',hdrChg:hc})}}
     if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
   }else{const n=Math.max(gA.cols,gB.cols);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<gA.cols?i:-1,ib:i<gB.cols?i:-1,st:i>=gA.cols?'ins':i>=gB.cols?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
@@ -327,23 +330,26 @@ function compare(gA,gB,hA,hB){
   const cellsA=dataA.map(r=>proj(r,'A')),cellsB=dataB.map(r=>proj(r,'B'));const normA=cellsA.map(r=>r.map(normalize)),normB=cellsB.map(r=>r.map(normalize));
   const keyOf=(nr)=>shared.map(k=>nr[k]).join('\u0001').replace(/\u0001+$/,'');
   if(opts.sortRows){const kA=normA.map(r=>r.join('\u0001')),kB=normB.map(r=>r.join('\u0001'));const cmp=K=>(x,y)=>K[x]<K[y]?-1:K[x]>K[y]?1:x-y;idxA.sort(cmp(kA));idxB.sort(cmp(kB))}
-  const keysA=idxA.map(i=>keyOf(normA[i])),keysB=idxB.map(i=>keyOf(normB[i]));
-  const ops=diffSeq(keysA,keysB);const outRows=[];let D=[],I=[];const sharedNormA=normA.map(r=>shared.map(k=>r[k])),sharedNormB=normB.map(r=>shared.map(k=>r[k]));
-  const flush=()=>{if(D.length||I.length){for(const e of pairBlock(D,I,null,null,sharedNormA,sharedNormB))outRows.push(e);D=[];I=[]}};
-  for(const [op,i,j] of ops){if(op===EQ){flush();outRows.push({type:'eq',ai:idxA[i],bi:idxB[j]})}else if(op===DEL)D.push(idxA[i]);else I.push(idxB[j])}flush();
-  const stats={rowsDel:0,rowsIns:0,rowsChg:0,cells:0,colsIns:columns.filter(c=>c.st==='ins').length,colsDel:columns.filter(c=>c.st==='del').length};const colChanged=new Set();
+  const outRows=[];if(!shared.length){idxA.forEach(i=>outRows.push({type:'del',ai:i}));idxB.forEach(j=>outRows.push({type:'ins',bi:j}))}else{
+    const keysA=idxA.map(i=>keyOf(normA[i])),keysB=idxB.map(i=>keyOf(normB[i]));
+    const ops=diffSeq(keysA,keysB);let D=[],I=[];const sharedNormA=normA.map(r=>shared.map(k=>r[k])),sharedNormB=normB.map(r=>shared.map(k=>r[k]));
+    const flush=()=>{if(D.length||I.length){for(const e of pairBlock(D,I,null,null,sharedNormA,sharedNormB))outRows.push(e);D=[];I=[]}};
+    for(const [op,i,j] of ops){if(op===EQ){flush();outRows.push({type:'eq',ai:idxA[i],bi:idxB[j]})}else if(op===DEL)D.push(idxA[i]);else I.push(idxB[j])}flush()}
+  const stats={rowsDel:0,rowsIns:0,rowsChg:0,cells:0,colsIns:columns.filter(c=>c.st==='ins').length,colsDel:columns.filter(c=>c.st==='del').length,colsMov:columns.filter(c=>c.st==='mov').length};const colChanged=new Set();
+  columns.forEach((c,k)=>{if(c.hdrChg){colChanged.add(k);stats.cells++}});
   const result=outRows.map(e=>{const r={type:e.type,ai:e.ai,bi:e.bi,na:e.ai!=null?e.ai+startA:null,nb:e.bi!=null?e.bi+startB:null,cells:[]};let rowChg=false;
     for(let k=0;k<columns.length;k++){const c=columns[k];const a=e.ai!=null?cellsA[e.ai][k]:'',b=e.bi!=null?cellsB[e.bi][k]:'';let st='eq',segs=null;
       if(e.type==='del'||e.type==='ins'){st=e.type==='del'?'rdel':'rins';if(a||b)colChanged.add(k)}/* 整行新增 / 删除的内容也属于改动：所在列不能被“隐藏未修改的列”藏起来 */else if(c.ia<0||c.ib<0){st=c.ia<0?'cins':'cdel';if((a||b))colChanged.add(k)}else{const na=normA[e.ai][k],nb=normB[e.bi][k];if(na!==nb){st=!a?'cins':!b?'cdel':'chg';segs=st==='chg'?inlineDiff(a,b):null;stats.cells++;rowChg=true;colChanged.add(k)}}
       r.cells.push({a,b,st,segs})}
     if(e.type==='del')stats.rowsDel++;else if(e.type==='ins')stats.rowsIns++;else if(e.type==='chg'){if(!rowChg)r.type='eq';else stats.rowsChg++}return r});
   for(const r of result)if(r.type==='chg')r.cells.forEach((c,k)=>{if(c.st!=='eq')colChanged.add(k)});
-  return {columns,rows:result,stats,colChanged,identical:result.every(r=>r.type==='eq'&&r.cells.every(c=>c.st==='eq'))&&!stats.colsIns&&!stats.colsDel&&stats.cells===0}}
+  return {columns,rows:result,stats,colChanged,identical:result.every(r=>r.type==='eq'&&r.cells.every(c=>c.st==='eq'))&&columns.every(c=>c.st==='eq'&&!c.hdrChg)&&stats.cells===0}}
 
 /* ===================== UI: loading ===================== */
 const WB={A:null,B:null},SEL={A:{sheet:0,header:0,auto:true},B:{sheet:0,header:0,auto:true}},NAMES={A:'',B:''};let RES=null,expanded=new Set(),focusIdx=-1;
-let openTarget='A';document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
-for(const s of ['A','B']){const d=$('drop'+s);d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};d.onclick=()=>{openTarget=s;$('fileInput').value='';$('fileInput').click()};const card=$('card'+s);card.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))d.classList.remove('drag')});card.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,s)})}
+let openTarget='A';const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
+document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
+for(const s of ['A','B']){const d=$('drop'+s);d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};d.onclick=()=>{openTarget=s;$('fileInput').value='';$('fileInput').click()};const card=$('card'+s);card.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();d.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))d.classList.remove('drag')});card.addEventListener('drop',e=>{d.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,s)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>clearSide(b.dataset.clear));
 function clearSide(s){WB[s]=null;NAMES[s]='';$('name'+s).textContent='';$('det'+s).classList.add('hidden');$('prev'+s).classList.add('hidden');$('drop'+s).classList.remove('hidden');$('err'+s).textContent='';RES=null;$('result').classList.add('hidden')}
@@ -371,10 +377,10 @@ function run(){if(!WB.A||!WB.B)return;const gA=WB.A.load(WB.A.sheets[SEL.A.sheet
 /* ===================== rendering ===================== */
 function renderCell(c){if(c.st==='chg'&&c.segs){const old=c.segs.filter(s=>s.t!==INS).map(s=>s.t===EQ?esc(s.a):`<mark class="d">${esc(s.a)}</mark>`).join(''),nw=c.segs.filter(s=>s.t!==DEL).map(s=>s.t===EQ?esc(s.b):`<mark class="i">${esc(s.b)}</mark>`).join('');return opts.showOld?`<span class="old">${old}</span><span class="arrow">→</span>${nw}`:nw}
   if(c.st==='cdel')return `<mark class="d">${esc(c.a)}</mark>`;if(c.st==='cins')return `<mark class="i">${esc(c.b)}</mark>`;if(c.st==='rdel')return esc(c.a);return esc(c.b||c.a)}
-function render(){const R=RES,wrap=$('gridWrap');const s=R.stats;$('stats').innerHTML=`<span class="stat del"><i></i><b>${s.rowsDel}</b> ${t('rowsRemoved')}</span><span class="stat ins"><i></i><b>${s.rowsIns}</b> ${t('rowsAdded')}</span><span class="stat chg"><i></i><b>${s.rowsChg}</b> ${t('rowsChanged')}</span><span class="stat"><b>${s.cells}</b> ${t('cellsChanged')}</span>${s.colsIns?`<span class="stat"><b>${s.colsIns}</b> ${t('colsAdded')}</span>`:''}${s.colsDel?`<span class="stat"><b>${s.colsDel}</b> ${t('colsRemoved')}</span>`:''}`;
+function render(){const R=RES,wrap=$('gridWrap');const s=R.stats;$('stats').innerHTML=`<span class="stat del"><i></i><b>${s.rowsDel}</b> ${t('rowsRemoved')}</span><span class="stat ins"><i></i><b>${s.rowsIns}</b> ${t('rowsAdded')}</span><span class="stat chg"><i></i><b>${s.rowsChg}</b> ${t('rowsChanged')}</span><span class="stat"><b>${s.cells}</b> ${t('cellsChanged')}</span>${s.colsIns?`<span class="stat"><b>${s.colsIns}</b> ${t('colsAdded')}</span>`:''}${s.colsDel?`<span class="stat"><b>${s.colsDel}</b> ${t('colsRemoved')}</span>`:''}${s.colsMov?`<span class="stat"><b>${s.colsMov}</b> ${t('colsMoved')}</span>`:''}`;
   $('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)));
   if(R.identical){wrap.dataset.changes=0;wrap.innerHTML=`<div class="identical"><div class="ic">✓</div><h3>${esc(t('identicalTitle'))}</h3><p>${esc(t('identicalMsg'))}</p></div>`;return}
-  const cols=R.columns.map((c,k)=>({...c,k})).filter(c=>!opts.hideCols||c.st!=='eq'||R.colChanged.has(c.k));
+  const allCols=R.columns.map((c,k)=>({...c,k})),fltCols=allCols.filter(c=>!opts.hideCols||c.st!=='eq'||R.colChanged.has(c.k)),cols=fltCols.length?fltCols:allCols;
   let h=`<table class="grid"><thead><tr><th class="num a">#A</th><th class="num b">#B</th>${cols.map(c=>`<th class="col-${c.st}" title="${c.st==='eq'?'':t(c.st==='ins'?'inserted':c.st==='del'?'deleted':'moved')}">${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`).join('')}</tr></thead><tbody>`;
   let changeNo=0,i=0;const rows=R.rows,CTX=2;
   while(i<rows.length){const r=rows[i];
@@ -385,9 +391,9 @@ function rowHtml(r,cols,id){return `<tr class="${r.type}" ${id?`id="${id}"`:''}>
 function goChange(dir){const n=+$('gridWrap').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.mode=b.dataset.mode;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
-$('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();if(RES)run()};
+$('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
 $('toolsBtn').onclick=()=>$('panel').classList.toggle('open');$('panelClose').onclick=()=>$('panel').classList.remove('open');
-document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{opts[sw.dataset.opt]=!opts[sw.dataset.opt];saveOpts();syncUI();if(RES)run()});
+document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{const k=sw.dataset.opt;opts[k]=!opts[k];saveOpts();syncUI();if(!RES)return;if(k==='hideRows'){expanded=new Set();render()}else if(k==='hideCols'||k==='showOld')render();else run()});
 function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));$('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)))}
 
 /* ===================== export ===================== */
@@ -397,7 +403,7 @@ function download(blob,name){const u=URL.createObjectURL(blob);const a=document.
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(NAMES.A,'original')+'-vs-'+stem(NAMES.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
 $('exportGo').onclick=()=>{$('exportModal').classList.remove('open');if(!RES)return;if(exportFmt==='pdf'){const th=document.documentElement.dataset.theme;document.documentElement.dataset.theme='light';try{window.print()}finally{document.documentElement.dataset.theme=th}}else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()};
-function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?`${c.a} → ${c.b}`:c.st==='cdel'?c.a:c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
+function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':c.st==='mov'?' (⇄)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?(opts.showOld?`${c.a} → ${c.b}`:c.b):c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
 function exportCsv(){const {head,body}=tableRows();const q=v=>{v=String(v);/* 防止 CSV 公式注入：以 = + - @ 开头的非数字文本加单引号前缀 */if(/^[=+\-@\t\r]/.test(v)&&!/^[+-]?\d+(\.\d+)?(e[+-]?\d+)?$/i.test(v))v="'"+v;return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};download(new Blob(['\ufeff'+[head,...body].map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}),baseName()+'.csv')}
 function exportDiffFile(){const toGrid=(s)=>{const g=WB[s].load(WB[s].sheets[SEL[s].sheet]);return {name:WB[s].sheets[SEL[s].sheet].name,header:SEL[s].header,cols:g.cols,rows:trimRows(g.rows).map(r=>Array.from({length:g.cols},(_,i)=>r[i]?(r[i].f?{v:r[i].v,f:r[i].f}:r[i].v):''))}};download(new Blob([JSON.stringify({type:'excel',version:1,left:toGrid('A'),right:toGrid('B'),leftName:NAMES.A,rightName:NAMES.B,options:{...opts},createdAt:new Date().toISOString()})],{type:'application/json'}),baseName()+'.diffchecker')}
 /* minimal xlsx writer (STORE zip, inline strings; styles 0 normal 1 bold 2 red 3 green 4 yellow) */
@@ -418,8 +424,8 @@ function makeXlsx(sheets){const enc=new TextEncoder();const files=[];
     s.rows.forEach((row,ri)=>{x+=`<row r="${ri+1}">`;row.forEach((c,ci)=>{if(c==null)return;const v=c.v==null?'':c.v,st=c.s||0;if(v==='')x+=`<c r="${colName(ci)}${ri+1}" s="${st}"/>`;else if(typeof v==='number'&&isFinite(v))x+=`<c r="${colName(ci)}${ri+1}" s="${st}"><v>${v}</v></c>`;else x+=`<c r="${colName(ci)}${ri+1}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${xe(String(v).slice(0,32767))}</t></is></c>`});x+='</row>'});
     files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:enc.encode(x+'</sheetData></worksheet>')})});
   return zipStore(files)}
-function exportXlsx(){const R=RES;const rows=[[{v:t('origRow'),s:1},{v:t('chgRow'),s:1},...R.columns.map(c=>({v:c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':''),s:c.st==='ins'?3:c.st==='del'?2:1}))]];
-  for(const r of R.rows){const rs=r.type==='del'?2:r.type==='ins'?3:0;rows.push([{v:r.na??''},{v:r.nb??''},...r.cells.map(c=>({v:c.st==='chg'?`${c.a} → ${c.b}`:c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a),s:rs||(c.st==='chg'?4:c.st==='cdel'?2:c.st==='cins'?3:0)}))])}
+function exportXlsx(){const R=RES;const rows=[[{v:t('origRow'),s:1},{v:t('chgRow'),s:1},...R.columns.map(c=>({v:c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':c.st==='mov'?' (⇄)':''),s:c.st==='ins'?3:c.st==='del'?2:c.st==='mov'||c.hdrChg?4:1}))]];
+  for(const r of R.rows){const rs=r.type==='del'?2:r.type==='ins'?3:0;rows.push([{v:r.na??''},{v:r.nb??''},...r.cells.map(c=>({v:c.st==='chg'?(opts.showOld?`${c.a} → ${c.b}`:c.b):c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a),s:rs||(c.st==='chg'?4:c.st==='cdel'?2:c.st==='cins'?3:0)}))])}
   download(makeXlsx([{name:t('xlSheet'),cols:[10,10,...R.columns.map(c=>Math.max(12,Math.min(40,String(c.name).length+4)))],rows}]),baseName()+'.xlsx')}
 
 /* ===================== example ===================== */
@@ -427,7 +433,7 @@ function exampleWb(v){const H=['Order ID','Site','Severity','Assigned within (h)
   let rows=[['Atlas Field Operations — work order register'],[],H,...base];if(v){rows=[['Atlas Field Operations — work order register'],[],[...H.slice(0,6),'Review date','Owner','Status'],['WO-1047','North Depot B','Major',6,25,'VR-14','2026-06-09','R. Okafor','Approved'],['WO-1048','East Yard','Low',24,25,'VR-03','2026-05-13','M. Chen','Closed'],['WO-1050','North Depot A','Medium',16,25,'VR-07','2026-05-14','R. Okafor','Scheduled'],['WO-1051','West Plant','High',6,25,'VR-14','2026-05-15','L. Novák','In Progress'],['WO-1052','Harbour Gate','Low',24,25,'VR-03','2026-05-16','S. Patel','Closed'],['WO-1053','South Ring','Critical',2,25,'VR-14','2026-06-10','D. Haddad','Awaiting Approval']]}
   const cols=Math.max(...rows.map(r=>r.length));return {type:'json',sheets:[{name:'Work orders',grid:{rows:rows.map(r=>r.map(x=>({v:String(x),f:null,d:false}))),cols}}],load:s=>s.grid}}
 $('exampleBtn').onclick=()=>{setWorkbook('A',exampleWb(0),'work-orders-v1.xlsx');setWorkbook('B',exampleWb(1),'work-orders-v2.xlsx');run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
-['dragover','drop'].forEach(n=>window.addEventListener(n,e=>e.preventDefault()));
+['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 /* Esc 关闭侧栏与弹窗 */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;$('panel').classList.remove('open');$('exportModal').classList.remove('open')});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */

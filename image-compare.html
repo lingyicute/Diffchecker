@@ -228,15 +228,16 @@ const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Mat
 
 /* ===================== loading ===================== */
 let openTarget='A';
+const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
 for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.target!==d||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();d.click()};
-  d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag')});d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drag')});d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
+  d.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();d.classList.add('drag')});d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drag')});d.addEventListener('drop',e=>{d.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 document.addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(!it)return;const f=it.getAsFile();if(!f)return;loadFile(f,!S.A?'A':!S.B?'B':openTarget)});
 async function loadFile(f,side){if(!f.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|tiff?)$/i.test(f.name)){notice(t('decodeFail',{name:f.name}));return}notice(t('loading'));
   const url=URL.createObjectURL(f);try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});setImage(side,img,f.name)}catch(e){console.error(e);notice(t('decodeFail',{name:f.name}))}finally{URL.revokeObjectURL(url)}}
 function setImage(side,img,name,quiet){/* 没有固有尺寸的 SVG（无 width / height 与 viewBox）宽高为 0，退回默认画布而不是得到 1×1 的空白图 */const c=mk(img.naturalWidth||img.width||1024,img.naturalHeight||img.height||768);c.getContext('2d').drawImage(img,0,0,c.width,c.height);S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
   d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}">✕</button>`;{const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);th.getContext('2d').drawImage(c,0,0,th.width,th.height);d.querySelector('img').src=th.toDataURL('image/png')}d.querySelector('.meta').textContent=`${name} · ${c.width}×${c.height}`;
-  d.querySelector('.rm').onclick=e=>{e.stopPropagation();S[side]=null;d.classList.remove('has');d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;clearInterval(flickTimer);$('result').classList.add('hidden')};
+  d.querySelector('.rm').onclick=e=>{e.stopPropagation();S[side]=null;S.W=S.H=0;S.regions=[];S.active=-1;d.classList.remove('has');d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;clearInterval(flickTimer);$('result').classList.add('hidden')};
   S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign()}
 function maybePromptAlign(){if(S.A.w!==S.B.w||S.A.h!==S.B.h){showPrompt(t('mismatchTitle'),t('mismatchMsg'),t('skip'),t('autoAlignGo'),async()=>{compare();try{const r=await autoAlign(S.A.c,S.B.c,{rot:true,scale:true});if(r){S.align=r;compare();notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}else{notice(t('alignFail'))}}catch(e){console.error(e);notice(t('alignFail'))}},()=>compare())}else compare()}
 function showPrompt(title,msg,skip,go,onGo,onSkip){$('pmTitle').textContent=title;$('pmMsg').textContent=msg;$('pmSkip').textContent=skip;$('pmGo').textContent=go;$('promptModal').classList.add('open');$('pmSkip').onclick=()=>{$('promptModal').classList.remove('open');onSkip&&onSkip()};$('pmGo').onclick=()=>{$('promptModal').classList.remove('open');onGo()}}
@@ -277,7 +278,7 @@ function renderStage(){stage.innerHTML='';stage.classList.toggle('pix',S.zoom>=3
 function redrawFlicker(){if(!mainCanvas||S.mode!=='flicker')return;const cx=mainCanvas.getContext('2d');const s=flickShow();cx.drawImage(s===0?baseA:baseB,0,0);$('flickTag').textContent=s===0?t('fOriginal'):t('fChanged')}
 function drawOverlay(){if(!overlay)return;const cx=overlay.getContext('2d');cx.clearRect(0,0,S.W,S.H);if(!S.regions.length)return;
   if(S.darken){cx.fillStyle='rgba(0,0,0,.5)';cx.fillRect(0,0,S.W,S.H);cx.globalCompositeOperation='destination-out';cx.fillStyle='#000';for(const r of S.regions){cx.fillRect(r.x,r.y,r.w,r.h)}cx.globalCompositeOperation='source-over'}
-  if(S.boxes){const lw=Math.max(1,2/S.zoom);S.regions.forEach((r,i)=>{cx.lineWidth=i===S.active?lw*2:lw;cx.strokeStyle=i===S.active?'#ffb400':'#ff3b30';cx.strokeRect(r.x-lw,r.y-lw,r.w+2*lw,r.h+2*lw);cx.font=`${Math.max(10,14/S.zoom)}px system-ui`;const lbl=String(i+1);const tw=cx.measureText(lbl).width+6/S.zoom;const th=Math.max(12,16/S.zoom);cx.fillStyle=i===S.active?'#ffb400':'#ff3b30';cx.fillRect(r.x-lw,r.y-lw-th,tw,th);cx.fillStyle='#fff';cx.fillText(lbl,r.x-lw+3/S.zoom,r.y-lw-th*0.22)})}}
+  if(S.boxes){const lw=Math.max(1,2/S.zoom);S.regions.forEach((r,i)=>{cx.lineWidth=i===S.active?lw*2:lw;cx.strokeStyle=i===S.active?'#ffb400':'#ff3b30';cx.strokeRect(r.x-lw,r.y-lw,r.w+2*lw,r.h+2*lw);cx.font=`${Math.max(10,14/S.zoom)}px system-ui`;const lbl=String(i+1);const tw=cx.measureText(lbl).width+6/S.zoom;const th=Math.max(12,16/S.zoom),ly=Math.max(0,r.y-lw-th);cx.fillStyle=i===S.active?'#ffb400':'#ff3b30';cx.fillRect(r.x-lw,ly,tw,th);cx.fillStyle='#fff';cx.fillText(lbl,r.x-lw+3/S.zoom,ly+th*0.78)})}}
 function applyTransform(){stage.classList.toggle('pix',S.zoom>=3);stage.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`;$('zoomRange').value=Math.round(S.zoom*100);$('zoomVal').textContent=Math.round(S.zoom*100)+'%';$('hud').textContent=`${S.W}×${S.H}${S.scale<1?t('hudScale',{s:S.scale.toFixed(2)}):''} · ${t('hudDiff',{p:(100*diffCount/(S.W*S.H)).toFixed(2)})}`}
 function fit(){const vw=viewport.clientWidth,vh=viewport.clientHeight;const sw=S.mode==='split'?S.W*2+16:S.W,sh=S.mode==='split'?S.H+24:S.H;S.zoom=Math.min(1,Math.max(.05,Math.min((vw-24)/sw,(vh-24)/sh)));S.px=(vw-sw*S.zoom)/2;S.py=(vh-sh*S.zoom)/2;applyTransform();drawOverlay()}
 $('fitBtn').onclick=fit;
@@ -362,8 +363,9 @@ function fft2d(re,im,N,inv){const r=new Float64Array(N),m=new Float64Array(N);fo
 function grayPatch(src,N,sc,rot,fh,fv,wOut,hOut){// render src into N×N (fitting wOut×hOut frame at scale 'frame') and return windowed gray float array
   const c=mk(N,N),cx=c.getContext('2d');cx.fillStyle='#808080';cx.fillRect(0,0,N,N);const f=N/Math.max(wOut,hOut);cx.save();cx.scale(f,f);cx.translate(src.width/2,src.height/2);cx.rotate(rot*Math.PI/180);cx.scale(sc*(fh?-1:1),sc*(fv?-1:1));cx.drawImage(src,-src.width/2,-src.height/2);cx.restore();
   const d=cx.getImageData(0,0,N,N).data,g=new Float64Array(N*N);let mean=0;for(let i=0;i<N*N;i++){g[i]=d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114;mean+=g[i]}mean/=N*N;
-  for(let y=0;y<N;y++){const wy=.5-.5*Math.cos(2*Math.PI*y/(N-1));for(let x=0;x<N;x++){const wx=.5-.5*Math.cos(2*Math.PI*x/(N-1));g[y*N+x]=(g[y*N+x]-mean)*wx*wy}}return {g,f}}
-function phaseCorr(ga,gb,N){const ar=Float64Array.from(ga),ai=new Float64Array(N*N),br=Float64Array.from(gb),bi=new Float64Array(N*N);fft2d(ar,ai,N,false);fft2d(br,bi,N,false);
+  for(let y=0;y<N;y++){const wy=.5-.5*Math.cos(2*Math.PI*y/(N-1));for(let x=0;x<N;x++){const wx=.5-.5*Math.cos(2*Math.PI*x/(N-1));g[y*N+x]=(g[y*N+x]-mean)*wx*wy}}g._c=1;return {g,f}}
+function phaseCorr(ga,gb,N){let F=ga._c&&ga._fft;if(ga._c&&(!F||F.N!==N)){const r=Float64Array.from(ga),i=new Float64Array(N*N);fft2d(r,i,N,false);F=ga._fft={N,r,i}}
+  const ar=Float64Array.from(F?F.r:ga),ai=F?Float64Array.from(F.i):new Float64Array(N*N),br=Float64Array.from(gb),bi=new Float64Array(N*N);if(!F)fft2d(ar,ai,N,false);fft2d(br,bi,N,false);
   for(let i=0;i<N*N;i++){const r=ar[i]*br[i]+ai[i]*bi[i],m=ai[i]*br[i]-ar[i]*bi[i];const mag=Math.hypot(r,m)||1e-9;ar[i]=r/mag;ai[i]=m/mag}fft2d(ar,ai,N,true);
   let best=-1,bi2=0,sum=0;for(let i=0;i<N*N;i++){const v=ar[i];sum+=v*v;if(v>best){best=v;bi2=i}}const px=bi2%N,py=(bi2-px)/N,at=(x,y)=>ar[((y+N)%N)*N+((x+N)%N)];
   /* 抛物线插值求亚像素峰值，避免位移被量化到工作分辨率的整数格（否则对齐会有 1–2px 误差，还会让缩放/旋转搜索去“补偿”这个误差） */
@@ -371,7 +373,7 @@ function phaseCorr(ga,gb,N){const ar=Float64Array.from(ga),ai=new Float64Array(N
   const [fx,hx]=sub(at(px-1,py),best,at(px+1,py)),[fy,hy]=sub(at(px,py-1),best,at(px,py+1));
   let dx=px+fx,dy=py+fy;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;const peak=hx+hy-best;return {dx,dy,peak,psr:peak/Math.sqrt(sum/(N*N))}}
 async function autoAlign(A,B,allow){
-  if(window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
+  if(window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B,allow);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
   const W=Math.max(A.width,B.width),H=Math.max(A.height,B.height);const tick=()=>new Promise(r=>setTimeout(r,0));
   const baseScale=allow.scale?Math.min(A.width/B.width,A.height/B.height):1;
   const evalAt=(N,pa,sc,rot)=>{const pb=grayPatch(B,N,sc,rot,false,false,W,H);const r=phaseCorr(pa.g,pb.g,N);return {...r,sc,rot,f:pa.f}};
@@ -379,11 +381,11 @@ async function autoAlign(A,B,allow){
   let N=128,pa=grayPatch(A,N,1,0,false,false,W,H),best=null,n=0;
   const scales=allow.scale?[0.85,0.9,0.95,1,1.05,1.1,1.15].map(s=>s*baseScale):[baseScale];const rots=allow.rot?[-6,-4,-2,-1,0,1,2,4,6]:[0];
   best=evalAt(N,pa,baseScale,0);/* 只有明显优于“不旋转不缩放”时才采用其他候选，避免噪声导致虚假的缩放 */
-  for(const sc of scales)for(const rot of rots){const r=evalAt(N,pa,sc,rot);if(r.psr>best.psr*1.05)best=r;if(++n%10===0)await tick()}
+  for(const sc of scales)for(const rot of rots){if(sc===baseScale&&rot===0)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>best.psr*1.05)best=r;if(++n%10===0)await tick()}
   // 2) refine 256² around best
   N=256;pa=grayPatch(A,N,1,0,false,false,W,H);let ref=evalAt(N,pa,best.sc,best.rot);
   const scales2=allow.scale?[-0.03,-0.015,0,0.015,0.03].map(d=>best.sc*(1+d)):[best.sc];const rots2=allow.rot?[-1,-0.5,0,0.5,1].map(d=>best.rot+d):[0];
-  for(const sc of scales2)for(const rot of rots2){const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0)await tick()}
+  for(const sc of scales2)for(const rot of rots2){if(sc===best.sc&&rot===best.rot)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0)await tick()}
   if(!ref||ref.psr<4)return null;
   // 3) final translation at 512²
   N=512;pa=grayPatch(A,N,1,0,false,false,W,H);let fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
@@ -393,25 +395,27 @@ async function autoAlign(A,B,allow){
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
   return {dx:fin.dx/f,dy:fin.dy/f,rot:fin.rot,scale:fin.sc,fh:false,fv:false,conf:Math.min(1,fin.psr/40)};
 }
-function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
+function alignWithOpenCV(A,B,allow={}){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
   try{const ma=keep(cv.imread(A)),mb=keep(cv.imread(B)),ga=keep(new cv.Mat()),gb=keep(new cv.Mat());cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=keep(new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20));const k1=keep(new cv.KeyPointVector()),k2=keep(new cv.KeyPointVector()),d1=keep(new cv.Mat()),d2=keep(new cv.Mat()),nomask=keep(new cv.Mat());orb.detectAndCompute(ga,nomask,k1,d1);orb.detectAndCompute(gb,nomask,k2,d2);
     const bf=keep(new cv.BFMatcher(cv.NORM_HAMMING,false)),mm=keep(new cv.DMatchVectorVector());bf.knnMatch(d2,d1,mm,2);const src=[],dst=[];for(let i=0;i<mm.size();i++){const m=mm.get(i);if(m.size()<2)continue;const a=m.get(0),b=m.get(1);if(a.distance<.75*b.distance){const p2=k2.get(a.queryIdx).pt,p1=k1.get(a.trainIdx).pt;src.push(p2.x,p2.y);dst.push(p1.x,p1.y)}}
     if(src.length<8)return null;const sm=keep(cv.matFromArray(src.length/2,1,cv.CV_32FC2,src)),dm=keep(cv.matFromArray(dst.length/2,1,cv.CV_32FC2,dst)),inl=keep(new cv.Mat());const M=keep(cv.estimateAffinePartial2D(sm,dm,inl,cv.RANSAC,5,2000,.95,10));if(M.empty())return null;const m=M.data64F;
     // M = [[s·cosθ, −s·sinθ, tx],[s·sinθ, s·cosθ, ty]]；canvas 的 rotate(θ) 与之同向，所以 θ = atan2(m[3], m[0])（原先误用 m[1]，符号相反）
-    const sc=Math.hypot(m[0],m[3]),rot=Math.atan2(m[3],m[0])*180/Math.PI;// B centre maps to:
+    const sc=allow.scale===false?1:Math.hypot(m[0],m[3]),rot=allow.rot===false?0:Math.atan2(m[3],m[0])*180/Math.PI;// B centre maps to:
     const cxB=B.width/2,cyB=B.height/2,tx=m[0]*cxB+m[1]*cyB+m[2],ty=m[3]*cxB+m[4]*cyB+m[5];
     return {dx:tx-cxB,dy:ty-cyB,rot,scale:sc,fh:false,fv:false,conf:.9}}
   finally{for(const x of del){try{x.delete()}catch(e){}}}}
 
 /* ===================== export ===================== */
 let expFmt='png',expDiff='subtract';
+const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
+const baseName=()=>(stem(S.A?.name,'original')+'-vs-'+stem(S.B?.name,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'image-comparison';
 $('exportBtn').onclick=()=>$('exportModal').classList.add('open');$('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;expFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 $('expDiffStyle').onclick=e=>{const b=e.target.closest('button');if(!b)return;expDiff=b.dataset.s;$('expDiffStyle').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 function exportCanvas(){if(S.mode==='split'){const c=mk(S.W*2+16,S.H),cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,c.width,c.height);cx.drawImage(baseA,0,0);cx.drawImage(baseB,S.W+16,0);return c}const c=compositeCanvas(S.mode);if(overlay)c.getContext('2d').drawImage(overlay,0,0);return c}
 $('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(!S.W)return;const c=exportCanvas();
-  if(expFmt==='png'){c.toBlob(b=>b?download(b,'image-comparison.png'):notice(t('exportFailed')),'image/png');return}
+  if(expFmt==='png'){c.toBlob(b=>b?download(b,baseName()+'.png'):notice(t('exportFailed')),'image/png');return}
   const rep=$('report');const esc=s=>String(s).replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x]));
   let h=`<h1>${t('rptTitle')}</h1><table><tr><th>${t('rptOrig')}</th><td>${esc(S.A.name)} (${S.A.w}×${S.A.h})</td></tr><tr><th>${t('rptChg')}</th><td>${esc(S.B.name)} (${S.B.w}×${S.B.h})</td></tr><tr><th>${t('rptMode')}</th><td>${esc(t('m.'+S.mode))}</td></tr><tr><th>${t('rptSummary')}</th><td>${t('summary',{p:(100*diffCount/(S.W*S.H)).toFixed(2),n:S.regions.length})}</td></tr><tr><th>${t('rptAlign')}</th><td>dx ${S.align.dx.toFixed(1)}, dy ${S.align.dy.toFixed(1)}, rot ${S.align.rot.toFixed(2)}°, scale ${S.align.scale.toFixed(4)}</td></tr></table><h2>${t('rptCmp')}</h2><img src="${c.toDataURL('image/png')}">`;
   if($('expSrc').checked)h+=`<h2>${t('srcImages')}</h2><div class="srcs"><div><img src="${baseA.toDataURL('image/png')}"><small>${t('fOriginal')}</small></div><div><img src="${baseB.toDataURL('image/png')}"><small>${t('fChanged')}</small></div></div>`;
@@ -428,14 +432,15 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
   x.strokeStyle='#bbb';x.strokeRect(40,480,420,60);x.fillStyle='#000';x.font='13px monospace';x.fillText(variant?'CHK 8f31c2a9 · build 1122':'CHK 7a9e01bd · build 1047',52,515);return c}
 $('exampleBtn').onclick=()=>{setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:'smooth'})};
 window.addEventListener('afterprint',()=>{$('report').innerHTML=''});
-['dragover','drop'].forEach(n=>window.addEventListener(n,e=>e.preventDefault()));
+['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('hidden'))fit()});
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
 /* Esc 关闭弹窗（对齐提示等同于“跳过”） */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('promptModal').classList.contains('open')){$('pmSkip').click();return}$('alignModal').classList.remove('open');$('exportModal').classList.remove('open')});
-/* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+/* 点击弹窗遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
+for(const id of ['exportModal','alignModal'])$(id).addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+$('promptModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)$('pmSkip').click()});
 applyTheme();applyLang();
 </script>
 </body>

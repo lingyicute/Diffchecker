@@ -14,7 +14,7 @@ const run = (code, expose, pre = 'const t=k=>k;') => { const ctx = {}; vm.create
 
 const text = (() => {
   const s = script('text-compare.html');
-  return run(between(s, 'const EQ=0', '/* ===================== syntax'), 'diffSeq,inlineDiff,computeDiff');
+  return run(between(s, 'const EQ=0', '/* ===================== syntax'), 'diffSeq,inlineDiff,computeDiff,makeNorm');
 })();
 const excel = (() => {
   const s = script('excel-compare.html');
@@ -399,4 +399,65 @@ test('excel.inflate: 头部声明的解压后大小被伪造得极大时不会�
   const raw = Buffer.from('hello hello hello '.repeat(5000));
   const z = zlib.deflateRawSync(raw);
   for (const claimed of [0xFFFFFFFF, 1, 0]) assert.equal(Buffer.compare(Buffer.from(inflate(new Uint8Array(z), claimed)), raw), 0);
+});
+
+test('inlineDiff: 自定义忽略规则与忽略空白在行内差异中不再被标为删改，且仍可无损还原', () => {
+  for (const level of ['smart', 'word', 'char']) {
+    const s1 = text.inlineDiff('Foo bar 1', 'bar 2', level, text.makeNorm({ rules: ['Foo '] }));
+    assert.equal(s1.map(s => s.a).join(''), 'Foo bar 1');
+    assert.equal(s1.map(s => s.b).join(''), 'bar 2');
+    assert.ok(!s1.some(s => s.t !== 0 && s.a.includes('Foo')), `rule "Foo " should not be highlighted in ${level}`);
+
+    const s2 = text.inlineDiff('  hello   world 1', 'hello world 2', level, text.makeNorm({ rules: [], hideWs: true }));
+    assert.equal(s2.map(s => s.a).join(''), '  hello   world 1');
+    assert.equal(s2.map(s => s.b).join(''), 'hello world 2');
+    assert.ok(!s2.some(s => s.t !== 0 && /^\s+$/.test(s.a || s.b)), `ignored whitespace should not be highlighted in ${level}`);
+  }
+});
+
+test('excel.compare: 列顺序变动、按位置匹配时表头修改、以及无公共列时的行差异处理', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  // 1) 仅列移动时不应误判为完全相同
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortRows: false, sortCols: false });
+  const mov = excel.compare(G([['A', 'B'], [1, 2]]), G([['B', 'A'], [2, 1]]), 0, 0);
+  assert.equal(mov.identical, false);
+  assert.equal(mov.stats.colsMov, 1);
+
+  // 2) matchHeaders 关闭时表头文字改动不应被丢弃或误判相同
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: false, sortRows: false, sortCols: false });
+  const hdr = excel.compare(G([['ID', 'Price'], [1, 10]]), G([['ID', 'Cost'], [1, 10]]), 0, 0);
+  assert.equal(hdr.identical, false);
+  assert.equal(hdr.columns[1].name, 'Price → Cost');
+  assert.ok(hdr.colChanged.has(1));
+
+  // 3) 表头完全无交集时，两侧数据行不应被当作未修改的相同行配对
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortRows: false, sortCols: false });
+  const disj = excel.compare(G([['A'], [1], [2]]), G([['B'], [3], [4]]), 0, 0);
+  assert.equal(disj.identical, false);
+  assert.equal(disj.stats.rowsDel, 2);
+  assert.equal(disj.stats.rowsIns, 2);
+  assert.ok(disj.rows.every(r => r.type !== 'eq'));
+});
+
+test('excel.normalize: 支持带时间的日月年/月日年日期，且过滤越界的伪日期与伪时间', () => {
+  Object.assign(excel.opts, { normDates: true, ignoreWs: false, ignoreCase: false });
+  assert.equal(excel.normalize('03/15/2024 8:05'), '2024-03-15 08:05:00');
+  assert.equal(excel.normalize('15/03/2024 00:00:00'), '2024-03-15');
+  assert.equal(excel.normalize('2024.99.88'), '2024.99.88');
+  assert.equal(excel.normalize('99/88/2024'), '99/88/2024');
+  assert.equal(excel.normalize('12:99'), '12:99');
+  assert.equal(excel.normalize('25:00'), '25:00');
+});
+
+test('image.phaseCorr: 启用参考图 FFT 缓存时与未缓存结果一致', () => {
+  const N = 32, r = lcg(11), a = new Float64Array(N * N), b = new Float64Array(N * N);
+  for (let i = 0; i < a.length; i++) a[i] = r();
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) b[((y + 3 + N) % N) * N + ((x - 2 + N) % N)] = a[y * N + x];
+  const p1 = img.phaseCorr(a, b, N);
+  a._c = 1;
+  const p2 = img.phaseCorr(a, b, N);
+  const p3 = img.phaseCorr(a, b, N);
+  assert.ok(a._fft && a._fft.N === N);
+  assert.deepEqual(p1, p2);
+  assert.deepEqual(p1, p3);
 });
