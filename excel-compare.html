@@ -170,7 +170,7 @@ const notice=m=>{const n=$('notice');n.textContent=m;n.classList.add('show');cle
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ===================== inflate (RFC1951) & ZIP reader ===================== */
-function inflate(src,expected){let pos=0,bb=0,bc=0;let out=new Uint8Array(expected||Math.max(1024,src.length*4)),op=0;
+function inflate(src,expected){let pos=0,bb=0,bc=0;/* 压缩头里的 usize 可能是伪造的；DEFLATE 的压缩比不超过约 1032:1，据此封顶初始缓冲区，避免被分配出巨大的内存 */let out=new Uint8Array(Math.min(expected||Math.max(1024,src.length*4),src.length*1032+1024)),op=0;
   const grow=n=>{if(op+n>out.length){const o=new Uint8Array(Math.max(out.length*2,op+n));o.set(out);out=o}};
   const bit=()=>{if(bc===0){if(pos>=src.length)throw new Error(t('badZip'));bb=src[pos++];bc=8}const b=bb&1;bb>>>=1;bc--;return b};
   const bits=n=>{while(bc<n){if(pos>=src.length)throw new Error(t('badZip'));bb|=src[pos++]<<bc;bc+=8}const v=bb&((1<<n)-1);bb>>>=n;bc-=n;return v};
