@@ -171,3 +171,16 @@ test('excel.serialToElapsed: 时长格式的小时数可以超过 24，负值带
   assert.equal(excel.serialToElapsed(100 / 24 + 61 / 86400), '100:01:01');
   assert.equal(excel.serialToElapsed(-0.5), '-12:00:00');
 });
+
+test('inlineDiff: 超长行只裁剪公共前后缀，仍能无损还原且不会卡死', () => {
+  const words = Array.from({ length: 30000 }, (_, i) => 'w' + i);
+  const l = words.join(' '), r = words.slice(0, 15000).concat(['CHANGED', 'tokens'], words.slice(15003)).join(' ');
+  const t0 = Date.now();
+  for (const level of ['smart', 'word', 'char']) {
+    const segs = text.inlineDiff(l, r, level, s => s);
+    assert.equal(segs.map(x => x.a).join(''), l);
+    assert.equal(segs.map(x => x.b).join(''), r);
+    assert.ok(segs.some(x => x.t === 1) && segs.some(x => x.t === 2));
+  }
+  assert.ok(Date.now() - t0 < 3000, '超长行的行内差异应在 3 秒内完成');
+});

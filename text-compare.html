@@ -281,8 +281,15 @@ function midSnake(a,b,a0,a1,b0,b1,eq){
 const WORD_RE=/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|(?:(?![\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF])[\p{L}\p{M}\p{N}_])+|\s+|[^\s\p{L}\p{M}\p{N}_]/gu;
 const tokWords=s=>s.match(WORD_RE)||[];
 const tokChars=s=>Array.from(s);
+const INLINE_MAX_TOKENS=20000;
 function inlineDiff(l,r,level,norm){
   const tk=level==='char'&&l.length+r.length<=20000?tokChars:tokWords;const A=tk(l),B=tk(r);
+  if(A.length+B.length>INLINE_MAX_TOKENS){// 超长行（如压缩后的 JSON）：只裁掉公共前后缀，中间整体标记为改动，避免 Myers 的 O(ND) 卡死页面
+    const na=A.map(norm),nb=B.map(norm);let p=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;
+    let q=0;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
+    const m=[],add=(t,a,b)=>{if(a||b)m.push({t,a,b})};
+    add(EQ,A.slice(0,p).join(''),B.slice(0,p).join(''));add(DEL,A.slice(p,A.length-q).join(''),'');add(INS,'',B.slice(p,B.length-q).join(''));
+    add(EQ,A.slice(A.length-q).join(''),B.slice(B.length-q).join(''));return m}
   const ops=diffSeq(A.map(norm),B.map(norm));
   let segs=[];// {t:EQ/DEL/INS, a:text (left), b:text(right)}
   for(const [op,i,j] of ops){
