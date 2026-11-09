@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula');
+  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isoDateCell,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula');
 })();
 
 const inflate = (() => {
@@ -469,4 +469,14 @@ test('excel.compare: 按行排序只以共有列为键，删除 / 新增的列�
   assert.equal(R.stats.rowsDel, 0); assert.equal(R.stats.rowsIns, 0); assert.equal(R.stats.rowsChg, 0);
   assert.ok(R.rows.every(r => r.type === 'eq'));
   Object.assign(excel.opts, { sortRows: false });
+});
+
+test('excel.isoDateCell: t="d" 的 ISO 日期与日期序列号的显示一致', () => {
+  assert.equal(excel.isoDateCell('2024-03-05T00:00:00'), excel.serialToDate(45356));
+  assert.equal(excel.isoDateCell('2024-03-05T00:00:00Z'), '2024-03-05');
+  assert.equal(excel.isoDateCell('2024-03-05T08:05:09.000'), '2024-03-05 08:05:09');
+  assert.equal(excel.isoDateCell('2024-03-05T08:05'), '2024-03-05 08:05:00');
+  assert.equal(excel.isoDateCell('10:30:00'), excel.serialToDate(0.4375));
+  assert.equal(excel.isoDateCell('not a date'), 'not a date');
+  assert.equal(excel.isoDateCell(null), '');
 });
