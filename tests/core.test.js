@@ -381,3 +381,15 @@ test('excel.parseCsv: 按 RFC 4180 序列化的随机表格能原样解析回来
     assert.equal(norm(got), norm(g), JSON.stringify(text));
   }
 });
+
+test('excel.pairBlock: 改动块很大时按位置配对也要求相似度，完全不同的两行记为删除 + 新增', () => {
+  const n = 60, A = [], B = [];
+  for (let i = 0; i < n; i++) { A.push(['a' + i, 'x', 'y']); B.push(i % 2 ? ['a' + i, 'x', 'z'] : ['b' + i, 'p', 'q']); }
+  const idx = Array.from({ length: n }, (_, i) => i);
+  const out = excel.pairBlock(idx, idx, null, null, A, B);
+  assert.equal(out.filter(e => e.type === 'chg').length, n / 2);
+  assert.equal(out.filter(e => e.type === 'del').length, n / 2);
+  assert.equal(out.filter(e => e.type === 'ins').length, n / 2);
+  const seenA = out.filter(e => e.ai != null).map(e => e.ai), seenB = out.filter(e => e.bi != null).map(e => e.bi);
+  assert.deepEqual([...seenA], idx); assert.deepEqual([...seenB], idx);
+});
