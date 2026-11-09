@@ -324,3 +324,22 @@ test('excel.shiftFormula: 共享公式按位移平移相对引用，$ 锁定、�
   assert.equal(s('A1+B2', 0, 0), 'A1+B2');
   assert.equal(s('A1', -1, 0), 'A1');
 });
+
+test('diffSeq: 差异量很大且重复元素很多时有代价上限，结果仍可还原两侧序列且很快返回', () => {
+  const al = 20, A = Array.from({ length: 8000 }, () => 'k' + rnd(al)), B = Array.from({ length: 8000 }, () => 'k' + rnd(al));
+  const t0 = Date.now(), ops = text.diffSeq(A, B);
+  assert.ok(Date.now() - t0 < 5000, 'diffSeq too slow: ' + (Date.now() - t0) + 'ms');
+  let ia = 0, ib = 0;
+  for (const [op, i, j] of ops) {
+    if (op === 0) { assert.equal(i, ia); assert.equal(j, ib); assert.equal(A[i], B[j]); ia++; ib++; }
+    else if (op === 1) { assert.equal(i, ia); ia++; } else { assert.equal(j, ib); ib++; }
+  }
+  assert.equal(ia, A.length); assert.equal(ib, B.length);
+});
+
+test('diffSeq: 差异量在上限以内时仍然是最优的（EQ 数量等于 LCS 长度）', () => {
+  for (let it = 0; it < 5; it++) {
+    const A = Array.from({ length: 700 }, () => String(rnd(3))), B = Array.from({ length: 700 }, () => String(rnd(3)));
+    assert.equal(text.diffSeq(A, B).filter(o => o[0] === 0).length, lcs(A, B));
+  }
+});
