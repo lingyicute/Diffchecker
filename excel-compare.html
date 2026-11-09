@@ -329,7 +329,8 @@ function compare(gA,gB,hA,hB){
   let idxA=dataA.map((_,i)=>i),idxB=dataB.map((_,i)=>i);
   const cellsA=dataA.map(r=>proj(r,'A')),cellsB=dataB.map(r=>proj(r,'B'));const normA=cellsA.map(r=>r.map(normalize)),normB=cellsB.map(r=>r.map(normalize));
   const keyOf=(nr)=>shared.map(k=>nr[k]).join('\u0001').replace(/\u0001+$/,'');
-  if(opts.sortRows){const kA=normA.map(r=>r.join('\u0001')),kB=normB.map(r=>r.join('\u0001'));const cmp=K=>(x,y)=>K[x]<K[y]?-1:K[x]>K[y]?1:x-y;idxA.sort(cmp(kA));idxB.sort(cmp(kB))}
+  // 排序只能以两侧共有的列为主键：新增 / 删除的列在另一侧恒为空，若参与排序，两侧会按不同的列排出不同的顺序，相同的行也无法对齐
+  if(opts.sortRows){const sk=N=>N.map(r=>[keyOf(r),r.join('\u0001')]),kA=sk(normA),kB=sk(normB);const cmp=K=>(x,y)=>{const p=K[x],q=K[y];return p[0]<q[0]?-1:p[0]>q[0]?1:p[1]<q[1]?-1:p[1]>q[1]?1:x-y};idxA.sort(cmp(kA));idxB.sort(cmp(kB))}
   const outRows=[];if(!shared.length){idxA.forEach(i=>outRows.push({type:'del',ai:i}));idxB.forEach(j=>outRows.push({type:'ins',bi:j}))}else{
     const keysA=idxA.map(i=>keyOf(normA[i])),keysB=idxB.map(i=>keyOf(normB[i]));
     const ops=diffSeq(keysA,keysB);let D=[],I=[];const sharedNormA=normA.map(r=>shared.map(k=>r[k])),sharedNormB=normB.map(r=>shared.map(k=>r[k]));
