@@ -574,6 +574,8 @@ $('exampleBtn').onclick=()=>{txtA.value=EX_A;txtB.value=EX_B;fileNames={A:'atlas
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));// 拖入文件时不让浏览器直接打开它而丢掉当前内容
 /* Esc 关闭侧栏与弹窗 */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;$('panel').classList.remove('open');$('exportModal').classList.remove('open')});
+/* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
+$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
 applyTheme();syncUI(true);applyLang();updateMeta();
 </script>
 </body>
