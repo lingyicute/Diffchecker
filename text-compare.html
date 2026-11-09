@@ -326,7 +326,7 @@ function computeDiff(textA,textB,o){
     else{if(!cur||cur.type!=='chg'){cur={type:'chg',del:[],ins:[]};blocks.push(cur)}if(op===DEL)cur.del.push(i);else cur.ins.push(j)}
   }
   let nDel=0,nIns=0;for(const b of blocks)if(b.type==='chg'){nDel+=b.del.length;nIns+=b.ins.length}
-  return {A,B,blocks,nDel,nIns,norm};
+  return {A,B,blocks,nDel,nIns,norm,segCache:new Map()};
 }
 
 /* ===================== syntax highlighting ===================== */
@@ -379,7 +379,7 @@ function render(){
     }else{
       const n=Math.max(b.del.length,b.ins.length);const id=changeNo++;
       for(let k=0;k<n;k++){const li=b.del[k],ri=b.ins[k];let segs=null;
-        if(li!=null&&ri!=null)segs=inlineDiff(d.A[li],d.B[ri],opts.level,d.norm);
+        if(li!=null&&ri!=null){const ck=opts.level+'|'+li+'|'+ri;segs=d.segCache.get(ck);if(!segs){segs=inlineDiff(d.A[li],d.B[ri],opts.level,d.norm);d.segCache.set(ck,segs)}}
         rows.push({kind:'chg',l:li,r:ri,segs,first:k===0,id});}
     }
   });
