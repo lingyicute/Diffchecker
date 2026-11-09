@@ -254,7 +254,7 @@ function drawAligned(ctx,img,al,s){ctx.save();ctx.scale(s,s);const w=img.width,h
 function computeDiffMap(){const a=dataA.data,b=dataB.data,n=S.W*S.H;diffMap=new Uint8Array(n);signMap=new Int8Array(n);diffCount=0;
   for(let i=0,p=0;i<n;i++,p+=4){const aa=a[p+3],ba=b[p+3];let dr,dg,db;if(aa<255||ba<255){// blend onto white
       const fa=aa/255,fb=ba/255;dr=(a[p]*fa+255*(1-fa))-(b[p]*fb+255*(1-fb));dg=(a[p+1]*fa+255*(1-fa))-(b[p+1]*fb+255*(1-fb));db=(a[p+2]*fa+255*(1-fa))-(b[p+2]*fb+255*(1-fb))}else{dr=a[p]-b[p];dg=a[p+1]-b[p+1];db=a[p+2]-b[p+2]}
-    const m=Math.max(Math.abs(dr),Math.abs(dg),Math.abs(db));diffMap[i]=m;if(m)diffCount++;const lum=dr*.299+dg*.587+db*.114;signMap[i]=lum<0?1:-1;/* 1: B lighter → removed */}}
+    const m=Math.max(Math.abs(dr),Math.abs(dg),Math.abs(db));const mq=Math.min(255,Math.round(m));diffMap[i]=mq;if(mq)diffCount++;const lum=dr*.299+dg*.587+db*.114;signMap[i]=lum<0?1:-1;/* 1: B lighter → removed */}}
 function compositeCanvas(mode){const W=S.W,H=S.H,c=mk(W,H),ctx=c.getContext('2d');
   if(mode==='fade'){ctx.drawImage(baseA,0,0);ctx.globalAlpha=S.fade;ctx.drawImage(baseB,0,0);ctx.globalAlpha=1}
   else if(mode==='slider'){ctx.drawImage(baseB,0,0);ctx.save();ctx.beginPath();ctx.rect(0,0,Math.round(W*S.sliderPos),H);ctx.clip();ctx.drawImage(baseA,0,0);ctx.restore()}
