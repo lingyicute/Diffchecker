@@ -343,3 +343,41 @@ test('diffSeq: 差异量在上限以内时仍然是最优的（EQ 数量等于 L
     assert.equal(text.diffSeq(A, B).filter(o => o[0] === 0).length, lcs(A, B));
   }
 });
+
+// 导出的 .xlsx 用的是自带的 STORE 压缩 zip 写入器：用页面自己的读取器读回，保证容器格式（本地头 / 中央目录 / CRC）自洽。
+const zipLib = (() => {
+  const s = script('excel-compare.html');
+  const code = between(s, 'function inflate', '/* ===================== XLSX parsing') + between(s, 'const CRC_T', 'const xe=');
+  const ctx = { Blob, TextEncoder, TextDecoder, Date };
+  vm.createContext(ctx);
+  vm.runInContext(`const t=k=>k;${code};this.X={readZip,zipStore,crc32}`, ctx);
+  return ctx.X;
+})();
+
+test('zipStore → readZip: 写出的 zip 能被读取器原样读回（含 UTF-8 文件名、中文内容与较大文件）', async () => {
+  const enc = new TextEncoder();
+  const big = 'x'.repeat(200000) + '尾';
+  const files = [{ name: 'a.txt', data: enc.encode('你好 hello') }, { name: 'dir/文件.xml', data: enc.encode(big) }, { name: 'empty', data: new Uint8Array(0) }];
+  const buf = await zipLib.zipStore(files).arrayBuffer();
+  const z = zipLib.readZip(buf);
+  assert.deepEqual([...z.names], ['a.txt', 'dir/文件.xml', 'empty']);
+  assert.equal(z.text('a.txt'), '你好 hello');
+  assert.equal(z.text('dir/文件.xml'), big);
+  assert.equal(z.get('empty').length, 0);
+  assert.equal(z.get('missing'), null);
+  assert.equal(zipLib.crc32(enc.encode('123456789')), 0xCBF43926);
+});
+
+test('excel.parseCsv: 按 RFC 4180 序列化的随机表格能原样解析回来（含逗号、引号、换行、CRLF）', () => {
+  let seed = 12345;
+  const rand = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  const alpha = ['a', 'b', ',', '"', '\n', '\r\n', ' ', 'x', '1', ';', '\t', 'é'];
+  const norm = g => JSON.stringify(g.map(r => r.map(v => v.replace(/\r\n/g, '\n'))));
+  for (let it = 0; it < 3000; it++) {
+    const R = 1 + rand(4), C = 1 + rand(4);
+    const g = Array.from({ length: R }, () => Array.from({ length: C }, () => Array.from({ length: rand(4) }, () => alpha[rand(alpha.length)]).join('')));
+    const text = g.map(r => r.map(v => (/[",\r\n]/.test(v) || (v === '' && C === 1)) ? '"' + v.replace(/"/g, '""') + '"' : v).join(',')).join(rand(2) ? '\r\n' : '\n') + (rand(2) ? '\n' : '');
+    const got = excel.parseCsv(text, ',').sheets[0].grid.rows.map(r => r.map(c => c.v));
+    assert.equal(norm(got), norm(g), JSON.stringify(text));
+  }
+});
