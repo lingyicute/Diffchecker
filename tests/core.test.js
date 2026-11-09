@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock,normalize');
+  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock,normalize,inlineDiff');
 })();
 
 const inflate = (() => {
@@ -298,4 +298,16 @@ test('excel.parseCsv: 末尾没有换行的 "" 空字段行不会丢失', () => 
   assert.deepEqual(rows('a,""'), [['a', '']]);
   assert.deepEqual(rows('a\n"x"'), [['a'], ['x']]);
   assert.deepEqual(rows('a\n'), [['a']]);
+});
+
+test('excel.inlineDiff: 超长单元格只裁剪公共前后缀，仍能无损还原且不会卡死', () => {
+  const rndWord = () => Math.random().toString(36).slice(2, 8);
+  const mid = n => Array.from({ length: n }, rndWord).join(' ');
+  const l = 'head ' + mid(12000) + ' tail', r = 'head ' + mid(12000) + ' tail';
+  const t0 = Date.now(), segs = excel.inlineDiff(l, r);
+  assert.ok(Date.now() - t0 < 3000);
+  assert.equal(segs.map(s => s.a).join(''), l); assert.equal(segs.map(s => s.b).join(''), r);
+  assert.equal(segs[0].t, 0); assert.equal(segs[segs.length - 1].t, 0);
+  const small = excel.inlineDiff('abcdef', 'abXdef');
+  assert.equal(small.map(s => s.a).join(''), 'abcdef'); assert.equal(small.map(s => s.b).join(''), 'abXdef');
 });
