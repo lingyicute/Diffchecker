@@ -264,7 +264,7 @@ try{mergeOpts(JSON.parse(lsGet('excel-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('excel-opts',JSON.stringify(opts));
 const DATE_RX=/^\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$|^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*$/;
 function cellText(c){if(!c)return '';if(opts.val==='formulas'&&c.f)return c.f;return c.v??''}
-function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);if(m){const p=n=>String(n).padStart(2,'0');if(m[1])s=`${m[1]}-${p(m[2])}-${p(m[3])}`+(m[4]?` ${p(m[4])}:${m[5]}:${m[6]||'00'}`:'');else s=`${m[9]}-${p(m[8])}-${p(m[7])}`}}
+function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);if(m){const p=n=>String(n).padStart(2,'0');if(m[1])s=`${m[1]}-${p(m[2])}-${p(m[3])}`+(m[4]?` ${p(m[4])}:${m[5]}:${m[6]||'00'}`:'');else{const a=+m[7],b=+m[8],[mo,dy]=a<=12&&b>12?[a,b]:[b,a];/* 第二位 >12 时只可能是 月/日/年；否则按 日/月/年 */s=`${m[9]}-${p(mo)}-${p(dy)}`}}}
   if(opts.ignoreWs)s=s.replace(/\s+/g,' ').trim();if(opts.ignoreCase)s=s.toLowerCase();return s}
 function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&String(c.v).trim()!=='').length;counts.push(n);if(n>bestN)bestN=n}
   for(let i=0;i<lim;i++)if(counts[i]>=2&&counts[i]>=.6*bestN){best=i;break}return best}

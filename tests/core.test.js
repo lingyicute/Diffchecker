@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock');
+  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock,normalize');
 })();
 
 const inflate = (() => {
@@ -246,4 +246,13 @@ test('decodeBuf: UTF-8 优先，其次严格的 GB18030，其余（如 Latin-1 /
     assert.equal(dec([0xD6, 0xD0, 0xCE, 0xC4, 0x20, 0x74]), '中文 t', f); // GBK “中文 t”
     assert.equal(dec(Buffer.from('café au lait\nnaïve', 'latin1')), 'café au lait\nnaïve', f);
   }
+});
+
+test('excel.normalize: 日期统一成 ISO；x/y/yyyy 在第二位大于 12 时按 月/日/年，其余按 日/月/年', () => {
+  assert.equal(excel.normalize('2024/3/5'), '2024-03-05');
+  assert.equal(excel.normalize('03/15/2024'), '2024-03-15');
+  assert.equal(excel.normalize('13/02/2024'), '2024-02-13');
+  assert.equal(excel.normalize('03/04/2024'), '2024-04-03');
+  assert.equal(excel.normalize('2024-03-15 8:05'), '2024-03-15 08:05:00');
+  assert.equal(excel.normalize('1.2.3'), '1.2.3');
 });
