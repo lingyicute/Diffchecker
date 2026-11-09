@@ -236,3 +236,14 @@ test('image.invertAlign: 交换两张图后的对齐参数与原参数互为逆�
   assert.ok(Math.abs(back.x - p.x) < 1e-6 && Math.abs(back.y - p.y) < 1e-6);
   assert.equal(JSON.stringify(img.invertAlign({ ...al, fh: true }, A, B)), JSON.stringify({ dx: 0, dy: 0, rot: 0, scale: 1, fh: false, fv: false }));
 });
+
+test('decodeBuf: UTF-8 优先，其次严格的 GB18030，其余（如 Latin-1 / windows-1252）不再被误读成 GBK 乱码', () => {
+  for (const f of ['text-compare.html', 'excel-compare.html']) {
+    const code = between(script(f), 'function decodeBuf', f === 'text-compare.html' ? '\ntry{mergeOpts' : '\nasync function loadFile');
+    const ctx = { TextDecoder }; vm.createContext(ctx); vm.runInContext(code + ';this.decodeBuf=decodeBuf', ctx);
+    const dec = b => ctx.decodeBuf(Uint8Array.from(b).buffer);
+    assert.equal(dec(Buffer.from('héllo 中文', 'utf8')), 'héllo 中文', f);
+    assert.equal(dec([0xD6, 0xD0, 0xCE, 0xC4, 0x20, 0x74]), '中文 t', f); // GBK “中文 t”
+    assert.equal(dec(Buffer.from('café au lait\nnaïve', 'latin1')), 'café au lait\nnaïve', f);
+  }
+});
