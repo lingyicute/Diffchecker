@@ -234,7 +234,6 @@ test('image.invertAlign: 交换两张图后的对齐参数与原参数互为逆�
   const map = (p, a, b) => { const th = a.rot * Math.PI / 180, c = Math.cos(th), s = Math.sin(th), x = (p.x - b.w / 2) * a.scale, y = (p.y - b.h / 2) * a.scale; return { x: b.w / 2 + a.dx + c * x - s * y, y: b.h / 2 + a.dy + s * x + c * y }; };
   const p = { x: 50, y: 80 }, q = map(p, al, B), back = map(q, img.invertAlign(al, A, B), A);
   assert.ok(Math.abs(back.x - p.x) < 1e-6 && Math.abs(back.y - p.y) < 1e-6);
-  assert.equal(JSON.stringify(img.invertAlign({ ...al, fh: true }, A, B)), JSON.stringify({ dx: 0, dy: 0, rot: 0, scale: 1, fh: false, fv: false }));
 });
 
 test('decodeBuf: UTF-8 优先，其次严格的 GB18030，其余（如 Latin-1 / windows-1252）不再被误读成 GBK 乱码', () => {
@@ -479,4 +478,21 @@ test('excel.isoDateCell: t="d" 的 ISO 日期与日期序列号的显示一致',
   assert.equal(excel.isoDateCell('10:30:00'), excel.serialToDate(0.4375));
   assert.equal(excel.isoDateCell('not a date'), 'not a date');
   assert.equal(excel.isoDateCell(null), '');
+});
+
+test('image.invertAlign: 带翻转的对齐参数求逆后仍能把点映射回原位', () => {
+  // 与 drawAligned 相同的映射：以图片中心为原点，先翻转、再缩放、再旋转，最后平移
+  const map = (al, w, h, [x, y]) => {
+    const th = al.rot * Math.PI / 180, c = Math.cos(th), s = Math.sin(th);
+    const px = (x - w / 2) * al.scale * (al.fh ? -1 : 1), py = (y - h / 2) * al.scale * (al.fv ? -1 : 1);
+    return [w / 2 + al.dx + c * px - s * py, h / 2 + al.dy + s * px + c * py];
+  };
+  const r = lcg(5), a = { w: 640, h: 480 }, b = { w: 500, h: 700 };
+  for (const [fh, fv] of [[false, false], [true, false], [false, true], [true, true]]) for (let it = 0; it < 20; it++) {
+    const al = { dx: r() * 80 - 40, dy: r() * 80 - 40, rot: r() * 20 - 10, scale: 0.7 + r() * 0.6, fh, fv };
+    const inv = img.invertAlign(al, a, b);
+    assert.equal(inv.fh, fh); assert.equal(inv.fv, fv);
+    const p = [r() * b.w, r() * b.h], q = map(al, b.w, b.h, p), back = map(inv, a.w, a.h, q);
+    assert.ok(Math.abs(back[0] - p[0]) < 1e-6 && Math.abs(back[1] - p[1]) < 1e-6, `${fh},${fv}: ${back} != ${p}`);
+  }
 });
