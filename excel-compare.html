@@ -223,8 +223,8 @@ function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml')
     for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];sheet.grid={rows,cols};return sheet.grid};
   return {sheets,load,type:'xlsx'}}
 function parseCsv(text,delim){if(!delim){const first=(text.split(/\r\n|\n|\r/)[0]||'').replace(/"[^"]*"/g,'');delim=[',','\t',';','|'].map(d=>[d,first.split(d).length]).sort((a,b)=>b[1]-a[1])[0][0]}
-  const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}else if(ch==='"'&&cell==='')q=true;else if(ch===delim){row.push(cell);cell=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell=''}else cell+=ch}
-  if(cell!==''||row.length){row.push(cell);rows.push(row)}let cols=0;const grid=rows.map(r=>{cols=Math.max(cols,r.length);return r.map(v=>({v,f:null,d:false}))});
+  const rows=[];let row=[],cell='',q=false,quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}else if(ch==='"'&&cell===''){q=true;quoted=true}else if(ch===delim){row.push(cell);cell=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell='';quoted=false}else cell+=ch}
+  if(cell!==''||row.length||quoted){row.push(cell);rows.push(row)}let cols=0;/* quoted：文件以 "" 结尾的空字段行也要保留 */const grid=rows.map(r=>{cols=Math.max(cols,r.length);return r.map(v=>({v,f:null,d:false}))});
   const sheet={name:'Sheet1',target:'',grid:{rows:grid,cols}};return {sheets:[sheet],load:s=>s.grid,type:'csv'}}
 
 /* ===================== diff core (shared with text tool) ===================== */
