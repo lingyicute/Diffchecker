@@ -313,7 +313,7 @@ function compare(gA,gB,hA,hB){
   const stats={rowsDel:0,rowsIns:0,rowsChg:0,cells:0,colsIns:columns.filter(c=>c.st==='ins').length,colsDel:columns.filter(c=>c.st==='del').length};const colChanged=new Set();
   const result=outRows.map(e=>{const r={type:e.type,ai:e.ai,bi:e.bi,na:e.ai!=null?e.ai+startA:null,nb:e.bi!=null?e.bi+startB:null,cells:[]};let rowChg=false;
     for(let k=0;k<columns.length;k++){const c=columns[k];const a=e.ai!=null?cellsA[e.ai][k]:'',b=e.bi!=null?cellsB[e.bi][k]:'';let st='eq',segs=null;
-      if(e.type==='del')st='rdel';else if(e.type==='ins')st='rins';else if(c.ia<0||c.ib<0){st=c.ia<0?'cins':'cdel';if((a||b))colChanged.add(k)}else{const na=normA[e.ai][k],nb=normB[e.bi][k];if(na!==nb){st=!a?'cins':!b?'cdel':'chg';segs=st==='chg'?inlineDiff(a,b):null;stats.cells++;rowChg=true;colChanged.add(k)}}
+      if(e.type==='del'||e.type==='ins'){st=e.type==='del'?'rdel':'rins';if(a||b)colChanged.add(k)}/* 整行新增 / 删除的内容也属于改动：所在列不能被“隐藏未修改的列”藏起来 */else if(c.ia<0||c.ib<0){st=c.ia<0?'cins':'cdel';if((a||b))colChanged.add(k)}else{const na=normA[e.ai][k],nb=normB[e.bi][k];if(na!==nb){st=!a?'cins':!b?'cdel':'chg';segs=st==='chg'?inlineDiff(a,b):null;stats.cells++;rowChg=true;colChanged.add(k)}}
       r.cells.push({a,b,st,segs})}
     if(e.type==='del')stats.rowsDel++;else if(e.type==='ins')stats.rowsIns++;else if(e.type==='chg'){if(!rowChg)r.type='eq';else stats.rowsChg++}return r});
   for(const r of result)if(r.type==='chg')r.cells.forEach((c,k)=>{if(c.st!=='eq')colChanged.add(k)});
