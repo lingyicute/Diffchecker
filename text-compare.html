@@ -443,12 +443,12 @@ $('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;exportLayout=b.dataset.l;$('exportLayout').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 $('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(!lastDiff)return;const prevType=opts.type;opts.type=exportLayout;if(prevType!==exportLayout)render();
-  try{if(exportFmt==='pdf'){const th=document.documentElement.dataset.theme;document.documentElement.dataset.theme='light';try{window.print()}finally{document.documentElement.dataset.theme=th}}else if(exportFmt==='png')await exportPng();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t('exportFailed'))}
+  try{if(exportFmt==='pdf'){const th=document.documentElement.dataset.theme;document.documentElement.dataset.theme='light';try{window.print()}finally{document.documentElement.dataset.theme=th}}else if(exportFmt==='png')await exportPng();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile(prevType)}catch(e){console.error(e);notice(t('exportFailed'))}
   finally{if(prevType!==exportLayout){opts.type=prevType;render()}}};
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(fileNames.A,'original')+'-vs-'+stem(fileNames.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
-function exportDiffFile(){const j={type:'text',version:1,left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B,options:{...opts},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
+function exportDiffFile(type=opts.type){const j={type:'text',version:1,left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B,options:{...opts,type},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
 /* rows for tabular exports (pairs of left/right lines) */
 function pairedRows(){const d=lastDiff,out=[];for(const b of d.blocks){if(b.type==='eq')for(const r of b.rows)out.push({l:r.l,r:r.r,changed:false});else{const n=Math.max(b.del.length,b.ins.length);for(let k=0;k<n;k++)out.push({l:b.del[k]??null,r:b.ins[k]??null,changed:true})}}return out}
 async function exportPng(){
