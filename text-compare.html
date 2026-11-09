@@ -450,7 +450,9 @@ function loadFile(f,side){const r=new FileReader();r.onerror=()=>notice(t('readF
     if(j&&typeof j==='object'){if(j.type&&j.type!=='text'){notice(t('wrongFile'));return}
       txtA.value=typeof j.left==='string'?j.left:'';txtB.value=typeof j.right==='string'?j.right:'';fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}}
   (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta();notice(t('loaded',{name:f.name}));if(opts.realtime)run()};r.readAsArrayBuffer(f)}
-for(const [card,side] of [[$('cardA'),'A'],[$('cardB'),'B']]){card.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('drag')});card.addEventListener('drop',e=>{e.preventDefault();card.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
+// 只接管“文件”拖放：把选中的文字拖进文本框时要保留浏览器默认的插入行为（无条件 preventDefault 会让文字拖放失效）
+const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
+for(const [card,side] of [[$('cardA'),'A'],[$('cardB'),'B']]){card.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();card.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('drag')});card.addEventListener('drop',e=>{card.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
 /* toolbar segments */
 $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.type=b.dataset.type;saveOpts();syncUI();render()};
 $('levelSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.level=b.dataset.level;saveOpts();syncUI();render()};
@@ -569,7 +571,7 @@ const EX_B=EX_A.replace('AFOP-REV-1.8','AFOP-REV-1.9').replace('ATLAS-BUILD-1047
 $('exampleBtn').onclick=()=>{txtA.value=EX_A;txtB.value=EX_B;fileNames={A:'atlas-field-operations-spec-v1.txt',B:'atlas-field-operations-spec-v2.txt'};updateMeta();run()};
 
 /* init */
-['dragover','drop'].forEach(n=>window.addEventListener(n,e=>e.preventDefault()));
+['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));// 拖入文件时不让浏览器直接打开它而丢掉当前内容
 /* Esc 关闭侧栏与弹窗 */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;$('panel').classList.remove('open');$('exportModal').classList.remove('open')});
 applyTheme();syncUI(true);applyLang();updateMeta();
