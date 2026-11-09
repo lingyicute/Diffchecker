@@ -292,8 +292,9 @@ function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20
 function trimRows(rows){let n=rows.length;while(n>0&&!(rows[n-1]||[]).some(c=>c&&(String(c.v).trim()!==''||c.f)))n--;return rows.slice(0,n)}
 function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns ordered entries {type:'del'|'ins'|'chg',ai,bi}
   const out=[];if(!delIdx.length||!insIdx.length){delIdx.forEach(i=>out.push({type:'del',ai:i}));insIdx.forEach(j=>out.push({type:'ins',bi:j}));return out}
-  if(delIdx.length*insIdx.length>2500){const n=Math.max(delIdx.length,insIdx.length);for(let k=0;k<n;k++){if(k<delIdx.length&&k<insIdx.length)out.push({type:'chg',ai:delIdx[k],bi:insIdx[k]});else if(k<delIdx.length)out.push({type:'del',ai:delIdx[k]});else out.push({type:'ins',bi:insIdx[k]})}return out}
   const sim=(i,j)=>{const a=cellsA[i],b=cellsB[j];const n=Math.max(a.length,b.length);if(!n)return 1;let eq=0,nonEmpty=0;for(let k=0;k<n;k++){const x=a[k]||'',y=b[k]||'';if(x||y)nonEmpty++;if(x===y&&(x||y))eq++}return nonEmpty?eq/nonEmpty:1};
+  // 改动块很大时不做全量相似度配对，退化为按位置配对；但位置相同的两行仍要足够相似才算“修改”，否则分别记为删除与新增
+  if(delIdx.length*insIdx.length>2500){const n=Math.max(delIdx.length,insIdx.length);for(let k=0;k<n;k++){if(k<delIdx.length&&k<insIdx.length){if(sim(delIdx[k],insIdx[k])>=.34)out.push({type:'chg',ai:delIdx[k],bi:insIdx[k]});else{out.push({type:'del',ai:delIdx[k]});out.push({type:'ins',bi:insIdx[k]})}}else if(k<delIdx.length)out.push({type:'del',ai:delIdx[k]});else out.push({type:'ins',bi:insIdx[k]})}return out}
   const cand=[];for(const i of delIdx)for(const j of insIdx){const s=sim(i,j);if(s>=.34)cand.push([s,i,j])}cand.sort((p,q)=>q[0]-p[0]||p[1]-q[1]||p[2]-q[2]);
   const usedA=new Set(),usedB=new Set(),pairs=new Map();for(const [s,i,j] of cand){if(usedA.has(i)||usedB.has(j))continue;usedA.add(i);usedB.add(j);pairs.set(i,j)}
   // 只保留 B 侧顺序与 A 侧一致的最长配对子序列：交叉的配对会让 B 行的显示顺序错乱
