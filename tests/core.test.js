@@ -103,3 +103,10 @@ test('excel.parseCsv: 字段中间的引号按字面处理，分隔符识别忽�
   assert.deepEqual(g('a;b\r1;2'), [['a', 'b'], ['1', '2']]);
   assert.deepEqual(g('a,"x ""q"" y",c'), [['a', 'x "q" y', 'c']]);
 });
+
+test('excel.serialToDate: 1900 系统中 1900-03-01 之前的序列号（Excel 的闰年错误）', () => {
+  assert.equal(excel.serialToDate(1), '1900-01-01');
+  assert.equal(excel.serialToDate(59), '1900-02-28');
+  assert.equal(excel.serialToDate(61), '1900-03-01');
+  assert.equal(excel.serialToDate(1, true), '1904-01-02');
+});
