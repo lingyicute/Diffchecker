@@ -104,7 +104,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
 .hidden{display:none!important}
 #report{display:none}
 @media (max-width:1000px){.inputs{grid-template-columns:1fr}.work{grid-template-columns:1fr}.sidebar{height:auto;max-height:420px}.offline-navigation{gap:14px;padding:0 14px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px}}
-@media print{body>*{display:none!important}#report{display:block!important;font-family:system-ui,sans-serif;color:#000}#report h1{font-size:18px}#report h2{font-size:14px;margin:18px 0 6px;page-break-after:avoid}#report img{max-width:100%;max-height:85vh;display:block;border:1px solid #ccc}#report .srcs{display:grid;grid-template-columns:1fr 1fr;gap:12px}#report .crops{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}#report .crop{page-break-inside:avoid;border:1px solid #ddd;padding:6px;font-size:11px}#report .crop img{max-height:220px;margin:4px auto}#report table{border-collapse:collapse;font-size:11px}#report td,#report th{border:1px solid #ccc;padding:3px 6px}}
+@media print{html,body{background:#fff!important;color:#000!important}body>*{display:none!important}#report{display:block!important;font-family:system-ui,sans-serif;color:#000}#report h1{font-size:18px}#report h2{font-size:14px;margin:18px 0 6px;page-break-after:avoid}#report img{max-width:100%;max-height:85vh;display:block;border:1px solid #ccc}#report .srcs{display:grid;grid-template-columns:1fr 1fr;gap:12px}#report .crops{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}#report .crop{page-break-inside:avoid;border:1px solid #ddd;padding:6px;font-size:11px}#report .crop img{max-height:220px;margin:4px auto}#report table{border-collapse:collapse;font-size:11px}#report td,#report th{border:1px solid #ccc;padding:3px 6px}}
 </style>
 </head>
 <body>
@@ -290,7 +290,7 @@ $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.mode=
 $('fadeRange').oninput=e=>{S.fade=e.target.value/100;$('fadeVal').textContent=e.target.value+'%';if(mainCanvas){const cx=mainCanvas.getContext('2d');cx.clearRect(0,0,S.W,S.H);cx.drawImage(baseA,0,0);cx.globalAlpha=S.fade;cx.drawImage(baseB,0,0);cx.globalAlpha=1}};
 $('flickRange').oninput=e=>{S.flick=2100-+e.target.value;if(S.mode==='flicker'){clearInterval(flickTimer);flickTimer=setInterval(()=>{flickState^=1;redrawFlicker()},S.flick)}};
 const hold=(side,on)=>{holdSide=on?side:0;redrawFlicker()};
-for(const [id,side] of [['holdA',1],['holdB',2]]){const b=$(id);b.onpointerdown=()=>hold(side,true);b.onpointerup=b.onpointerleave=()=>hold(side,false)}
+for(const [id,side] of [['holdA',1],['holdB',2]]){const b=$(id);b.onpointerdown=()=>hold(side,true);b.onpointerup=b.onpointerleave=b.onpointercancel=()=>hold(side,false)}
 document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.target.matches('input,textarea,select'))return;if(e.key==='1')hold(1,true);if(e.key==='2')hold(2,true)});document.addEventListener('keyup',e=>{if(e.key==='1'||e.key==='2')hold(0,false)});window.addEventListener('blur',()=>hold(0,false));
 $('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(window._hlt);window._hlt=setTimeout(renderStage,60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
