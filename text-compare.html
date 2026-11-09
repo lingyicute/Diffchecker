@@ -91,7 +91,7 @@ mark.i{background:var(--ins-hl);color:var(--ins-fg);border-radius:2px;padding:1p
 .preset-accessible mark.d{background:#ffd9b3;color:#5c2d00}.preset-accessible mark.i{background:#bcd8ff;color:#002b63}
 .preset-accessible td.code.del{background:rgba(255,160,60,.14)}.preset-accessible td.code.ins{background:rgba(60,140,255,.14)}
 tr.collapsed td{background:var(--bg2);color:var(--fg2);text-align:center;font-family:system-ui,sans-serif;font-size:12px;padding:4px;cursor:pointer;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-tr.collapsed td:hover{color:var(--accent2)}
+tr.collapsed td:hover,tr.collapsed:focus-visible td{color:var(--accent2)}
 tr.focus td.code{box-shadow:inset 3px 0 0 var(--accent)}
 .k{color:var(--syn-k)}.s{color:var(--syn-s)}.n{color:var(--syn-n)}.c{color:var(--syn-c);font-style:italic}.tg{color:var(--syn-t)}.at{color:var(--syn-a)}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
@@ -221,7 +221,7 @@ Object.assign(I18N.en,{syntax:'Syntax highlighting',none:'None',auto:'Auto',phA:
 Object.assign(I18N.zh,{none:'无',auto:'自动',phA:'在此粘贴或输入原始文本…',phB:'在此粘贴或输入修改后的文本…',prevTip:'上一处改动',nextTip:'下一处改动',remove:'删除',readFailed:'无法读取 {name}',wrongFile:'此 .diffchecker 文件不是由文本对比工具生成的',xlOrigLine:'原始行号',xlOrigText:'原始文本',xlChgLine:'修改后行号',xlChgText:'修改后文本',xlSheet:'文本对比',binaryFile:'{name} 看起来是二进制文件，无法按文本对比',exportTooTall:'对比结果太长，无法渲染成单张 PNG。请开启“隐藏未修改的行”，或改为导出 PDF / Excel。'});
 let lang=lsGet('offline-lang');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n)});document.getElementById('langBtn').textContent=lang==='en'?'中文':'English';document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.getElementById('rules').querySelectorAll('input').forEach(i=>i.placeholder=t('rulePh'));document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.placeholder=t(e.dataset.i18nPh));document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.getElementById('rules').querySelectorAll('button').forEach(b=>b.title=t('remove'));document.title=t('hero.title')+' — Diffchecker';updateMeta();document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});document.querySelectorAll('.modal[role="dialog"]').forEach(m=>{const h=m.querySelector('h3');if(h&&h.textContent)m.setAttribute('aria-label',h.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}if(lastDiff)render()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n)});document.getElementById('langBtn').textContent=lang==='en'?'中文':'English';document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.getElementById('rules').querySelectorAll('input').forEach(i=>i.placeholder=t('rulePh'));document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);e.setAttribute('aria-label',e.placeholder)});document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.getElementById('rules').querySelectorAll('button').forEach(b=>b.title=t('remove'));document.title=t('hero.title')+' — Diffchecker';updateMeta();document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});document.querySelectorAll('.modal[role="dialog"]').forEach(m=>{const h=m.querySelector('h3');if(h&&h.textContent)m.setAttribute('aria-label',h.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}if(lastDiff)render()}
 let theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
 function applyTheme(){document.documentElement.dataset.theme=theme;document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 document.getElementById('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
@@ -410,7 +410,7 @@ function render(){
   const unified=opts.type==='unified';let h=`<table class="diff ${opts.noWrap?'nowrap':''}">`;
   const cell=(side,idx,segs)=>{const txt=side==='l'?d.A[idx]:d.B[idx],c=(side==='l'?hlA:hlB)?.[idx]||null;return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
   for(const r of rows){
-    if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}</td></tr>`;continue}
+    if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}" tabindex="0" role="button"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}</td></tr>`;continue}
     if(r.kind==='eq'){const a=d.A[r.l];
       if(unified)h+=`<tr><td class="num">${r.l+1}</td><td class="num">${r.r+1}</td><td class="sign"></td><td class="code">${cell('l',r.l)}</td></tr>`;
       else h+=`<tr class="split"><td class="num">${r.l+1}</td><td class="code">${cell('l',r.l)}</td><td class="num">${r.r+1}</td><td class="code">${cell('r',r.r)}</td></tr>`;continue}
@@ -424,7 +424,7 @@ function render(){
     }
   }
   scroll.innerHTML=h+'</table>';scroll.dataset.changes=changeNo;{const fe=focusIdx>=0&&$('focus-'+focusIdx);if(fe)fe.classList.add('focus')}
-  scroll.querySelectorAll('tr.collapsed').forEach(tr=>tr.onclick=()=>{expanded.add(+tr.dataset.bi);render()});
+  scroll.querySelectorAll('tr.collapsed').forEach(tr=>{const open=()=>{expanded.add(+tr.dataset.bi);render()};tr.onclick=open;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}});// 折叠条同样可用键盘展开
 }
 function goChange(dir){const n=+$('diffScroll').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
