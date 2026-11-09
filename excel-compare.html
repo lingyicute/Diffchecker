@@ -188,10 +188,10 @@ function inflate(src,expected){let pos=0,bb=0,bc=0;/* 压缩头里的 usize 可�
     else throw new Error(t('badZip'))}while(!final);
   return out.subarray(0,op)}
 function readZip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf);let eocd=-1;for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}}if(eocd<0)throw new Error(t('badZip'));
-  const count=dv.getUint16(eocd+10,true);let p=dv.getUint32(eocd+16,true);const files={};const dec=new TextDecoder();
+  const count=dv.getUint16(eocd+10,true);let p=dv.getUint32(eocd+16,true);const files={},lower={};const dec=new TextDecoder();
   for(let i=0;i<count;i++){if(dv.getUint32(p,true)!==0x02014b50)break;const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),usize=dv.getUint32(p+24,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);const name=dec.decode(u8.subarray(p+46,p+46+nl));
-    files[name]={method,csize,usize,lo};p+=46+nl+el+cl}
-  return {get(name){const f=files[name];if(!f)return null;const nl=dv.getUint16(f.lo+26,true),el=dv.getUint16(f.lo+28,true),start=f.lo+30+nl+el;const data=u8.subarray(start,start+f.csize);return f.method===0?data:f.method===8?inflate(data,f.usize):(()=>{throw new Error('unsupported compression '+f.method)})()},text(name){const d=this.get(name);return d?dec.decode(d):null},names:Object.keys(files)}}
+    files[name]={method,csize,usize,lo};lower[name.toLowerCase()]=name;p+=46+nl+el+cl}
+  /* OPC 部件名不区分大小写：rels 里写的大小写与 ZIP 中实际文件名不一致时也要能找到 */return {get(name){const f=files[name]||files[lower[String(name).toLowerCase()]];if(!f)return null;const nl=dv.getUint16(f.lo+26,true),el=dv.getUint16(f.lo+28,true),start=f.lo+30+nl+el;const data=u8.subarray(start,start+f.csize);return f.method===0?data:f.method===8?inflate(data,f.usize):(()=>{throw new Error('unsupported compression '+f.method)})()},text(name){const d=this.get(name);return d?dec.decode(d):null},names:Object.keys(files)}}
 
 /* ===================== XLSX parsing ===================== */
 const DATE_IDS=new Set([14,15,16,17,18,19,20,21,22,27,28,29,30,31,32,33,34,35,36,45,46,47,50,51,52,53,54,55,56,57,58]);
@@ -216,14 +216,18 @@ function isoDateCell(raw){const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)
 const isZipSig=u=>u[0]===0x50&&u[1]===0x4B&&((u[2]===3&&u[3]===4)||(u[2]===5&&u[3]===6)||(u[2]===7&&u[3]===8));
 // OOXML 部件可能使用带前缀的命名空间（<x:sheet>、<x:row>…），getElementsByTagName 只按限定名匹配，会把这类文件读成空工作簿；统一按本地名匹配
 const els=(n,name)=>n.getElementsByTagNameNS('*',name);
-function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);
+function parseXlsx(buf){const z=readZip(buf);
+  /* 按 OPC 关系定位各部件，而不是写死 xl/workbook.xml、xl/sharedStrings.xml 等路径：部分生成器使用别的文件名或目录 */
+  const resolve=(dir,tg)=>{tg=String(tg||'').replace(/\\/g,'/');const segs=(tg.startsWith('/')?tg.slice(1):dir&&tg.startsWith(dir)?tg:dir+tg).split('/'),out=[];for(const p of segs){if(!p||p==='.')continue;if(p==='..')out.pop();else out.push(p)}return out.join('/')};
+  const relsOf=path=>{const i=path.lastIndexOf('/')+1,dir=path.slice(0,i),x=z.text(dir+'_rels/'+path.slice(i)+'.rels'),m=[];if(x)for(const r of els(xml(x),'Relationship'))if(r.getAttribute('TargetMode')!=='External')m.push({id:r.getAttribute('Id'),type:r.getAttribute('Type')||'',target:resolve(dir,r.getAttribute('Target'))});return m};
+  const wbPath=(relsOf('').find(r=>/\/officeDocument$/.test(r.type))||{}).target||'xl/workbook.xml',wbDir=wbPath.slice(0,wbPath.lastIndexOf('/')+1);
+  const wbx=z.text(wbPath)||z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);const wbRels=relsOf(wbPath),relOf=type=>(wbRels.find(r=>r.type.endsWith('/'+type))||{}).target;
   const d1904=/^(1|true)$/i.test(els(wb,'workbookPr')[0]?.getAttribute('date1904')||'');
-  const rels={};const rx=z.text('xl/_rels/workbook.xml.rels');if(rx)for(const r of els(xml(rx),'Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
-  const sst=[];const sx=z.text('xl/sharedStrings.xml');if(sx){for(const si of els(xml(sx),'si')){let s='';for(const tn of els(si,'t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(s)}}
-  const dateStyles=new Set(),elapsedStyles=new Set(),elapsedIds=new Set();const stx=z.text('xl/styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of els(st,'numFmt')){const fc=nf.getAttribute('formatCode')||'',nid=+nf.getAttribute('numFmtId');if(/\[(?:h+|m+|s+)\]/i.test(fc.replace(/"[^"]*"/g,'')))elapsedIds.add(nid);const code=fc.replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[nid]=elapsedIds.has(nid)||/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
+  const rels={};for(const r of wbRels)rels[r.id]=r.target;
+  const sst=[];const sx=z.text(relOf('sharedStrings')||wbDir+'sharedStrings.xml');if(sx){for(const si of els(xml(sx),'si')){let s='';for(const tn of els(si,'t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(s)}}
+  const dateStyles=new Set(),elapsedStyles=new Set(),elapsedIds=new Set();const stx=z.text(relOf('styles')||wbDir+'styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of els(st,'numFmt')){const fc=nf.getAttribute('formatCode')||'',nid=+nf.getAttribute('numFmtId');if(/\[(?:h+|m+|s+)\]/i.test(fc.replace(/"[^"]*"/g,'')))elapsedIds.add(nid);const code=fc.replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[nid]=elapsedIds.has(nid)||/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
     const xfs=els(st,'cellXfs')[0];if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i);if(id===46||elapsedIds.has(id))elapsedStyles.add(i)})}}
-  const sheets=[];for(const sh of els(wb,'sheet')){const rid=sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sh.getAttribute('r:id');let target=rels[rid]||'';
-    const segs=(target.startsWith('/')?target.slice(1):target.startsWith('xl/')?target:'xl/'+target).split('/'),norm=[];for(const p of segs){if(!p||p==='.')continue;if(p==='..')norm.pop();else norm.push(p)}target=norm.join('/');
+  const sheets=[];for(const sh of els(wb,'sheet')){/* r:id 的命名空间在 Transitional 与 Strict（purl.oclc.org）两种格式下不同，按本地名 + 命名空间后缀匹配 */const rid=([...sh.attributes].find(a=>a.localName==='id'&&/\/relationships$/.test(a.namespaceURI||''))||{}).value||sh.getAttribute('r:id');const target=rels[rid]||'';
     sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
   if(!sheets.length)throw new Error(t('badZip'));
   const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];const sharedF=Object.create(null);let cols=0;
