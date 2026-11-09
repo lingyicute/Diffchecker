@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,isZipSig,pairBlock');
+  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock');
 })();
 
 const inflate = (() => {
@@ -163,4 +163,11 @@ test('excel.inflate: 与 zlib 的 deflate 输出逐字节一致（存储 / 固�
     const z = zlib.deflateRawSync(d, { level, strategy });
     assert.ok(Buffer.from(inflate(new Uint8Array(z))).equals(d), `level ${level} strategy ${strategy} size ${d.length}`);
   }
+});
+
+test('excel.serialToElapsed: 时长格式的小时数可以超过 24，负值带负号', () => {
+  assert.equal(excel.serialToElapsed(1.25), '30:00:00');
+  assert.equal(excel.serialToElapsed(0.5), '12:00:00');
+  assert.equal(excel.serialToElapsed(100 / 24 + 61 / 86400), '100:01:01');
+  assert.equal(excel.serialToElapsed(-0.5), '-12:00:00');
 });
