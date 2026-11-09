@@ -273,3 +273,14 @@ test('makeNorm: 忽略规则与正文使用相同的引号 / 小写规范化', (
   const diff = text.computeDiff('Foo bar', 'baz', { rules: ['Foo '], lower: true });
   assert.equal(diff.nDel + diff.nIns, 2);
 });
+
+test('excel.compare: 整行新增 / 删除的内容所在列算作有改动（隐藏未修改的列时不能丢数据）', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  Object.assign(excel.opts, { mode: 'table', sortRows: false, matchHeaders: true });
+  const add = excel.compare(G([['K', 'V', 'W'], [1, 2, 3]]), G([['K', 'V', 'W'], [1, 2, 3], [4, 5, '']]), 0, 0);
+  assert.deepEqual([...add.colChanged].sort(), [0, 1]);
+  const del = excel.compare(G([['K', 'V', 'W'], [1, 2, 3], ['', '', 9]]), G([['K', 'V', 'W'], [1, 2, 3]]), 0, 0);
+  assert.deepEqual([...del.colChanged], [2]);
+  const same = excel.compare(G([['K', 'V'], [1, 2]]), G([['K', 'V'], [1, 2]]), 0, 0);
+  assert.equal(same.colChanged.size, 0);
+});
