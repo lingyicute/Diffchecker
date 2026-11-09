@@ -383,10 +383,11 @@ function render(){
   $('headA').textContent=fileNames.A;$('headB').textContent=fileNames.B;
   $('diffWrap').className='diff-wrap preset-'+opts.preset;$('diffHead').classList.toggle('unified',opts.type==='unified');
   if(d.nDel===0&&d.nIns===0){scroll.dataset.changes=0;scroll.innerHTML=`<div class="identical"><div class="ic">✓</div><h3>${esc(t('identicalTitle'))}</h3><p>${esc(t('identicalMsg'))}</p></div>`;return}
-  const synKey=opts.syntax==='auto'?(detectSyntax(d.A.join('\n'))||detectSyntax(d.B.join('\n'))):opts.syntax;
+  const cached=d.hl&&d.hl.opt===opts.syntax;// 高亮结果按“语法选项”缓存在本次对比结果上：展开折叠块、切换视图 / 粒度时不必重新解析整篇文本
+  const synKey=cached?null:opts.syntax==='auto'?(detectSyntax(d.A.join('\n'))||detectSyntax(d.B.join('\n'))):opts.syntax;
   // 对整篇文本一次性着色，再按行切片，这样跨行的注释 / 字符串也能正确高亮
   const docCls=lines=>{if(!synKey)return null;const cls=synClasses(lines.join('\n'),synKey);if(!cls)return null;const out=[];let p=0;for(const l of lines){out.push(cls.slice(p,p+l.length));p+=l.length+1}return out};
-  const hlA=docCls(d.A),hlB=docCls(d.B);
+  if(!cached)d.hl={opt:opts.syntax,A:docCls(d.A),B:docCls(d.B)};const hlA=d.hl.A,hlB=d.hl.B;
   const rows=[];let changeNo=0;
   d.blocks.forEach((b,bi)=>{
     if(b.type==='eq'){
