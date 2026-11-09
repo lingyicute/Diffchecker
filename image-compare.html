@@ -429,6 +429,8 @@ window.addEventListener('afterprint',()=>{$('report').innerHTML=''});
 window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('hidden'))fit()});
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
+/* Esc 关闭弹窗（对齐提示等同于“跳过”） */
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('promptModal').classList.contains('open')){$('pmSkip').click();return}$('alignModal').classList.remove('open');$('exportModal').classList.remove('open')});
 applyTheme();applyLang();
 </script>
 </body>
