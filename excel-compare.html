@@ -272,6 +272,11 @@ function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns order
   const sim=(i,j)=>{const a=cellsA[i],b=cellsB[j];const n=Math.max(a.length,b.length);if(!n)return 1;let eq=0,nonEmpty=0;for(let k=0;k<n;k++){const x=a[k]||'',y=b[k]||'';if(x||y)nonEmpty++;if(x===y&&(x||y))eq++}return nonEmpty?eq/nonEmpty:1};
   const cand=[];for(const i of delIdx)for(const j of insIdx){const s=sim(i,j);if(s>=.34)cand.push([s,i,j])}cand.sort((p,q)=>q[0]-p[0]||p[1]-q[1]||p[2]-q[2]);
   const usedA=new Set(),usedB=new Set(),pairs=new Map();for(const [s,i,j] of cand){if(usedA.has(i)||usedB.has(j))continue;usedA.add(i);usedB.add(j);pairs.set(i,j)}
+  // 只保留 B 侧顺序与 A 侧一致的最长配对子序列：交叉的配对会让 B 行的显示顺序错乱
+  {const pos=new Map(insIdx.map((v,p)=>[v,p])),ps=delIdx.filter(i=>pairs.has(i)),js=ps.map(i=>pos.get(pairs.get(i))),tails=[],tIdx=[],prev=[];
+    for(let k=0;k<js.length;k++){let lo=0,hi=tails.length;while(lo<hi){const m=(lo+hi)>>1;if(tails[m]<js[k])lo=m+1;else hi=m}tails[lo]=js[k];tIdx[lo]=k;prev[k]=lo?tIdx[lo-1]:-1}
+    const keepK=new Set();for(let k=tIdx[tails.length-1];k!=null&&k>=0;k=prev[k])keepK.add(k);
+    ps.forEach((i,k)=>{if(!keepK.has(k)){usedB.delete(pairs.get(i));pairs.delete(i)}})}
   let bp=0;const insSorted=insIdx.slice(),posB=new Map(insIdx.map((v,p)=>[v,p]));for(const i of delIdx){if(pairs.has(i)){const j=pairs.get(i);while(bp<insSorted.length&&posB.get(insSorted[bp])<posB.get(j)){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}out.push({type:'chg',ai:i,bi:j});if(bp<insSorted.length&&insSorted[bp]===j)bp++}else out.push({type:'del',ai:i})}
   while(bp<insSorted.length){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}return out}
 function compare(gA,gB,hA,hB){

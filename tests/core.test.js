@@ -117,3 +117,16 @@ test('excel.isZipSig: 以 PK 开头的 CSV 不会被当作 xlsx', () => {
   assert.equal(excel.isZipSig(Buffer.from('PK,name\n1,a')), false);
   assert.equal(excel.isZipSig(Buffer.from('a,b')), false);
 });
+
+test('excel.pairBlock: 配对不交叉，A / B 两侧的行序都保持原有顺序且各出现一次', () => {
+  const A = [['a', 'b', 'c'], ['x', 'y', 'z']], B = [['x', 'y', 'q'], ['a', 'b', 'd']];
+  const out = excel.pairBlock([0, 1], [0, 1], null, null, A, B);
+  assert.deepEqual(Array.from(out.filter(e => e.bi != null), e => e.bi), [0, 1]);
+  for (let it = 0; it < 1500; it++) {
+    const na = rnd(12), nb = rnd(12), mk = n => Array.from({ length: n }, () => Array.from({ length: 3 }, () => String(rnd(3))));
+    const ca = mk(na), cb = mk(nb), da = ca.map((_, i) => i), db = cb.map((_, i) => i);
+    const r = excel.pairBlock(da, db, null, null, ca, cb);
+    const as = Array.from(r.filter(e => e.ai != null), e => e.ai), bs = Array.from(r.filter(e => e.bi != null), e => e.bi);
+    assert.deepEqual(as, da); assert.deepEqual(bs, db);
+  }
+});
