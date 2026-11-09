@@ -331,11 +331,11 @@ function computeDiff(textA,textB,o){
 
 /* ===================== syntax highlighting ===================== */
 const SYN={
- json:{rx:/("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,map:(m)=>m[1]?(m[2]?'at':'s'):m[3]?'n':'k'},
+ json:{rx:/("(?:\\.|[^"\\\n])*")(\s*:)?|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,map:(m)=>m[1]?(m[2]?'at':'s'):m[3]?'n':'k'},
  js:{rx:/(\/\/.*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\b(0x[\da-fA-F]+|\d+\.?\d*(?:e[+-]?\d+)?)\b|\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|import|export|from|default|try|catch|finally|throw|typeof|instanceof|in|of|async|await|yield|this|super|null|undefined|true|false|interface|type|enum|implements|public|private|protected|readonly|static|void|delete)\b/g,map:m=>m[1]?'c':m[2]?'s':m[3]?'n':'k'},
  py:{rx:/(#.*)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|\b(\d+\.?\d*)\b|\b(def|class|return|if|elif|else|for|while|in|not|and|or|is|None|True|False|import|from|as|try|except|finally|raise|with|lambda|yield|pass|break|continue|global|nonlocal|assert|del|async|await|self)\b/g,map:m=>m[1]?'c':m[2]?'s':m[3]?'n':'k'},
- xml:{rx:/(<!--[\s\S]*?-->)|("[^"]*"|'[^']*')|(<\/?[\w:.-]+|\/?>)|\s([\w:.-]+)(?==)/g,map:m=>m[1]?'c':m[2]?'s':m[3]?'tg':'at'},
- css:{rx:/(\/\*[\s\S]*?\*\/)|("[^"]*"|'[^']*')|(#[\da-fA-F]{3,8}\b|-?\d+\.?\d*(?:px|em|rem|%|vh|vw|s|ms|deg)?)|([.#]?[\w-]+)(?=\s*\{)|([\w-]+)(?=\s*:)/g,map:m=>m[1]?'c':m[2]?'s':m[3]?'n':m[4]?'tg':'at'},
+ xml:{rx:/(<!--[\s\S]*?-->)|("[^"\n]*"|'[^'\n]*')|(<\/?[\w:.-]+|\/?>)|\s([\w:.-]+)(?==)/g,map:m=>m[1]?'c':m[2]?'s':m[3]?'tg':'at'},
+ css:{rx:/(\/\*[\s\S]*?\*\/)|("[^"\n]*"|'[^'\n]*')|(#[\da-fA-F]{3,8}\b|-?\d+\.?\d*(?:px|em|rem|%|vh|vw|s|ms|deg)?)|([.#]?[\w-]+)(?=\s*\{)|([\w-]+)(?=\s*:)/g,map:m=>m[1]?'c':m[2]?'s':m[3]?'n':m[4]?'tg':'at'},
  sql:{rx:/(--.*|\/\*[\s\S]*?\*\/)|('(?:''|[^'])*')|\b(\d+\.?\d*)\b|\b(SELECT|FROM|WHERE|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AND|OR|NOT|NULL|AS|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|UNION|DISTINCT|PRIMARY|KEY|INDEX|VIEW|CASE|WHEN|THEN|ELSE|END|IN|EXISTS|BETWEEN|LIKE|IS|COUNT|SUM|AVG|MIN|MAX)\b/gi,map:m=>m[1]?'c':m[2]?'s':m[3]?'n':'k'}};
 function detectSyntax(s){s=s.trim();if(/^[\[{][\s\S]*[\]}]$/.test(s)){try{JSON.parse(s);return 'json'}catch(e){}}if(/^<\?xml|^<!doctype|^<[a-z!]/i.test(s))return 'xml';if(/^\s*(def|class)\s+\w+.*:\s*$|^\s*elif\b|\bself\.|^\s*print\(|^\s*(from\s+[\w.]+\s+)?import\s+[\w.]+(\s*,\s*[\w.]+)*(\s+as\s+\w+)?\s*$/m.test(s))return 'py';if(/\b(?:const|let|var)\s+[\w$]+\s*[=;:,]|\bfunction\s*[\w$]*\s*\(|=>|\bimport\b[^\n]*\bfrom\s+['"]|^\s*export\s+(?:default|const|function|class)\b/m.test(s))return 'js';if(/\bSELECT\b[\s\S]*\bFROM\b/i.test(s))return 'sql';if(/[.#]?[\w-]+\s*\{[^}]*:[^}]*\}/.test(s))return 'css';return ''}
 function synClasses(line,langKey){const def=SYN[langKey];if(!def)return null;const cls=new Array(line.length).fill('');def.rx.lastIndex=0;let m;while((m=def.rx.exec(line))){if(!m[0])break;const c=def.map(m);const st=m.index,en=st+m[0].length;for(let i=st;i<en;i++)cls[i]=c}return cls}
@@ -361,8 +361,10 @@ function render(){
   $('headA').textContent=fileNames.A;$('headB').textContent=fileNames.B;
   $('diffWrap').className='diff-wrap preset-'+opts.preset;$('diffHead').classList.toggle('unified',opts.type==='unified');
   if(d.nDel===0&&d.nIns===0){scroll.dataset.changes=0;scroll.innerHTML=`<div class="identical"><div class="ic">✓</div><h3>${esc(t('identicalTitle'))}</h3><p>${esc(t('identicalMsg'))}</p></div>`;return}
-  const synKey=opts.syntax==='auto'?(detectSyntax(txtA.value)||detectSyntax(txtB.value)):opts.syntax;
-  const clsA=l=>synKey?synClasses(l,synKey):null;
+  const synKey=opts.syntax==='auto'?(detectSyntax(d.A.join('\n'))||detectSyntax(d.B.join('\n'))):opts.syntax;
+  // 对整篇文本一次性着色，再按行切片，这样跨行的注释 / 字符串也能正确高亮
+  const docCls=lines=>{if(!synKey)return null;const cls=synClasses(lines.join('\n'),synKey);if(!cls)return null;const out=[];let p=0;for(const l of lines){out.push(cls.slice(p,p+l.length));p+=l.length+1}return out};
+  const hlA=docCls(d.A),hlB=docCls(d.B);
   const rows=[];let changeNo=0;
   const CTX=3;
   d.blocks.forEach((b,bi)=>{
@@ -382,14 +384,14 @@ function render(){
     }
   });
   const unified=opts.type==='unified';let h=`<table class="diff ${opts.noWrap?'nowrap':''}">`;
-  const cell=(txt,cls,segs,side)=>{const c=clsA(txt);return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
+  const cell=(side,idx,segs)=>{const txt=side==='l'?d.A[idx]:d.B[idx],c=(side==='l'?hlA:hlB)?.[idx]||null;return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
   for(const r of rows){
     if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}</td></tr>`;continue}
     if(r.kind==='eq'){const a=d.A[r.l];
-      if(unified)h+=`<tr><td class="num">${r.l+1}</td><td class="num">${r.r+1}</td><td class="sign"></td><td class="code">${cell(a)}</td></tr>`;
-      else h+=`<tr class="split"><td class="num">${r.l+1}</td><td class="code">${cell(a)}</td><td class="num">${r.r+1}</td><td class="code">${cell(d.B[r.r])}</td></tr>`;continue}
+      if(unified)h+=`<tr><td class="num">${r.l+1}</td><td class="num">${r.r+1}</td><td class="sign"></td><td class="code">${cell('l',r.l)}</td></tr>`;
+      else h+=`<tr class="split"><td class="num">${r.l+1}</td><td class="code">${cell('l',r.l)}</td><td class="num">${r.r+1}</td><td class="code">${cell('r',r.r)}</td></tr>`;continue}
     const fc=r.first?`id="focus-${r.id}"`:'';
-    const left=r.l!=null?cell(d.A[r.l],'',r.segs,'l'):null,right=r.r!=null?cell(d.B[r.r],'',r.segs,'r'):null;
+    const left=r.l!=null?cell('l',r.l,r.segs):null,right=r.r!=null?cell('r',r.r,r.segs):null;
     if(unified){
       if(left!=null)h+=`<tr class="chg" ${fc}><td class="num del">${r.l+1}</td><td class="num del"></td><td class="sign">−</td><td class="code del">${r.segs?left:`<mark class="d">${left}</mark>`}</td></tr>`;
       if(right!=null)h+=`<tr class="chg" ${left==null?fc:''}><td class="num ins"></td><td class="num ins">${r.r+1}</td><td class="sign">+</td><td class="code ins">${r.segs?right:`<mark class="i">${right}</mark>`}</td></tr>`;
