@@ -70,8 +70,8 @@ tr.focus td{box-shadow:inset 0 -2px 0 var(--accent)}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
 .identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
 .identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
-.panel{position:fixed;top:0;right:0;height:100%;width:320px;background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);transition:transform .2s;z-index:50;display:flex;flex-direction:column}
-.panel.open{transform:none}
+.panel{position:fixed;top:0;right:0;height:100%;width:320px;background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);visibility:hidden;transition:transform .2s,visibility .2s;z-index:50;display:flex;flex-direction:column}
+.panel.open{transform:none;visibility:visible}
 .panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600}
 .panel-body{overflow:auto;padding:8px 16px 24px}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px}
@@ -390,6 +390,8 @@ function exampleWb(v){const H=['Order ID','Site','Severity','Assigned within (h)
   const cols=Math.max(...rows.map(r=>r.length));return {type:'json',sheets:[{name:'Work orders',grid:{rows:rows.map(r=>r.map(x=>({v:String(x),f:null,d:false}))),cols}}],load:s=>s.grid}}
 $('exampleBtn').onclick=()=>{setWorkbook('A',exampleWb(0),'work-orders-v1.xlsx');setWorkbook('B',exampleWb(1),'work-orders-v2.xlsx');run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>e.preventDefault()));
+/* Esc 关闭侧栏与弹窗 */
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;$('panel').classList.remove('open');$('exportModal').classList.remove('open')});
 applyTheme();syncUI();applyLang();
 </script>
 </body>
