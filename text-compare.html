@@ -68,7 +68,7 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 60px}
 .diff-head>div{padding:8px 12px;display:flex;align-items:center;gap:8px}
 .diff-head>div+div{border-left:1px solid var(--border)}
 .diff-head .title{font-weight:600;margin-right:auto}
-.diff-head.unified{grid-template-columns:1fr}
+.diff-head.unified{grid-template-columns:1fr}.diff-head.unified>div+div{border-left:0;border-top:1px solid var(--border)}
 .diff-scroll{overflow:auto;max-height:calc(100vh - 140px)}
 table.diff{border-collapse:collapse;width:100%;font:12.5px/1.6 var(--mono);table-layout:fixed;tab-size:4}
 table.diff td{vertical-align:top;padding:0 10px 0 6px;white-space:pre-wrap;word-break:break-all}
@@ -247,32 +247,33 @@ function diffSeq(a,b,eq){
       flushA(a.length);flushB(b.length);return out}}
   return diffSeqCore(a,b,eq)}
 function diffSeqCore(a,b,eq){
-  eq=eq||((x,y)=>x===y);const out=[];const stack=[{a0:0,a1:a.length,b0:0,b1:b.length}];
+  eq=eq||((x,y)=>x===y);const out=[];const stack=[{a0:0,a1:a.length,b0:0,b1:b.length,lim:MYERS_LIMIT}];
   while(stack.length){const it=stack.pop();
     if(it.eqs){for(const p of it.eqs)out.push([EQ,p[0],p[1]]);continue}
-    let {a0,a1,b0,b1}=it;
+    let {a0,a1,b0,b1,lim}=it;
     while(a0<a1&&b0<b1&&eq(a[a0],b[b0])){out.push([EQ,a0,b0]);a0++;b0++}
     const tail=[];while(a1>a0&&b1>b0&&eq(a[a1-1],b[b1-1])){a1--;b1--;tail.push([a1,b1])}tail.reverse();
     if(a0===a1){for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
     if(b0===b1){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
-    const s=midSnake(a,b,a0,a1,b0,b1,eq);
+    const s=midSnake(a,b,a0,a1,b0,b1,eq,lim);
     if(!s||(s.x===0&&s.y===0&&s.u===a1-a0&&s.v===b1-b0)){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
+    const nextLim=s.h?Math.max(128,lim>>2):lim;
     const snake=[];for(let k=0;k<s.u-s.x;k++)snake.push([a0+s.x+k,b0+s.y+k]);
     if(tail.length)stack.push({eqs:tail});
-    stack.push({a0:a0+s.u,a1,b0:b0+s.v,b1});
+    stack.push({a0:a0+s.u,a1,b0:b0+s.v,b1,lim:nextLim});
     if(snake.length)stack.push({eqs:snake});
-    stack.push({a0,a1:a0+s.x,b0,b1:b0+s.y});
+    stack.push({a0,a1:a0+s.x,b0,b1:b0+s.y,lim:nextLim});
   }
   return out;
 }
-// 代价上限：d 超过它时放弃“最优”，改在前向路径走得最远的点处切开继续递归（类似 GNU diff 的 --speed-large-files）。
+// 代价上限：d 超过它时放弃“最优”，改在前向路径走得最远的点处切开继续递归（类似 GNU diff 的 --speed-large-files），且子问题缩减代价上限避免反复 O(ND)。
 // 重复行很多的大文件（日志、列表）上 Myers 的 O(ND) 会退化到数十秒；切分后得到的仍是合法的差异脚本，只是未必是最短的。
 const MYERS_LIMIT=2500;
-function heuristicSplit(vf,off,d,N,M){let bx=-1,by=-1,best=0;for(let k=-(d-1);k<=d-1;k+=2){const x=vf[off+k],y=x-k;if(x<0||y<0||x>N||y>M)continue;if(x+y>best&&x+y<N+M){best=x+y;bx=x;by=y}}return best>0?{x:bx,y:by,u:bx,v:by}:null}
-function midSnake(a,b,a0,a1,b0,b1,eq){
+function heuristicSplit(vf,off,d,N,M){let bx=-1,by=-1,best=0;for(let k=-(d-1);k<=d-1;k+=2){const x=vf[off+k],y=x-k;if(x<0||y<0||x>N||y>M)continue;if(x+y>best&&x+y<N+M){best=x+y;bx=x;by=y}}return best>0?{x:bx,y:by,u:bx,v:by,h:1}:null}
+function midSnake(a,b,a0,a1,b0,b1,eq,lim=MYERS_LIMIT){
   const N=a1-a0,M=b1-b0,MAX=Math.ceil((N+M)/2),delta=N-M,odd=(delta&1)!==0,off=MAX+1;
   const vf=new Int32Array(2*MAX+4),vb=new Int32Array(2*MAX+4);vf[off+1]=0;vb[off+1]=0;
-  for(let d=0;d<=MAX;d++){if(d>MYERS_LIMIT){const h=heuristicSplit(vf,off,d,N,M);if(h)return h}
+  for(let d=0;d<=MAX;d++){if(d>lim){const h=heuristicSplit(vf,off,d,N,M);if(h)return h}
     for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vf[off+k-1]<vf[off+k+1]))?vf[off+k+1]:vf[off+k-1]+1,y=x-k;const xs=x,ys=y;
       while(x<N&&y<M&&eq(a[a0+x],b[b0+y])){x++;y++}vf[off+k]=x;
       if(odd){const kr=delta-k;if(kr>=-(d-1)&&kr<=d-1&&x+vb[off+kr]>=N)return{x:xs,y:ys,u:x,v:y}}}
@@ -285,34 +286,36 @@ function midSnake(a,b,a0,a1,b0,b1,eq){
 /* tokenisers */
 const WORD_RE=/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|(?:(?![\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF])[\p{L}\p{M}\p{N}_])+|\s+|[^\s\p{L}\p{M}\p{N}_]/gu;
 const tokWords=s=>s.match(WORD_RE)||[];
-const tokChars=s=>Array.from(s);
+const tokChars=(s,ws)=>ws?(s.match(/\s+|[^\s]/gu)||[]):Array.from(s);
 const INLINE_MAX_TOKENS=20000;
 function inlineDiff(l,r,level,norm){
-  const tk=level==='char'&&l.length+r.length<=20000?tokChars:tokWords;const A=tk(l),B=tk(r);
+  const hideWs=norm(' ')==='',tk=level==='char'&&l.length+r.length<=20000?s=>tokChars(s,hideWs):tokWords;const A=tk(l),B=tk(r);
   if(A.length+B.length>INLINE_MAX_TOKENS){// 超长行（如压缩后的 JSON）：只裁掉公共前后缀，中间整体标记为改动，避免 Myers 的 O(ND) 卡死页面
     const na=A.map(norm),nb=B.map(norm);let p=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;
     let q=0;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
     const m=[],add=(t,a,b)=>{if(a||b)m.push({t,a,b})};
     add(EQ,A.slice(0,p).join(''),B.slice(0,p).join(''));add(DEL,A.slice(p,A.length-q).join(''),'');add(INS,'',B.slice(p,B.length-q).join(''));
     add(EQ,A.slice(A.length-q).join(''),B.slice(B.length-q).join(''));return m}
-  const ops=diffSeq(A.map(norm),B.map(norm));
+  const na=A.map(norm),nb=B.map(norm),ops=diffSeq(na,nb);
   let segs=[];// {t:EQ/DEL/INS, a:text (left), b:text(right)}
   for(const [op,i,j] of ops){
-    if(op===EQ)segs.push({t:EQ,a:A[i],b:B[j]});else if(op===DEL)segs.push({t:DEL,a:A[i],b:''});else segs.push({t:INS,a:'',b:B[j]});
+    if(op===EQ)segs.push({t:EQ,a:A[i],b:B[j]});else if(op===DEL)segs.push({t:na[i]===''?EQ:DEL,a:A[i],b:''});else segs.push({t:nb[j]===''?EQ:INS,a:'',b:B[j]});
   }
   if(level==='smart'){// refine adjacent del/ins runs with char diff when similar
     const refined=[];let k=0;
     while(k<segs.length){
       if(segs[k].t===EQ){refined.push(segs[k]);k++;continue}
       let dl='',il='';while(k<segs.length&&segs[k].t!==EQ){if(segs[k].t===DEL)dl+=segs[k].a;else il+=segs[k].b;k++}
+      if(norm(dl)===norm(il)){refined.push({t:EQ,a:dl,b:il});continue}
       if(dl&&il&&dl.length<=80&&il.length<=80){const sub=inlineDiff(dl,il,'char',norm);const eqc=sub.filter(s=>s.t===EQ).reduce((n,s)=>n+s.a.length,0);
         if(eqc/Math.max(dl.length,il.length)>=0.5){refined.push(...sub);continue}}
-      if(dl)refined.push({t:DEL,a:dl,b:''});if(il)refined.push({t:INS,a:'',b:il});
+      if(dl)refined.push({t:norm(dl)===''?EQ:DEL,a:dl,b:''});if(il)refined.push({t:norm(il)===''?EQ:INS,a:'',b:il});
     }
     segs=refined;
   }
-  // merge consecutive same-type
-  const m=[];for(const s of segs){const p=m[m.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else m.push({...s})}
+  // merge consecutive same-type, then demote any DEL/INS segment whose normalised text is empty (e.g. multi-token ignore rule)
+  const raw=[];for(const s of segs){const p=raw[raw.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else raw.push({...s})}
+  const m=[];for(const s of raw){const t=s.t!==EQ&&norm(s.a)===norm(s.b)?EQ:s.t,p=m[m.length-1];if(p&&p.t===t){p.a+=s.a;p.b+=s.b}else m.push({t,a:s.a,b:s.b})}
   return m;
 }
 /* normalisation for ignore options */
@@ -380,7 +383,7 @@ try{mergeOpts(JSON.parse(lsGet('text-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('text-opts',JSON.stringify(opts));
 let lastDiff=null,expanded=new Set(),focusIdx=-1,fileNames={A:'',B:''};
 const txtA=$('txtA'),txtB=$('txtB');
-function updateMeta(){for(const [id,ta] of [['metaA',txtA],['metaB',txtB]]){const v=ta.value;$(id).textContent=v?`${v.replace(/\r\n?/g,'\n').replace(/\n$/,'').split('\n').length} ${t('lines')} · ${(v.match(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|[^\s\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]+/g)||[]).length} ${t('words')} · ${v.length} ${t('characters')}`:''}}
+function updateMeta(side){for(const [s,id,ta] of [['A','metaA',txtA],['B','metaB',txtB]])if(!side||side===s){const v=ta.value;$(id).textContent=v?`${v.replace(/\r\n?/g,'\n').replace(/\n$/,'').split('\n').length} ${t('lines')} · ${(v.match(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|[^\s\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]+/g)||[]).length} ${t('words')} · ${v.length} ${t('characters')}`:''}}
 function run(keep){const d=computeDiff(txtA.value,txtB.value,opts);lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:'smooth',block:'start'})}
 const CTX=3;// 隐藏未修改行时，每个折叠块首尾各保留的行数（页面、PNG 导出共用）
 function render(){
@@ -433,12 +436,12 @@ function render(){
 function goChange(dir){const n=+$('diffScroll').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('findBtn').onclick=()=>run();
-let rt;const realtimeRun=()=>{updateMeta();if(opts.realtime){clearTimeout(rt);rt=setTimeout(run,250)}};
-txtA.addEventListener('input',realtimeRun);txtB.addEventListener('input',realtimeRun);
+let rt;const realtimeRun=side=>{updateMeta(side);if(opts.realtime){clearTimeout(rt);rt=setTimeout(run,250)}};
+txtA.addEventListener('input',()=>realtimeRun('A'));txtB.addEventListener('input',()=>realtimeRun('B'));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();run()}});
 $('swapBtn').onclick=()=>{const v=txtA.value;txtA.value=txtB.value;txtB.value=v;fileNames={A:fileNames.B,B:fileNames.A};updateMeta();if(lastDiff)run(true)};
 $('clearAllBtn').onclick=()=>{clearTimeout(rt);txtA.value='';txtB.value='';fileNames={A:'',B:''};updateMeta();lastDiff=null;$('result').classList.add('hidden')};
-document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{(b.dataset.clear==='A'?txtA:txtB).value='';fileNames[b.dataset.clear]='';updateMeta();if(opts.realtime)run()});
+document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const s=b.dataset.clear;(s==='A'?txtA:txtB).value='';fileNames[s]='';updateMeta(s);if(lastDiff||opts.realtime)run(true)});
 document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const ta=b.dataset.copy==='A'?txtA:txtB;try{await navigator.clipboard.writeText(ta.value)}catch(e){ta.select();document.execCommand('copy')}notice(t('copied'))});
 /* file open & drag/drop */
 let openTarget='A';
@@ -449,7 +452,7 @@ function loadFile(f,side){const r=new FileReader();r.onerror=()=>notice(t('readF
   if(/\.diffchecker$/i.test(f.name)){let j=null;try{j=JSON.parse(text)}catch(e){}if(!j||typeof j!=='object'){notice(t('wrongFile'));return}
     if(j&&typeof j==='object'){if(j.type&&j.type!=='text'){notice(t('wrongFile'));return}
       txtA.value=typeof j.left==='string'?j.left:'';txtB.value=typeof j.right==='string'?j.right:'';fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}}
-  (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta();notice(t('loaded',{name:f.name}));if(opts.realtime)run()};r.readAsArrayBuffer(f)}
+  (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta(side);notice(t('loaded',{name:f.name}));if(lastDiff||opts.realtime)run(true)};r.readAsArrayBuffer(f)}
 // 只接管“文件”拖放：把选中的文字拖进文本框时要保留浏览器默认的插入行为（无条件 preventDefault 会让文字拖放失效）
 const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
 for(const [card,side] of [[$('cardA'),'A'],[$('cardB'),'B']]){card.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();card.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('drag')});card.addEventListener('drop',e=>{card.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
@@ -490,13 +493,13 @@ async function exportPng(){
   const W=1600,LH=20,PAD=16,font='13px '+(getComputedStyle(document.body).getPropertyValue('--mono').trim()||'monospace');
   const lines=unified?rows.reduce((n,r)=>n+(r.changed?(r.l!=null)+(r.r!=null):1),0):rows.length;
   const H=PAD*2+40+lines*LH;if(H>32000)throw Object.assign(new Error('image too tall'),{tooTall:true});const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
-  ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,PAD,PAD+14);if(!unified)ctx.fillText(`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`,W/2+PAD,PAD+14);
+  ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14);
   ctx.font=font;const colW=unified?W-PAD*2:(W-PAD*2)/2;let y=PAD+40;
   const drawLine=(x,txt,num,kind,segs,side,width)=>{if(kind)ctx.fillStyle=kind==='del'?'rgba(255,46,0,.09)':'rgba(0,180,144,.12)',ctx.fillRect(x,y,width,LH);ctx.fillStyle=dark?'#7d858d':'#9aa1a8';ctx.textAlign='right';ctx.fillText(num==null?'':String(num+1),x+40,y+14);ctx.textAlign='left';
     let cx=x+52;ctx.save();ctx.beginPath();ctx.rect(x,y,width,LH);ctx.clip();const parts=segs?segs.filter(s=>side==='l'?s.a:s.b).map(s=>({tx:(side==='l'?s.a:s.b).replace(/\t/g,'    '),m:s.t!==EQ})):[{tx:txt.replace(/\t/g,'    '),m:false}];
     for(const p of parts){const w=ctx.measureText(p.tx).width;if(p.m){ctx.fillStyle=kind==='del'?'rgba(255,46,0,.35)':'rgba(0,180,144,.4)';ctx.fillRect(cx,y+2,w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.tx,cx,y+14);cx+=w;if(cx>x+width)break}ctx.restore()};
   for(const r of rows){if(r.collapsed){ctx.fillStyle=dark?'#1f2226':'#f6f8f7';ctx.fillRect(PAD,y,W-PAD*2,LH);ctx.fillStyle=dark?'#aeb6be':'#626971';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('⋯ '+t('unchangedLines',{n:r.collapsed}),W/2,y+14);ctx.textAlign='left';ctx.font=font;y+=LH;continue}
-    const segs=r.changed&&r.l!=null&&r.r!=null?inlineDiff(d.A[r.l],d.B[r.r],opts.level,d.norm):null;
+    let segs=null;if(r.changed&&r.l!=null&&r.r!=null){const ck=opts.level+'|'+r.l+'|'+r.r;segs=d.segCache.get(ck);if(!segs){segs=inlineDiff(d.A[r.l],d.B[r.r],opts.level,d.norm);d.segCache.set(ck,segs)}}
     if(unified){if(r.l!=null){drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);y+=LH}if(r.changed&&r.r!=null){drawLine(PAD,d.B[r.r],r.r,'ins',segs,'r',colW);y+=LH}}
     else{if(r.l!=null)drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);if(r.r!=null)drawLine(PAD+colW,d.B[r.r],r.r,r.changed?'ins':'',segs,'r',colW);y+=LH}}
   ctx.strokeStyle=dark?'#353a3f':'#e6e8eb';ctx.beginPath();ctx.moveTo(W/2,PAD+24);ctx.lineTo(W/2,H-PAD);if(!unified)ctx.stroke();
@@ -528,7 +531,7 @@ function makeXlsx(sheets){const enc=new TextEncoder();const files=[];
     x+='</sheetData></worksheet>';files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:enc.encode(x)})});
   return zipStore(files)}
 function exportXlsx(){const d=lastDiff,rows=[[{v:t('xlOrigLine'),s:1},{v:t('xlOrigText'),s:1},{v:t('xlChgLine'),s:1},{v:t('xlChgText'),s:1}]];
-  for(const r of pairedRows()){const o=r.l!=null?d.A[r.l]:'',c=r.r!=null?d.B[r.r]:'';rows.push([{v:r.l!=null?r.l+1:''},{v:o,s:r.changed?2:0},{v:r.r!=null?r.r+1:''},{v:c,s:r.changed?3:0}])}
+  for(const r of pairedRows()){const o=r.l!=null?d.A[r.l]:'',c=r.r!=null?d.B[r.r]:'';rows.push([{v:r.l!=null?r.l+1:''},{v:o,s:r.changed&&r.l!=null?2:0},{v:r.r!=null?r.r+1:''},{v:c,s:r.changed&&r.r!=null?3:0}])}
   download(makeXlsx([{name:t('xlSheet'),cols:[14,90,14,90],rows}]),baseName()+'.xlsx')}
 
 /* ===================== example ===================== */
