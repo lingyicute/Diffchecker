@@ -103,10 +103,10 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   <section class="hero"><h1 data-i18n="hero.title">Compare Excel</h1><p data-i18n="hero.desc">Find the difference between two spreadsheets (.xlsx, .csv, .tsv)</p></section>
   <section class="inputs">
     <div class="card" id="cardA"><div class="card-head"><span class="title" data-i18n="original">Original spreadsheet</span><span id="nameA" style="color:var(--fg2)"></span><button class="btn sm" data-open="A" data-i18n="openFile">Open file</button><button class="btn sm ghost" data-clear="A" data-i18n="clear">Clear</button></div>
-      <div class="drop" id="dropA"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
+      <div class="drop" id="dropA" tabindex="0" role="button"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
       <div class="details hidden" id="detA"></div><div class="preview hidden" id="prevA"></div><div class="err" id="errA"></div></div>
     <div class="card" id="cardB"><div class="card-head"><span class="title" data-i18n="changed">Changed spreadsheet</span><span id="nameB" style="color:var(--fg2)"></span><button class="btn sm" data-open="B" data-i18n="openFile">Open file</button><button class="btn sm ghost" data-clear="B" data-i18n="clear">Clear</button></div>
-      <div class="drop" id="dropB"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
+      <div class="drop" id="dropB" tabindex="0" role="button"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
       <div class="details hidden" id="detB"></div><div class="preview hidden" id="prevB"></div><div class="err" id="errB"></div></div>
   </section>
   <input type="file" id="fileInput" class="hidden" accept=".xlsx,.xlsm,.xltx,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
@@ -311,7 +311,7 @@ function compare(gA,gB,hA,hB){
 /* ===================== UI: loading ===================== */
 const WB={A:null,B:null},SEL={A:{sheet:0,header:0,auto:true},B:{sheet:0,header:0,auto:true}},NAMES={A:'',B:''};let RES=null,expanded=new Set(),focusIdx=-1;
 let openTarget='A';document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
-for(const s of ['A','B']){const d=$('drop'+s);d.onclick=()=>{openTarget=s;$('fileInput').value='';$('fileInput').click()};const card=$('card'+s);card.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))d.classList.remove('drag')});card.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,s)})}
+for(const s of ['A','B']){const d=$('drop'+s);d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};d.onclick=()=>{openTarget=s;$('fileInput').value='';$('fileInput').click()};const card=$('card'+s);card.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))d.classList.remove('drag')});card.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,s)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>clearSide(b.dataset.clear));
 function clearSide(s){WB[s]=null;NAMES[s]='';$('name'+s).textContent='';$('det'+s).classList.add('hidden');$('prev'+s).classList.add('hidden');$('drop'+s).classList.remove('hidden');$('err'+s).textContent='';RES=null;$('result').classList.add('hidden')}
