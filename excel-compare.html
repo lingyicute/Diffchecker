@@ -198,14 +198,16 @@ function colIndex(ref){let n=0;for(let i=0;i<ref.length;i++){const c=ref.charCod
 function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=(i-m-1)/26}return s}
 function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.round(v*86400)%86400,p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀
   const base=Date.UTC(1899,11,30)+(d1904?1462*86400000:v>=1&&v<60?86400000:0);const d=new Date(base+Math.round(v*86400)*1000);const p=n=>String(n).padStart(2,'0');let s=`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;if(d.getUTCHours()||d.getUTCMinutes()||d.getUTCSeconds())s+=` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;return s}
+// 时长格式（[h]:mm:ss）：小时数可以超过 24，不能当作日期显示
+function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return (neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}
 // 只认完整的 ZIP 签名（PK\x03\x04 / 空包 PK\x05\x06 / 分卷 PK\x07\x08）；仅凭 "PK" 两个字节会把以 PK 开头的 CSV 误判成 xlsx
 const isZipSig=u=>u[0]===0x50&&u[1]===0x4B&&((u[2]===3&&u[3]===4)||(u[2]===5&&u[3]===6)||(u[2]===7&&u[3]===8));
 function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);
   const d1904=wb.querySelector('workbookPr')?.getAttribute('date1904')==='1';
   const rels={};const rx=z.text('xl/_rels/workbook.xml.rels');if(rx)for(const r of xml(rx).getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
   const sst=[];const sx=z.text('xl/sharedStrings.xml');if(sx){for(const si of xml(sx).getElementsByTagName('si')){let s='';for(const tn of si.getElementsByTagName('t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(s)}}
-  const dateStyles=new Set();const stx=z.text('xl/styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of st.getElementsByTagName('numFmt')){const code=(nf.getAttribute('formatCode')||'').replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[+nf.getAttribute('numFmtId')]=/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
-    const xfs=st.querySelector('cellXfs');if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i)})}}
+  const dateStyles=new Set(),elapsedStyles=new Set(),elapsedIds=new Set();const stx=z.text('xl/styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of st.getElementsByTagName('numFmt')){const fc=nf.getAttribute('formatCode')||'',nid=+nf.getAttribute('numFmtId');if(/\[(?:h+|m+|s+)\]/i.test(fc.replace(/"[^"]*"/g,'')))elapsedIds.add(nid);const code=fc.replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[nid]=elapsedIds.has(nid)||/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
+    const xfs=st.querySelector('cellXfs');if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i);if(id===46||elapsedIds.has(id))elapsedStyles.add(i)})}}
   const sheets=[];for(const sh of wb.getElementsByTagName('sheet')){const rid=sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sh.getAttribute('r:id');let target=rels[rid]||'';if(target.startsWith('/'))target=target.slice(1);else if(!target.startsWith('xl/'))target='xl/'+target;
     sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
   if(!sheets.length)throw new Error(t('badZip'));
@@ -213,7 +215,7 @@ function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml')
     let lastRi=-1;for(const r of doc.getElementsByTagName('row')){const rn=+r.getAttribute('r'),ri=rn>0?rn-1:lastRi+1;lastRi=ri;const cells=[];let ci=-1;
       for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
         for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f')f=ch.textContent?'='+ch.textContent:null;else if(ch.localName==='is')raw=[...ch.getElementsByTagName('t')].map(x=>x.textContent).join('')}
-        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?serialToDate(n,d1904):String(+n.toPrecision(15))):raw}else v='';
+        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
         cells[ci]={v,f,d:dateStyles.has(s)};if(ci+1>cols)cols=ci+1}
       if(cells.length){rows[ri]=cells}}
     for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];sheet.grid={rows,cols};return sheet.grid};
