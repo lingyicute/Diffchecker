@@ -22,6 +22,11 @@ const excel = (() => {
   return run(code, 'compare,parseCsv,opts,serialToDate,isZipSig,pairBlock');
 })();
 
+const inflate = (() => {
+  const s = script('excel-compare.html');
+  return run(between(s, 'function inflate', '/* ===================== XLSX parsing'), 'inflate').inflate;
+})();
+
 const lcs = (a, b) => { const d = Array.from({ length: a.length + 1 }, () => new Int32Array(b.length + 1)); for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) d[i][j] = a[i] === b[j] ? d[i + 1][j + 1] + 1 : Math.max(d[i + 1][j], d[i][j + 1]); return d[0][0]; };
 const rnd = n => Math.floor(Math.random() * n);
 
@@ -144,5 +149,18 @@ test('computeDiff: 行数不等的改动块按相似度配对，且每行恰好�
       assert.deepEqual(Array.from(b.pairs.filter(p => p.l != null), p => p.l), Array.from(b.del));
       assert.deepEqual(Array.from(b.pairs.filter(p => p.r != null), p => p.r), Array.from(b.ins));
     }
+  }
+});
+
+test('excel.inflate: 与 zlib 的 deflate 输出逐字节一致（存储 / 固定 / 动态 Huffman 块）', () => {
+  const zlib = require('node:zlib'), crypto = require('node:crypto');
+  const samples = [
+    Buffer.alloc(0), Buffer.from('a'), Buffer.from('hello hello hello '.repeat(400)), crypto.randomBytes(70000),
+    Buffer.from(Array.from({ length: 50000 }, (_, i) => (i * i) % 251)),
+    Buffer.from(JSON.stringify(Array.from({ length: 3000 }, (_, i) => ({ id: i, name: 'n' + (i % 13) })))),
+  ];
+  for (const d of samples) for (const level of [0, 1, 6, 9]) for (const strategy of [0, 1, 2, 3, 4]) {
+    const z = zlib.deflateRawSync(d, { level, strategy });
+    assert.ok(Buffer.from(inflate(new Uint8Array(z))).equals(d), `level ${level} strategy ${strategy} size ${d.length}`);
   }
 });
