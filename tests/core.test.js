@@ -184,3 +184,55 @@ test('inlineDiff: 超长行只裁剪公共前后缀，仍能无损还原且不�
   }
   assert.ok(Date.now() - t0 < 3000, '超长行的行内差异应在 3 秒内完成');
 });
+
+const img = (() => {
+  const s = script('image-compare.html');
+  const code = between(s, 'function dilate', 'function scan') + between(s, 'function fft1d', 'function grayPatch') + between(s, 'function phaseCorr', 'async function autoAlign') + between(s, 'function invertAlign', "$('swapBtn')");
+  return run(code, 'dilate,detect,phaseCorr,invertAlign', 'const defAlign=()=>({dx:0,dy:0,rot:0,scale:1,fh:false,fv:false});');
+})();
+const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+
+test('image.dilate: 与逐像素暴力膨胀结果一致', () => {
+  const r = lcg(7), W = 37, H = 23, m = new Uint8Array(W * H);
+  for (let i = 0; i < m.length; i++) m[i] = r() < 0.04 ? 1 : 0;
+  for (const rad of [1, 2, 5]) {
+    const d = img.dilate(m, W, H, rad);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let e = 0;
+      for (let yy = Math.max(0, y - rad); yy <= Math.min(H - 1, y + rad); yy++) for (let xx = Math.max(0, x - rad); xx <= Math.min(W - 1, x + rad); xx++) if (m[yy * W + xx]) e = 1;
+      assert.equal(d[y * W + x], e, `r=${rad} (${x},${y})`);
+    }
+  }
+});
+
+test('image.detect: 分组半径决定相邻差异块是否合并，过小的块被丢弃', () => {
+  const W = 60, H = 30, m = new Uint8Array(W * H), fill = (x0, y0, w, h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) m[y * W + x] = 1; };
+  fill(5, 5, 6, 6); fill(14, 5, 6, 6); fill(45, 20, 5, 5); fill(30, 2, 1, 1);
+  const o = { minBlobArea: 4, maxBlobAreaFraction: 1 }, rect = { x0: 0, y0: 0, x1: W, y1: H };
+  const sep = [], grouped = [];
+  img.detect(m, W, H, o, rect, 0, sep);
+  img.detect(m, W, H, o, rect, 3, grouped);
+  assert.equal(sep.length, 3);
+  assert.equal(grouped.length, 2);
+  const big = grouped.find(r => r.w > 10);
+  assert.equal([big.x, big.y, big.w, big.h, big.px].join(), '5,5,15,6,72');
+});
+
+test('image.phaseCorr: 峰值给出 B 相对 A 的平移（符号为 -d）', () => {
+  const N = 64, r = lcg(3), a = new Float64Array(N * N);
+  for (let i = 0; i < a.length; i++) a[i] = r();
+  for (const [dx, dy] of [[3, 5], [-4, 2], [0, 0], [7, -9]]) {
+    const b = new Float64Array(N * N);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) b[((y + dy + N) % N) * N + ((x + dx + N) % N)] = a[y * N + x];
+    const p = img.phaseCorr(a, b, N);
+    assert.ok(Math.abs(p.dx + dx) < 0.05 && Math.abs(p.dy + dy) < 0.05, `shift ${dx},${dy} -> ${p.dx},${p.dy}`);
+  }
+});
+
+test('image.invertAlign: 交换两张图后的对齐参数与原参数互为逆变换', () => {
+  const A = { w: 300, h: 200 }, B = { w: 260, h: 210 }, al = { dx: 12, dy: -7, rot: 3, scale: 1.1, fh: false, fv: false };
+  const map = (p, a, b) => { const th = a.rot * Math.PI / 180, c = Math.cos(th), s = Math.sin(th), x = (p.x - b.w / 2) * a.scale, y = (p.y - b.h / 2) * a.scale; return { x: b.w / 2 + a.dx + c * x - s * y, y: b.h / 2 + a.dy + s * x + c * y }; };
+  const p = { x: 50, y: 80 }, q = map(p, al, B), back = map(q, img.invertAlign(al, A, B), A);
+  assert.ok(Math.abs(back.x - p.x) < 1e-6 && Math.abs(back.y - p.y) < 1e-6);
+  assert.equal(JSON.stringify(img.invertAlign({ ...al, fh: true }, A, B)), JSON.stringify({ dx: 0, dy: 0, rot: 0, scale: 1, fh: false, fv: false }));
+});
