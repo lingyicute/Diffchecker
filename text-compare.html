@@ -445,7 +445,8 @@ $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;ex
 $('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(!lastDiff)return;const prevType=opts.type;opts.type=exportLayout;if(prevType!==exportLayout)render();
   try{if(exportFmt==='pdf'){const th=document.documentElement.dataset.theme;document.documentElement.dataset.theme='light';try{window.print()}finally{document.documentElement.dataset.theme=th}}else if(exportFmt==='png')await exportPng();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t('exportFailed'))}
   finally{if(prevType!==exportLayout){opts.type=prevType;render()}}};
-const baseName=()=>((fileNames.A||'original').replace(/\.[^.]+$/,'')+'-vs-'+(fileNames.B||'changed').replace(/\.[^.]+$/,'')).replace(/[<>:"/\\|?*\u0000]/g,'_').slice(0,100);
+const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
+const baseName=()=>(stem(fileNames.A,'original')+'-vs-'+stem(fileNames.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 function exportDiffFile(){const j={type:'text',version:1,left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B,options:{...opts},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
 /* rows for tabular exports (pairs of left/right lines) */
@@ -477,7 +478,7 @@ function zipStore(files){// files: [{name, data:Uint8Array}]
     parts.push(lh,f.data);cd.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x800),...u16(0),...u16(dt),...u16(dd),...u32(crc),...u32(n),...u32(n),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off),...name]));off+=lh.length+n}
   const cdLen=cd.reduce((s,c)=>s+c.length,0);const end=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cdLen),...u32(off),...u16(0)]);
   return new Blob([...parts,...cd,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});}
-const xe=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
+const xe=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g,'').replace(/([\ud800-\udbff][\udc00-\udfff])|[\ud800-\udfff]/g,(m,p)=>p||'');
 function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=(i-m-1)/26}return s}
 /* sheets: [{name, cols:[widths], rows:[[{v, s}]]}] ; style ids: 0 normal,1 bold,2 red fill,3 green fill,4 yellow fill */
 function makeXlsx(sheets){const enc=new TextEncoder();const files=[];
