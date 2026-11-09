@@ -393,3 +393,10 @@ test('excel.pairBlock: 改动块很大时按位置配对也要求相似度，完
   const seenA = out.filter(e => e.ai != null).map(e => e.ai), seenB = out.filter(e => e.bi != null).map(e => e.bi);
   assert.deepEqual([...seenA], idx); assert.deepEqual([...seenB], idx);
 });
+
+test('excel.inflate: 头部声明的解压后大小被伪造得极大时不会按它分配内存，仍能正确解压', () => {
+  const zlib = require('node:zlib');
+  const raw = Buffer.from('hello hello hello '.repeat(5000));
+  const z = zlib.deflateRawSync(raw);
+  for (const claimed of [0xFFFFFFFF, 1, 0]) assert.equal(Buffer.compare(Buffer.from(inflate(new Uint8Array(z), claimed)), raw), 0);
+});
