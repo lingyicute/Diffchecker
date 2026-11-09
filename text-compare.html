@@ -417,7 +417,7 @@ let openTarget='A';
 document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 function loadFile(f,side){const r=new FileReader();r.onerror=()=>notice(t('readFailed',{name:f.name}));r.onload=()=>{const text=decodeBuf(r.result);
-  if(/\.diffchecker$/i.test(f.name)){let j=null;try{j=JSON.parse(text)}catch(e){}
+  if(/\.diffchecker$/i.test(f.name)){let j=null;try{j=JSON.parse(text)}catch(e){}if(!j||typeof j!=='object'){notice(t('wrongFile'));return}
     if(j&&typeof j==='object'){if(j.type&&j.type!=='text'){notice(t('wrongFile'));return}
       txtA.value=typeof j.left==='string'?j.left:'';txtB.value=typeof j.right==='string'?j.right:'';fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}}
   (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta();notice(t('loaded',{name:f.name}));if(opts.realtime)run()};r.readAsArrayBuffer(f)}
