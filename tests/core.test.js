@@ -262,3 +262,14 @@ test('inflate: 无压缩块的长度与补码不符或数据被截断时抛错�
   assert.throws(() => inflate(Uint8Array.from([0x01, 0x10, 0x00, 0xef, 0xff, 0x61])), /badZip/);
   assert.throws(() => inflate(Uint8Array.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x61, 0x62, 0x63])), /badZip/);
 });
+
+test('makeNorm: 忽略规则与正文使用相同的引号 / 小写规范化', () => {
+  const lower = text.computeDiff('Foo bar', 'bar', { rules: ['Foo '], lower: true });
+  assert.equal(lower.nDel + lower.nIns, 0);
+  const quote = text.computeDiff('say \u201chi\u201d now', 'say now', { rules: ['\u201chi\u201d '], igQuotes: true });
+  assert.equal(quote.nDel + quote.nIns, 0);
+  const plain = text.computeDiff('Foo bar', 'bar', { rules: ['Foo '] });
+  assert.equal(plain.nDel + plain.nIns, 0);
+  const diff = text.computeDiff('Foo bar', 'baz', { rules: ['Foo '], lower: true });
+  assert.equal(diff.nDel + diff.nIns, 2);
+});

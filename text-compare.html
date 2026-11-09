@@ -313,9 +313,10 @@ function inlineDiff(l,r,level,norm){
 }
 /* normalisation for ignore options */
 function makeNorm(o){
-  const rules=(o.rules||[]).filter(Boolean);
-  return s=>{if(o.igQuotes)s=s.replace(/[“”„‟«»"]/g,'"').replace(/[‘’‚‛‹›']/g,"'");if(o.igDashes)s=s.replace(/[\u2010-\u2015\u2212]/g,'-');
-    for(const r of rules)s=s.split(r).join('');if(o.hideWs)s=s.replace(/\s+/g,' ').trim();return s};
+  // 忽略规则要和正文走同样的规范化（引号 / 破折号 / 小写），否则“忽略引号差异”或“转为小写”开启后，规则永远匹配不上
+  const fold=s=>{if(o.igQuotes)s=s.replace(/[“”„‟«»"]/g,'"').replace(/[‘’‚‛‹›']/g,"'");if(o.igDashes)s=s.replace(/[\u2010-\u2015\u2212]/g,'-');return s};
+  const rules=(o.rules||[]).filter(Boolean).map(r=>{r=fold(r);return o.lower?r.toLowerCase():r}).filter(Boolean);
+  return s=>{s=fold(s);for(const r of rules)s=s.split(r).join('');if(o.hideWs)s=s.replace(/\s+/g,' ').trim();return s};
 }
 function transform(text,o){
   text=text.replace(/\r\n?/g,'\n');
