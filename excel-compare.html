@@ -147,7 +147,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
 <div class="modal-bg" id="exportModal"><div class="modal" role="dialog" aria-modal="true"><h3 data-i18n="export">Export</h3><label data-i18n="format">Format</label>
   <div class="choices" id="fmtChoices"><button class="choice" data-fmt="xlsx" aria-pressed="true"><b>Excel</b><small data-i18n="fmtXlsx">Merged comparison sheet with coloured rows and cells.</small></button><button class="choice" data-fmt="csv" aria-pressed="false"><b>CSV</b><small data-i18n="fmtCsv">Plain comparison table.</small></button><button class="choice" data-fmt="pdf" aria-pressed="false"><b>PDF</b><small data-i18n="fmtPdf">Print the comparison via your browser's PDF printer.</small></button><button class="choice" data-fmt="diffchecker" aria-pressed="false"><b data-i18n="fmtDiff">Diffchecker file</b><small data-i18n="fmtDiffDesc">Save a .diffchecker file that reopens this diff later.</small></button></div>
   <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div></div></div>
-<div class="offline-notice" id="notice"></div>
+<div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
 
 <script>
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
