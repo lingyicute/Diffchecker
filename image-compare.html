@@ -227,7 +227,7 @@ const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Mat
 
 /* ===================== loading ===================== */
 let openTarget='A';
-for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')d.click()};
+for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.target!==d||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();d.click()};
   d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drag')});d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drag')});d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 document.addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(!it)return;const f=it.getAsFile();if(!f)return;loadFile(f,!S.A?'A':!S.B?'B':openTarget)});
