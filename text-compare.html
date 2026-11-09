@@ -369,8 +369,8 @@ function render(){
   const CTX=3;
   d.blocks.forEach((b,bi)=>{
     if(b.type==='eq'){
-      if(opts.hideUnchanged&&b.rows.length>CTX*2+1&&!expanded.has(bi)){
-        const head=bi===0?0:CTX,tail=bi===d.blocks.length-1?0:CTX;
+      const head=bi===0?0:CTX,tail=bi===d.blocks.length-1?0:CTX;
+       if(opts.hideUnchanged&&b.rows.length-head-tail>1&&!expanded.has(bi)){
         for(let k=0;k<head;k++)rows.push({kind:'eq',l:b.rows[k].l,r:b.rows[k].r});
         const hidden=b.rows.length-head-tail;
         if(hidden>0)rows.push({kind:'collapsed',n:hidden,bi});
