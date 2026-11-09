@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate');
+  return run(code, 'compare,parseCsv,opts,serialToDate,isZipSig,pairBlock');
 })();
 
 const lcs = (a, b) => { const d = Array.from({ length: a.length + 1 }, () => new Int32Array(b.length + 1)); for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) d[i][j] = a[i] === b[j] ? d[i + 1][j + 1] + 1 : Math.max(d[i + 1][j], d[i][j + 1]); return d[0][0]; };
@@ -109,4 +109,11 @@ test('excel.serialToDate: 1900 系统中 1900-03-01 之前的序列号（Excel �
   assert.equal(excel.serialToDate(59), '1900-02-28');
   assert.equal(excel.serialToDate(61), '1900-03-01');
   assert.equal(excel.serialToDate(1, true), '1904-01-02');
+});
+
+test('excel.isZipSig: 以 PK 开头的 CSV 不会被当作 xlsx', () => {
+  assert.equal(excel.isZipSig(Buffer.from([0x50, 0x4B, 3, 4])), true);
+  assert.equal(excel.isZipSig(Buffer.from([0x50, 0x4B, 5, 6])), true);
+  assert.equal(excel.isZipSig(Buffer.from('PK,name\n1,a')), false);
+  assert.equal(excel.isZipSig(Buffer.from('a,b')), false);
 });
