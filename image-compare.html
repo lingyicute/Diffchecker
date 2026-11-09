@@ -244,7 +244,7 @@ $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$(
 // 交换两张图时同步求逆对齐参数，保持已对齐的效果（带翻转时无法用单一旋转缩放表示，回退为重置）
 function invertAlign(al,a,b){if(al.fh||al.fv)return defAlign();const th=al.rot*Math.PI/180,c=Math.cos(th),s=Math.sin(th),k=1/al.scale,vx=a.w/2-b.w/2-al.dx,vy=a.h/2-b.h/2-al.dy,ux=k*(c*vx+s*vy),uy=k*(-s*vx+c*vy);return {dx:b.w/2+ux-a.w/2,dy:b.h/2+uy-a.h/2,rot:-al.rot,scale:k,fh:false,fv:false}}
 $('swapBtn').onclick=()=>{if(!S.A||!S.B)return;const a=S.A,b=S.B,al=S.align;setImage('A',b.c,b.name,true);setImage('B',a.c,a.name,true);S.align=invertAlign(al,a,b);compare()};
-$('resetBtn').onclick=()=>{S.align=defAlign();S.passes=[];S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
+$('resetBtn').onclick=()=>{S.align=defAlign();S.passes=[];S.seeded=false;S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
 
 /* ===================== compositing ===================== */
 function buildBases(){const W=Math.max(S.A.w,S.B.w),H=Math.max(S.A.h,S.B.h);S.scale=Math.min(1,MAXDIM/Math.max(W,H));S.W=Math.round(W*S.scale);S.H=Math.round(H*S.scale);
@@ -297,7 +297,7 @@ $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-check
 $('sbToggle').onclick=()=>$('work').classList.toggle('collapsed');
 
 /* ===================== compare pipeline ===================== */
-function compare(){if(!S.A||!S.B)return;$('result').classList.remove('hidden');buildBases();if(!S.passes.length)S.passes=[newPass('words-sentences')];S.passes.forEach(p=>{if(p.linked)p.options=presetOptions(p.presetId)});scan();renderStage();fit();
+function compare(){if(!S.A||!S.B)return;$('result').classList.remove('hidden');buildBases();if(!S.seeded){S.seeded=true;S.passes=[newPass('words-sentences')]}/* 只在首次（或重置后）补上默认检测，用户删光检测后再对齐 / 换图不应又冒出一个 */S.passes.forEach(p=>{if(p.linked)p.options=presetOptions(p.presetId)});scan();renderStage();fit();
   if(diffCount===0){notice(t('identicalTitle')+' — '+t('identicalMsg'))}}
 /* ---- scan / change detection ---- */
 const PRESETS={'tiny-specks':e=>({diffThreshold:80,groupingRadius:0,minBlobArea:2,maxBlobAreaFraction:.01}),'words-sentences':e=>({diffThreshold:20,groupingRadius:Math.round(Math.max(2,Math.min(12,4*e))),minBlobArea:Math.round(Math.max(15,Math.min(300,30*e))),maxBlobAreaFraction:.15}),'graphics-large-blocks':e=>({diffThreshold:25,groupingRadius:Math.round(Math.max(5,Math.min(25,10*e))),minBlobArea:Math.round(Math.max(100,Math.min(2000,200*e))),maxBlobAreaFraction:.5})};
