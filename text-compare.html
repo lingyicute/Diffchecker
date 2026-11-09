@@ -458,7 +458,7 @@ async function exportPng(){
   ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,PAD,PAD+14);if(!unified)ctx.fillText(`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`,W/2+PAD,PAD+14);
   ctx.font=font;const colW=unified?W-PAD*2:(W-PAD*2)/2;let y=PAD+40;
   const drawLine=(x,txt,num,kind,segs,side,width)=>{if(kind)ctx.fillStyle=kind==='del'?'rgba(255,46,0,.09)':'rgba(0,180,144,.12)',ctx.fillRect(x,y,width,LH);ctx.fillStyle=dark?'#7d858d':'#9aa1a8';ctx.textAlign='right';ctx.fillText(num==null?'':String(num+1),x+40,y+14);ctx.textAlign='left';
-    let cx=x+52;ctx.save();ctx.beginPath();ctx.rect(x,y,width,LH);ctx.clip();const parts=segs?segs.filter(s=>side==='l'?s.a:s.b).map(s=>({tx:side==='l'?s.a:s.b,m:s.t!==EQ})):[{tx:txt,m:false}];
+    let cx=x+52;ctx.save();ctx.beginPath();ctx.rect(x,y,width,LH);ctx.clip();const parts=segs?segs.filter(s=>side==='l'?s.a:s.b).map(s=>({tx:(side==='l'?s.a:s.b).replace(/\t/g,'    '),m:s.t!==EQ})):[{tx:txt.replace(/\t/g,'    '),m:false}];
     for(const p of parts){const w=ctx.measureText(p.tx).width;if(p.m){ctx.fillStyle=kind==='del'?'rgba(255,46,0,.35)':'rgba(0,180,144,.4)';ctx.fillRect(cx,y+2,w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.tx,cx,y+14);cx+=w;if(cx>x+width)break}ctx.restore()};
   for(const r of rows){const segs=r.changed&&r.l!=null&&r.r!=null?inlineDiff(d.A[r.l],d.B[r.r],opts.level,d.norm):null;
     if(unified){if(r.l!=null){drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);y+=LH}if(r.changed&&r.r!=null){drawLine(PAD,d.B[r.r],r.r,'ins',segs,'r',colW);y+=LH}}
