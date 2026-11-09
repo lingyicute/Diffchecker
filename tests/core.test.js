@@ -255,6 +255,13 @@ test('excel.normalize: 日期统一成 ISO；x/y/yyyy 在第二位大于 12 时�
   assert.equal(excel.normalize('03/04/2024'), '2024-04-03');
   assert.equal(excel.normalize('2024-03-15 8:05'), '2024-03-15 08:05:00');
   assert.equal(excel.normalize('1.2.3'), '1.2.3');
+  assert.equal(excel.normalize('2024-03-05 00:00:00'), '2024-03-05');
+  assert.equal(excel.normalize('2024-03-05 00:00'), '2024-03-05');
+  assert.equal(excel.normalize('2024-03-05 08:05:09'), '2024-03-05 08:05:09');
+  assert.equal(excel.normalize('9:30'), '09:30:00');
+  assert.equal(excel.normalize('09:30:15'), '09:30:15');
+  assert.equal(excel.normalize('1:2'), '1:2');
+  assert.equal(excel.normalize('03/15/2024'), '2024-03-15');
 });
 
 test('inflate: 无压缩块的长度与补码不符或数据被截断时抛错，而不是静默补零', () => {
