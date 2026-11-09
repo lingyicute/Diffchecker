@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock,normalize,inlineDiff');
+  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula');
 })();
 
 const inflate = (() => {
@@ -310,4 +310,17 @@ test('excel.inlineDiff: 超长单元格只裁剪公共前后缀，仍能无损�
   assert.equal(segs[0].t, 0); assert.equal(segs[segs.length - 1].t, 0);
   const small = excel.inlineDiff('abcdef', 'abXdef');
   assert.equal(small.map(s => s.a).join(''), 'abcdef'); assert.equal(small.map(s => s.b).join(''), 'abXdef');
+});
+
+test('excel.shiftFormula: 共享公式按位移平移相对引用，$ 锁定、字符串、函数名与带引号的工作表名保持不变', () => {
+  const s = excel.shiftFormula;
+  assert.equal(s('A1*2', 1, 0), 'A2*2');
+  assert.equal(s('SUM($A1:B$2)', 2, 1), 'SUM($A3:C$2)');
+  assert.equal(s('"A1"&A1', 1, 0), '"A1"&A2');
+  assert.equal(s('LOG10(A1)', 1, 0), 'LOG10(A2)');
+  assert.equal(s("Sheet2!A1+'My A1'!B2", 1, 1), "Sheet2!B2+'My A1'!C3");
+  assert.equal(s('1E5+A1', 0, 1), '1E5+B1');
+  assert.equal(s('Z9+AA1', 0, 1), 'AA9+AB1');
+  assert.equal(s('A1+B2', 0, 0), 'A1+B2');
+  assert.equal(s('A1', -1, 0), 'A1');
 });
