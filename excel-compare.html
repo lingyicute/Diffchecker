@@ -259,8 +259,12 @@ function diffSeqCore(a,b,eq){eq=eq||((x,y)=>x===y);const out=[];const stack=[{a0
     const s=midSnake(a,b,a0,a1,b0,b1,eq);if(!s||(s.x===0&&s.y===0&&s.u===a1-a0&&s.v===b1-b0)){for(let i=a0;i<a1;i++)out.push([DEL,i,-1]);for(let j=b0;j<b1;j++)out.push([INS,-1,j]);for(const p of tail)out.push([EQ,p[0],p[1]]);continue}
     const snake=[];for(let k=0;k<s.u-s.x;k++)snake.push([a0+s.x+k,b0+s.y+k]);if(tail.length)stack.push({eqs:tail});stack.push({a0:a0+s.u,a1,b0:b0+s.v,b1});if(snake.length)stack.push({eqs:snake});stack.push({a0,a1:a0+s.x,b0,b1:b0+s.y})}
   return out}
+// 代价上限：d 超过它时放弃“最优”，改在前向路径走得最远的点处切开继续递归（类似 GNU diff 的 --speed-large-files）。
+// 重复行很多的大文件（日志、列表）上 Myers 的 O(ND) 会退化到数十秒；切分后得到的仍是合法的差异脚本，只是未必是最短的。
+const MYERS_LIMIT=2500;
+function heuristicSplit(vf,off,d,N,M){let bx=-1,by=-1,best=0;for(let k=-(d-1);k<=d-1;k+=2){const x=vf[off+k],y=x-k;if(x<0||y<0||x>N||y>M)continue;if(x+y>best&&x+y<N+M){best=x+y;bx=x;by=y}}return best>0?{x:bx,y:by,u:bx,v:by}:null}
 function midSnake(a,b,a0,a1,b0,b1,eq){const N=a1-a0,M=b1-b0,MAX=Math.ceil((N+M)/2),delta=N-M,odd=(delta&1)!==0,off=MAX+1;const vf=new Int32Array(2*MAX+4),vb=new Int32Array(2*MAX+4);vf[off+1]=0;vb[off+1]=0;
-  for(let d=0;d<=MAX;d++){for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vf[off+k-1]<vf[off+k+1]))?vf[off+k+1]:vf[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a0+x],b[b0+y])){x++;y++}vf[off+k]=x;if(odd){const kr=delta-k;if(kr>=-(d-1)&&kr<=d-1&&x+vb[off+kr]>=N)return{x:xs,y:ys,u:x,v:y}}}
+  for(let d=0;d<=MAX;d++){if(d>MYERS_LIMIT){const h=heuristicSplit(vf,off,d,N,M);if(h)return h}for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vf[off+k-1]<vf[off+k+1]))?vf[off+k+1]:vf[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a0+x],b[b0+y])){x++;y++}vf[off+k]=x;if(odd){const kr=delta-k;if(kr>=-(d-1)&&kr<=d-1&&x+vb[off+kr]>=N)return{x:xs,y:ys,u:x,v:y}}}
     for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vb[off+k-1]<vb[off+k+1]))?vb[off+k+1]:vb[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a1-1-x],b[b1-1-y])){x++;y++}vb[off+k]=x;if(!odd){const kf=delta-k;if(kf>=-d&&kf<=d&&x+vf[off+kf]>=N)return{x:N-x,y:M-y,u:N-xs,v:M-ys}}}}return null}
 const WORD_RE=/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|(?:(?![\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF])[\p{L}\p{M}\p{N}_])+|\s+|[^\s\p{L}\p{M}\p{N}_]/gu;
 const INLINE_MAX_TOKENS=20000;
