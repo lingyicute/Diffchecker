@@ -284,3 +284,11 @@ test('excel.compare: 整行新增 / 删除的内容所在列算作有改动（�
   const same = excel.compare(G([['K', 'V'], [1, 2]]), G([['K', 'V'], [1, 2]]), 0, 0);
   assert.equal(same.colChanged.size, 0);
 });
+
+test('excel.parseCsv: 末尾没有换行的 "" 空字段行不会丢失', () => {
+  const rows = s => JSON.parse(JSON.stringify(excel.parseCsv(s, ',').sheets[0].grid.rows.map(r => r.map(c => c.v))));
+  assert.deepEqual(rows('a\n""'), [['a'], ['']]);
+  assert.deepEqual(rows('a,""'), [['a', '']]);
+  assert.deepEqual(rows('a\n"x"'), [['a'], ['x']]);
+  assert.deepEqual(rows('a\n'), [['a']]);
+});
