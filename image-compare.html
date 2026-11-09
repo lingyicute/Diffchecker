@@ -434,6 +434,8 @@ window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('h
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
 /* Esc 关闭弹窗（对齐提示等同于“跳过”） */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('promptModal').classList.contains('open')){$('pmSkip').click();return}$('alignModal').classList.remove('open');$('exportModal').classList.remove('open')});
+/* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
+$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
 applyTheme();applyLang();
 </script>
 </body>
