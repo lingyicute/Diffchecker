@@ -290,7 +290,7 @@ $('fadeRange').oninput=e=>{S.fade=e.target.value/100;$('fadeVal').textContent=e.
 $('flickRange').oninput=e=>{S.flick=2100-+e.target.value;if(S.mode==='flicker'){clearInterval(flickTimer);flickTimer=setInterval(()=>{flickState^=1;redrawFlicker()},S.flick)}};
 const hold=(side,on)=>{holdSide=on?side:0;redrawFlicker()};
 for(const [id,side] of [['holdA',1],['holdB',2]]){const b=$(id);b.onpointerdown=()=>hold(side,true);b.onpointerup=b.onpointerleave=()=>hold(side,false)}
-document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea'))return;if(e.key==='1')hold(1,true);if(e.key==='2')hold(2,true)});document.addEventListener('keyup',e=>{if(e.key==='1'||e.key==='2')hold(0,false)});
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.target.matches('input,textarea'))return;if(e.key==='1')hold(1,true);if(e.key==='2')hold(2,true)});document.addEventListener('keyup',e=>{if(e.key==='1'||e.key==='2')hold(0,false)});
 $('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(window._hlt);window._hlt=setTimeout(renderStage,60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
 $('sbToggle').onclick=()=>$('work').classList.toggle('collapsed');
