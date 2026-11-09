@@ -409,7 +409,7 @@ let rt;const realtimeRun=()=>{updateMeta();if(opts.realtime){clearTimeout(rt);rt
 txtA.addEventListener('input',realtimeRun);txtB.addEventListener('input',realtimeRun);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();run()}});
 $('swapBtn').onclick=()=>{const v=txtA.value;txtA.value=txtB.value;txtB.value=v;fileNames={A:fileNames.B,B:fileNames.A};updateMeta();if(lastDiff)run(true)};
-$('clearAllBtn').onclick=()=>{txtA.value='';txtB.value='';fileNames={A:'',B:''};updateMeta();lastDiff=null;$('result').classList.add('hidden')};
+$('clearAllBtn').onclick=()=>{clearTimeout(rt);txtA.value='';txtB.value='';fileNames={A:'',B:''};updateMeta();lastDiff=null;$('result').classList.add('hidden')};
 document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{(b.dataset.clear==='A'?txtA:txtB).value='';fileNames[b.dataset.clear]='';updateMeta();if(opts.realtime)run()});
 document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const ta=b.dataset.copy==='A'?txtA:txtB;try{await navigator.clipboard.writeText(ta.value)}catch(e){ta.select();document.execCommand('copy')}notice(t('copied'))});
 /* file open & drag/drop */
