@@ -216,7 +216,7 @@ function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml')
   const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];let cols=0;
     let lastRi=-1;for(const r of doc.getElementsByTagName('row')){const rn=+r.getAttribute('r'),ri=rn>0?rn-1:lastRi+1;lastRi=ri;const cells=[];let ci=-1;
       for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
-        for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f')f=ch.textContent?'='+ch.textContent:null;else if(ch.localName==='is')raw=[...ch.getElementsByTagName('t')].map(x=>x.textContent).join('')}
+        for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f')f=ch.textContent?'='+ch.textContent:null;else if(ch.localName==='is')raw=[...ch.getElementsByTagName('t')].filter(x=>x.parentNode.localName!=='rPh').map(x=>x.textContent).join('')/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
         if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
         cells[ci]={v,f,d:dateStyles.has(s)};if(ci+1>cols)cols=ci+1}
       if(cells.length){rows[ri]=cells}}
