@@ -130,3 +130,19 @@ test('excel.pairBlock: 配对不交叉，A / B 两侧的行序都保持原有顺
     assert.deepEqual(as, da); assert.deepEqual(bs, db);
   }
 });
+
+test('computeDiff: 行数不等的改动块按相似度配对，且每行恰好出现一次、顺序不变', () => {
+  const o = { rules: [] };
+  const d = text.computeDiff('foo bar baz\nqux quux corge\nhello world one', 'hello world 1', o);
+  const pr = Array.from(d.blocks[0].pairs, p => [p.l, p.r]);
+  assert.deepEqual(pr, [[0, null], [1, null], [2, 0]]);
+  const w = ['a b', 'c d', 'e f', 'a c', 'x y z', 'p q'];
+  for (let it = 0; it < 800; it++) {
+    const gen = () => Array.from({ length: rnd(9) }, () => w[rnd(w.length)] + ' ' + rnd(4)).join('\n');
+    const r = text.computeDiff(gen(), gen(), o);
+    for (const b of r.blocks) if (b.type === 'chg') {
+      assert.deepEqual(Array.from(b.pairs.filter(p => p.l != null), p => p.l), Array.from(b.del));
+      assert.deepEqual(Array.from(b.pairs.filter(p => p.r != null), p => p.r), Array.from(b.ins));
+    }
+  }
+});

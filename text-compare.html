@@ -316,6 +316,20 @@ function transform(text,o){
   if(o.trim)lines=lines.map(l=>l.trim());if(o.lower)lines=lines.map(l=>l.toLowerCase());if(o.sort)lines=lines.slice().sort((a,b)=>a<b?-1:a>b?1:0);
   return lines;
 }
+/* 把一个改动块里的删除行 / 新增行配成并排的行。行数相同时按序号一一对应；行数不等时先按词集合相似度找“锚点”
+   （保持 A、B 两侧顺序、互不交叉），锚点之间再按序号对应，这样新增 / 删除的行不会把后面的修改行错位配对。 */
+function pairLines(del,ins,A,B,norm){
+  const out=[],nd=del.length,ni=ins.length,plain=(d0,d1,i0,i1)=>{const a=d1-d0,b=i1-i0,m=Math.max(a,b);for(let k=0;k<m;k++)out.push({l:k<a?del[d0+k]:null,r:k<b?ins[i0+k]:null})};
+  if(!nd||!ni||nd===ni||nd*ni>1600){plain(0,nd,0,ni);return out}
+  const tk=s=>new Set(tokWords(norm(s)).filter(w=>w.trim())),ta=del.map(i=>tk(A[i])),tb=ins.map(j=>tk(B[j])),cand=[];
+  for(let x=0;x<nd;x++)for(let y=0;y<ni;y++){let c=0;for(const w of ta[x])if(tb[y].has(w))c++;const u=ta[x].size+tb[y].size-c,s=u?c/u:1;if(s>=.4)cand.push([s,x,y])}
+  cand.sort((p,q)=>q[0]-p[0]||p[1]-q[1]||p[2]-q[2]);
+  const ux=new Set(),uy=new Set(),pr=[];for(const [s,x,y] of cand){if(ux.has(x)||uy.has(y))continue;ux.add(x);uy.add(y);pr.push([x,y])}
+  pr.sort((p,q)=>p[0]-q[0]);
+  const tails=[],tIdx=[],prev=[];for(let k=0;k<pr.length;k++){let lo=0,hi=tails.length;while(lo<hi){const m=(lo+hi)>>1;if(tails[m]<pr[k][1])lo=m+1;else hi=m}tails[lo]=pr[k][1];tIdx[lo]=k;prev[k]=lo?tIdx[lo-1]:-1}
+  const keep=[];for(let k=tIdx[tails.length-1];k!=null&&k>=0;k=prev[k])keep.push(pr[k]);keep.reverse();
+  let px=0,py=0;for(const [x,y] of keep){plain(px,x,py,y);out.push({l:del[x],r:ins[y]});px=x+1;py=y+1}
+  plain(px,nd,py,ni);return out}
 function computeDiff(textA,textB,o){
   const A=transform(textA,o),B=transform(textB,o),norm=makeNorm(o);
   const ops=diffSeq(A.map(norm),B.map(norm));
@@ -325,7 +339,7 @@ function computeDiff(textA,textB,o){
     if(op===EQ){if(!cur||cur.type!=='eq'){cur={type:'eq',rows:[]};blocks.push(cur)}cur.rows.push({l:i,r:j})}
     else{if(!cur||cur.type!=='chg'){cur={type:'chg',del:[],ins:[]};blocks.push(cur)}if(op===DEL)cur.del.push(i);else cur.ins.push(j)}
   }
-  let nDel=0,nIns=0;for(const b of blocks)if(b.type==='chg'){nDel+=b.del.length;nIns+=b.ins.length}
+  let nDel=0,nIns=0;for(const b of blocks)if(b.type==='chg'){nDel+=b.del.length;nIns+=b.ins.length;b.pairs=pairLines(b.del,b.ins,A,B,norm)}
   return {A,B,blocks,nDel,nIns,norm,segCache:new Map()};
 }
 
@@ -377,8 +391,8 @@ function render(){
         for(let k=b.rows.length-tail;k<b.rows.length;k++)rows.push({kind:'eq',l:b.rows[k].l,r:b.rows[k].r});
       }else for(const r of b.rows)rows.push({kind:'eq',l:r.l,r:r.r});
     }else{
-      const n=Math.max(b.del.length,b.ins.length);const id=changeNo++;
-      for(let k=0;k<n;k++){const li=b.del[k],ri=b.ins[k];let segs=null;
+      const n=b.pairs.length;const id=changeNo++;
+      for(let k=0;k<n;k++){const li=b.pairs[k].l,ri=b.pairs[k].r;let segs=null;
         if(li!=null&&ri!=null){const ck=opts.level+'|'+li+'|'+ri;segs=d.segCache.get(ck);if(!segs){segs=inlineDiff(d.A[li],d.B[ri],opts.level,d.norm);d.segCache.set(ck,segs)}}
         rows.push({kind:'chg',l:li,r:ri,segs,first:k===0,id});}
     }
@@ -450,7 +464,7 @@ const baseName=()=>(stem(fileNames.A,'original')+'-vs-'+stem(fileNames.B,'change
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 function exportDiffFile(type=opts.type){const j={type:'text',version:1,left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B,options:{...opts,type},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
 /* rows for tabular exports (pairs of left/right lines) */
-function pairedRows(){const d=lastDiff,out=[];for(const b of d.blocks){if(b.type==='eq')for(const r of b.rows)out.push({l:r.l,r:r.r,changed:false});else{const n=Math.max(b.del.length,b.ins.length);for(let k=0;k<n;k++)out.push({l:b.del[k]??null,r:b.ins[k]??null,changed:true})}}return out}
+function pairedRows(){const d=lastDiff,out=[];for(const b of d.blocks){if(b.type==='eq')for(const r of b.rows)out.push({l:r.l,r:r.r,changed:false});else for(const p of b.pairs)out.push({l:p.l,r:p.r,changed:true})}return out}
 async function exportPng(){
   const d=lastDiff,rows=pairedRows(),unified=exportLayout==='unified';const dark=theme==='dark';
   const W=1600,LH=20,PAD=16,font='13px '+(getComputedStyle(document.body).getPropertyValue('--mono').trim()||'monospace');
