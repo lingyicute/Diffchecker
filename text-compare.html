@@ -208,7 +208,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   <div class="seg" id="exportLayout"><button data-l="split" aria-pressed="true" data-i18n="split">Split</button><button data-l="unified" aria-pressed="false" data-i18n="unified">Unified</button></div>
   <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div>
 </div></div>
-<div class="offline-notice" id="notice"></div>
+<div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
 
 <script>
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
