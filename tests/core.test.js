@@ -461,3 +461,12 @@ test('image.phaseCorr: 启用参考图 FFT 缓存时与未缓存结果一致', (
   assert.deepEqual(p1, p2);
   assert.deepEqual(p1, p3);
 });
+
+test('excel.compare: 按行排序只以共有列为键，删除 / 新增的列不打乱两侧的行对齐', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortRows: true, sortCols: false });
+  const R = excel.compare(G([['X', 'K'], ['3', 'a'], ['1', 'b'], ['2', 'c']]), G([['K', 'Y'], ['c', 'z'], ['a', 'x'], ['b', 'y']]), 0, 0);
+  assert.equal(R.stats.rowsDel, 0); assert.equal(R.stats.rowsIns, 0); assert.equal(R.stats.rowsChg, 0);
+  assert.ok(R.rows.every(r => r.type === 'eq'));
+  Object.assign(excel.opts, { sortRows: false });
+});
