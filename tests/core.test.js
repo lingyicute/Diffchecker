@@ -1,5 +1,5 @@
 // 零依赖回归测试：直接从各 HTML 页面的内联脚本中抽取纯函数并在 vm 中运行。
-// 运行：node --test tests/
+// 运行：npm test（即 node --test）
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
