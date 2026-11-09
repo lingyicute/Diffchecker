@@ -205,7 +205,8 @@ function parseXlsx(buf){const z=readZip(buf);const wbx=z.text('xl/workbook.xml')
   const dateStyles=new Set();const stx=z.text('xl/styles.xml');if(stx){const st=xml(stx);const custom={};for(const nf of st.getElementsByTagName('numFmt')){const code=(nf.getAttribute('formatCode')||'').replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[+nf.getAttribute('numFmtId')]=/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
     const xfs=st.querySelector('cellXfs');if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i)})}}
   const sheets=[];for(const sh of wb.getElementsByTagName('sheet')){const rid=sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sh.getAttribute('r:id');let target=rels[rid]||'';if(target.startsWith('/'))target=target.slice(1);else if(!target.startsWith('xl/'))target='xl/'+target;
-    sheets.push({name:sh.getAttribute('name'),target,hidden:sh.getAttribute('state')==='hidden'})}
+    sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
+  if(!sheets.length)throw new Error(t('badZip'));
   const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];let cols=0;
     let lastRi=-1;for(const r of doc.getElementsByTagName('row')){const rn=+r.getAttribute('r'),ri=rn>0?rn-1:lastRi+1;lastRi=ri;const cells=[];let ci=-1;
       for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
