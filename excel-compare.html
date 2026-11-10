@@ -302,6 +302,8 @@ function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);const p=n=>Stri
 function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&(String(c.v).trim()!==''||c.f)).length;counts.push(n);if(n>bestN)bestN=n}
   for(let i=0;i<lim;i++)if(counts[i]>=2&&counts[i]>=.6*bestN){best=i;break}return best}
 function trimRows(rows){let n=rows.length;while(n>0&&!(rows[n-1]||[]).some(c=>c&&(String(c.v).trim()!==''||c.f)))n--;return rows.slice(0,n)}
+// 与 trimRows 对应：整列为空的尾部列（CSV 每行末尾多出的分隔符、xlsx 里只有空字符串的单元格）不算数据列，否则会被误报成“删除 / 新增了一列”
+function usedCols(rows){let n=0;for(const r of rows)for(let i=(r||[]).length-1;i>=n;i--){const c=r[i];if(c&&(String(c.v).trim()!==''||c.f)){n=i+1;break}}return n}
 function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns ordered entries {type:'del'|'ins'|'chg',ai,bi}
   const out=[];if(!delIdx.length||!insIdx.length){delIdx.forEach(i=>out.push({type:'del',ai:i}));insIdx.forEach(j=>out.push({type:'ins',bi:j}));return out}
   const sim=(i,j)=>{const a=cellsA[i],b=cellsB[j];const n=Math.max(a.length,b.length);if(!n)return 1;let eq=0,nonEmpty=0;for(let k=0;k<n;k++){const x=a[k]||'',y=b[k]||'';if(x||y)nonEmpty++;if(x===y&&(x||y))eq++}return nonEmpty?eq/nonEmpty:1};
@@ -317,8 +319,8 @@ function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns order
   let bp=0;const insSorted=insIdx.slice(),posB=new Map(insIdx.map((v,p)=>[v,p]));for(const i of delIdx){if(pairs.has(i)){const j=pairs.get(i);while(bp<insSorted.length&&posB.get(insSorted[bp])<posB.get(j)){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}out.push({type:'chg',ai:i,bi:j});if(bp<insSorted.length&&insSorted[bp]===j)bp++}else out.push({type:'del',ai:i})}
   while(bp<insSorted.length){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}return out}
 function compare(gA,gB,hA,hB){
-  const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows);let columns=[];let dataA,dataB,startA,startB;
-  if(opts.mode==='table'){const headA=(rowsA[hA]||[]),headB=(rowsB[hB]||[]);const nA=Math.max(gA.cols,headA.length),nB=Math.max(gB.cols,headB.length);const nameOf=(h,i)=>normalize(String(cellText(h[i])||'')).trim()||('__col'+i);
+  const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows),cA=usedCols(rowsA),cB=usedCols(rowsB);let columns=[];let dataA,dataB,startA,startB;
+  if(opts.mode==='table'){const headA=(rowsA[hA]||[]),headB=(rowsB[hB]||[]);const nA=cA,nB=cB;const nameOf=(h,i)=>normalize(String(cellText(h[i])||'')).trim()||('__col'+i);
     if(opts.matchHeaders){const usedB=new Set();const mapAB=new Map();const nmB=new Map(),qpos=new Map();for(let j=0;j<nB;j++){const n=nameOf(headB,j);const q=nmB.get(n);if(q)q.push(j);else nmB.set(n,[j])}
       for(let i=0;i<nA;i++){const n=nameOf(headA,i),q=nmB.get(n),k=qpos.get(n)||0;if(q&&k<q.length){mapAB.set(i,q[k]);usedB.add(q[k]);qpos.set(n,k+1)}}
       // moved detection via LIS over matched B indices
@@ -332,7 +334,7 @@ function compare(gA,gB,hA,hB){
     }else{const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ha=i<nA?String(cellText(headA[i])||''):'',hb=i<nB?String(cellText(headB[i])||''):'',hc=i<nA&&i<nB&&normalize(ha)!==normalize(hb);columns.push({name:(hc&&ha&&hb?`${ha} → ${hb}`:(hb||ha))||colName(i),ia:i<nA?i:-1,ib:i<nB?i:-1,st:i>=nA?'ins':i>=nB?'del':'eq',hdrChg:hc})}}
     if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
-  }else{const n=Math.max(gA.cols,gB.cols);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<gA.cols?i:-1,ib:i<gB.cols?i:-1,st:i>=gA.cols?'ins':i>=gB.cols?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
+  }else{const n=Math.max(cA,cB);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<cA?i:-1,ib:i<cB?i:-1,st:i>=cA?'ins':i>=cB?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
   const proj=(row,side)=>columns.map(c=>{const idx=side==='A'?c.ia:c.ib;return idx<0?'':String(cellText(row[idx]))});
   const shared=columns.map((c,k)=>c.ia>=0&&c.ib>=0?k:-1).filter(k=>k>=0);
   let idxA=dataA.map((_,i)=>i),idxB=dataB.map((_,i)=>i);

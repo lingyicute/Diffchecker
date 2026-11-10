@@ -525,3 +525,17 @@ test('excel.compare: 开启“对列排序”后，仅列顺序不同的两张�
   Object.assign(excel.opts, { sortCols: false });
   assert.equal(excel.compare(G([['A', 'B', 'C'], [1, 2, 3]]), G([['C', 'A', 'B'], [3, 1, 2]]), 0, 0).stats.colsMov, 1);
 });
+
+test('excel.compare: 整列为空的尾部列（如 CSV 行尾多余的分隔符）不算数据列，不会误报删除 / 新增了一列', () => {
+  const grid = s => excel.parseCsv(s, ',').sheets[0].grid;
+  for (const mode of ['table', 'rows']) {
+    Object.assign(excel.opts, { mode, matchHeaders: true, sortRows: false, sortCols: false });
+    const R = excel.compare(grid('a,b,\n1,2,\n'), grid('a,b\n1,2\n'), 0, 0);
+    assert.equal(R.identical, true, mode);
+    assert.equal(R.columns.length, 2, mode);
+    const real = excel.compare(grid('a,b,\n1,2,x\n'), grid('a,b\n1,2\n'), 0, 0);
+    assert.equal(real.stats.colsDel, 1, mode);
+    assert.equal(real.identical, false, mode);
+  }
+  Object.assign(excel.opts, { mode: 'table' });
+});
