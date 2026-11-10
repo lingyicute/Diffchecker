@@ -79,6 +79,7 @@ table.diff td.num{width:48px;min-width:48px;text-align:right;color:var(--fg3);us
 table.diff td.code{position:relative}
 table.diff td.sign{width:18px;min-width:18px;padding:0 0 0 6px;color:var(--fg3);user-select:none}
 table.diff tr.split td.code{width:50%}
+table.diff col.cn{width:48px}table.diff col.cs{width:18px}
 table.diff td.code.del{background:var(--del-block)}table.diff td.code.ins{background:var(--ins-block)}
 table.diff td.num.del{color:var(--del-num);background:var(--del-block)}table.diff td.num.ins{color:var(--ins-num);background:var(--ins-block)}
 table.diff td.code.empty{background:repeating-linear-gradient(135deg,var(--empty-block) 0 6px,transparent 6px 12px)}
@@ -419,7 +420,9 @@ function render(){
         rows.push({kind:'chg',l:li,r:ri,segs,first:k===0,id});}
     }
   });
-  const unified=opts.type==='unified';let h=`<table class="diff ${opts.noWrap?'nowrap':''}">`;
+  const unified=opts.type==='unified';
+  // table-layout:fixed 只按第一行的单元格定列宽：开启“隐藏未修改的行”且表格以折叠条（colspan=4）开头时，四列会被均分、行号列和代码列一样宽，所以用 <colgroup> 显式给出各列宽度
+  let h=`<table class="diff ${opts.noWrap?'nowrap':''}"><colgroup>${unified?'<col class="cn"><col class="cn"><col class="cs"><col>':'<col class="cn"><col><col class="cn"><col>'}</colgroup>`;
   const cell=(side,idx,segs)=>{const txt=side==='l'?d.A[idx]:d.B[idx],c=(side==='l'?hlA:hlB)?.[idx]||null;return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
   for(const r of rows){
     if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}" tabindex="0" role="button"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;continue}
