@@ -428,7 +428,7 @@ function render(){
   const cell=(side,idx,segs)=>{const txt=side==='l'?d.A[idx]:d.B[idx],c=(side==='l'?hlA:hlB)?.[idx]||null;return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
   for(const r of rows){
     if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}" tabindex="0" role="button"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;continue}
-    if(r.kind==='eq'){const a=d.A[r.l];
+    if(r.kind==='eq'){
       if(unified)h+=`<tr><td class="num">${r.l+1}</td><td class="num">${r.r+1}</td><td class="sign"></td><td class="code">${cell('l',r.l)}</td></tr>`;
       else h+=`<tr class="split"><td class="num">${r.l+1}</td><td class="code">${cell('l',r.l)}</td><td class="num">${r.r+1}</td><td class="code">${cell('r',r.r)}</td></tr>`;continue}
     const fc=r.first?`id="focus-${r.id}"`:'';
