@@ -374,7 +374,7 @@ function phaseCorr(ga,gb,N){let F=ga._c&&ga._fft;if(ga._c&&(!F||F.N!==N)){const 
   /* 抛物线插值求亚像素峰值，避免位移被量化到工作分辨率的整数格（否则对齐会有 1–2px 误差，还会让缩放/旋转搜索去“补偿”这个误差） */
   const sub=(l,c,r)=>{const den=l-2*c+r;if(!(den<0))return [0,c];const d=Math.max(-.5,Math.min(.5,.5*(l-r)/den));return [d,c-.25*(l-r)*d]};
   const [fx,hx]=sub(at(px-1,py),best,at(px+1,py)),[fy,hy]=sub(at(px,py-1),best,at(px,py+1));
-  let dx=px+fx,dy=py+fy;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;const peak=hx+hy-best;return {dx,dy,peak,psr:peak/Math.sqrt(sum/(N*N))}}
+  let dx=px+fx,dy=py+fy;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;const peak=hx+hy-best;/* 相关面全零（纯色 / 空白图片）时 0/0=NaN，会被 autoAlign 的阈值判断当成“对齐成功”，显式归零 */return {dx,dy,peak,psr:sum>0?peak/Math.sqrt(sum/(N*N)):0}}
 async function autoAlign(A,B,allow){
   if(window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B,allow);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
   const W=Math.max(A.width,B.width),H=Math.max(A.height,B.height);const tick=()=>new Promise(r=>setTimeout(r,0));

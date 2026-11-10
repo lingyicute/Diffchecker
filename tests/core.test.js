@@ -461,6 +461,14 @@ test('image.phaseCorr: 启用参考图 FFT 缓存时与未缓存结果一致', (
   assert.deepEqual(p1, p3);
 });
 
+test('image.phaseCorr: 纯色 / 空白图片相关面全零时 psr 为 0，而不是 NaN（否则 autoAlign 的阈值判断会误报对齐成功）', () => {
+  const z = new Float64Array(32 * 32);
+  const p = img.phaseCorr(z, z, 32);
+  assert.ok(Number.isFinite(p.psr) && Number.isFinite(p.peak));
+  assert.equal(p.psr, 0);
+  assert.equal(p.peak, 0);
+});
+
 test('excel.compare: 按行排序只以共有列为键，删除 / 新增的列不打乱两侧的行对齐', () => {
   const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
   Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortRows: true, sortCols: false });
