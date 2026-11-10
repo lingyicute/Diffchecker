@@ -664,3 +664,22 @@ test('excel.compare: 按位置匹配列时，“对列排序”先把两侧的�
   assert.deepEqual([...R3.columns].map(c => [c.ia, c.ib, c.hdrChg]), [[0, 0, true], [1, 1, true], [2, 2, true]]);
   Object.assign(excel.opts, { matchHeaders: true });
 });
+
+test('文本页 CSS 的自动识别与着色：结果正确，且不会在超长的连续字母数字串上回溯成 O(n²)', () => {
+  const s = script('text-compare.html');
+  const syn = run(between(s, 'const SYN={', '/* ===================== state'), 'detectSyntax,synClasses');
+  assert.equal(syn.detectSyntax('.btn-primary:hover {\n  color: #fff;\n  margin: 0 -4px;\n}'), 'css');
+  assert.equal(syn.detectSyntax('a{b:c}'), 'css');
+  assert.equal(syn.detectSyntax('{ color: red }'), '');
+  assert.equal(syn.detectSyntax('plain words, a {brace} and a colon: nothing else'), '');
+  const css = '.a-b{color:red;width:10px}\nh1 > h2 { --x-1: #fff }', cls = syn.synClasses(css, 'css');
+  const of = (str, from = 0) => { const i = css.indexOf(str, from); return [...new Set(cls.slice(i, i + str.length))].join('|'); };
+  assert.equal(of('.a-b'), 'tg'); assert.equal(of('color'), 'at'); assert.equal(of('red'), ''); assert.equal(of('width'), 'at'); assert.equal(of('10px'), 'n');
+  assert.equal(of('h1'), ''); // 标识符里的数字不是数值
+  assert.equal(of('h2'), 'tg'); assert.equal(of('--x-1'), 'at'); assert.equal(of('#fff'), 'n');
+  // 32 万字符的连续标识符（base64url、哈希之类）：原先逐位回溯需要数分钟
+  const big = 'token ' + 'a1B2-c3_'.repeat(40000), t0 = Date.now();
+  assert.equal(syn.detectSyntax(big), '');
+  assert.equal(syn.synClasses(big, 'css').length, big.length);
+  assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0}ms`);
+});
