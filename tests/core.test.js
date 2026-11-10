@@ -601,3 +601,11 @@ test('excel.compare: 表头行号超出数据范围时按无表头比较，不�
   assert.equal(ok.stats.rowsDel, 1);
   assert.equal(ok.stats.rowsIns, 1);
 });
+
+test('excel.parseCsv: 出现行数相同时，优先选每行个数一致的分隔符，而不是正文里逗号更多的那个', () => {
+  const g = s => JSON.parse(JSON.stringify(excel.parseCsv(s).sheets[0].grid.rows.map(r => r.map(c => c.v))));
+  const body = [['id', 'name, title', 'note'], ['1', 'apples, pears, plums, figs', 'x'], ['2', 'red, green, blue, pink', 'y'], ['3', 'one, two, three, four', 'z']];
+  for (const d of ['\t', ';', '|']) assert.deepEqual(g(body.map(r => r.join(d)).join('\n')), body);
+  // 普通逗号分隔的文件不受影响，正文里偶尔出现的分号也不会抢走分隔符
+  assert.deepEqual(g('a,b;c\n1,2;3\n4,5,6'), [['a', 'b;c'], ['1', '2;3'], ['4', '5', '6']]);
+});
