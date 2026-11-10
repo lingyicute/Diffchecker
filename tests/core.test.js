@@ -623,3 +623,25 @@ test('excel.shiftFormula: 整列（A:A）与整行（1:1）引用同样按位移
   // 平移后越界的引用保持原样
   assert.equal(s('SUM(XFD:XFD)', 0, 1), 'SUM(XFD:XFD)');
 });
+
+test('image.autoAlign: 沿用并带回调用方当前的翻转状态；带翻转时不走 OpenCV（仿射估计不含镜像）', async () => {
+  const s = script('image-compare.html');
+  const pre = 'const t=k=>k,notice=()=>{},setTimeout=f=>f(),window={},calls=[],ocv=[];'
+    + 'function grayPatch(src,N,sc,rot,fh,fv){calls.push([src.id,fh,fv]);return{g:[],f:1}}'
+    + 'function phaseCorr(){return{dx:3,dy:-2,peak:1,psr:50}}'
+    + 'function alignWithOpenCV(){ocv.push(1);return{dx:9,dy:9,rot:0,scale:1,fh:false,fv:false,conf:.9}}';
+  const X = run(between(s, 'async function autoAlign', 'function alignWithOpenCV'), 'autoAlign,calls,ocv,window', pre);
+  const A = { id: 'A', width: 64, height: 48 }, B = { id: 'B', width: 64, height: 48 };
+  for (const allow of [{ rot: false, scale: false }, { rot: true, scale: true }]) for (const [fh, fv] of [[false, false], [true, false], [false, true], [true, true]]) {
+    X.calls.length = 0;
+    const r = await X.autoAlign(A, B, { ...allow, fh, fv });
+    assert.equal(r.fh, fh); assert.equal(r.fv, fv); assert.equal(r.dx, 3); assert.equal(r.dy, -2);
+    assert.ok(X.calls.length > 0);
+    for (const [id, h, v] of X.calls) { assert.equal(h, id === 'B' ? fh : false); assert.equal(v, id === 'B' ? fv : false); }
+  }
+  assert.equal((await X.autoAlign(A, B, { rot: true, scale: true })).fh, false); // 不传翻转时与原先一致
+  X.window.cv = { ORB: 1 };
+  assert.equal((await X.autoAlign(A, B, { rot: true, scale: true })).dx, 9); assert.equal(X.ocv.length, 1);
+  const flipped = await X.autoAlign(A, B, { rot: true, scale: true, fh: true });
+  assert.equal(X.ocv.length, 1); assert.equal(flipped.fh, true); assert.equal(flipped.dx, 3);
+});

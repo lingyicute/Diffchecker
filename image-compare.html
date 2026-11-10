@@ -357,7 +357,7 @@ for(const [id,k] of [['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','sca
 $('flipH').onclick=()=>{alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
 {const v=$('alignView');v.onpointerdown=e=>{v.setPointerCapture(e.pointerId);const sx=e.clientX,sy=e.clientY,odx=alTmp.dx,ody=alTmp.dy;v.onpointermove=ev=>{alTmp.dx=odx+(ev.clientX-sx)/alView.z;alTmp.dy=ody+(ev.clientY-sy)/alView.z;syncAlignInputs();drawAlign()};v.onpointerup=v.onpointercancel=()=>{v.onpointermove=null}};
  v.addEventListener('wheel',e=>{e.preventDefault();const r=v.getBoundingClientRect();const cx=e.clientX-r.left,cy=e.clientY-r.top;const z=Math.max(.02,Math.min(10,alView.z*(e.deltaY<0?1.12:1/1.12)));const k=z/alView.z;alView.x=cx-(cx-alView.x)*k;alView.y=cy-(cy-alView.y)*k;alView.z=z;drawAlign()},{passive:false})}
-$('autoAlignBtn').onclick=async()=>{$('alignErr').textContent='';$('autoAlignBtn').disabled=true;await new Promise(r=>setTimeout(r,20));try{const r=await autoAlign(S.A.c,S.B.c,{rot:$('allowRot').checked,scale:$('allowScale').checked});if(!r){$('alignErr').textContent=t('alignFail')}else{alTmp={...r};syncAlignInputs();drawAlign();notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}}catch(e){console.error(e);$('alignErr').textContent=t('alignFail')}finally{$('autoAlignBtn').disabled=false}};
+$('autoAlignBtn').onclick=async()=>{$('alignErr').textContent='';$('autoAlignBtn').disabled=true;await new Promise(r=>setTimeout(r,20));try{const r=await autoAlign(S.A.c,S.B.c,{rot:$('allowRot').checked,scale:$('allowScale').checked,fh:alTmp.fh,fv:alTmp.fv});if(!r){$('alignErr').textContent=t('alignFail')}else{alTmp={...r};syncAlignInputs();drawAlign();notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}}catch(e){console.error(e);$('alignErr').textContent=t('alignFail')}finally{$('autoAlignBtn').disabled=false}};
 
 /* ---- pure-JS auto alignment: phase correlation (FFT) with coarse rotation/scale search ---- */
 function fft1d(re,im,inv){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){let tmp=re[i];re[i]=re[j];re[j]=tmp;tmp=im[i];im[i]=im[j];im[j]=tmp}}
@@ -377,10 +377,12 @@ function phaseCorr(ga,gb,N){let F=ga._c&&ga._fft;if(ga._c&&(!F||F.N!==N)){const 
   const [fx,hx]=sub(at(px-1,py),best,at(px+1,py)),[fy,hy]=sub(at(px,py-1),best,at(px,py+1));
   let dx=px+fx,dy=py+fy;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;const peak=hx+hy-best;/* 相关面全零（纯色 / 空白图片）时 0/0=NaN，会被 autoAlign 的阈值判断当成“对齐成功”，显式归零 */return {dx,dy,peak,psr:sum>0?peak/Math.sqrt(sum/(N*N)):0}}
 async function autoAlign(A,B,allow){
-  if(window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B,allow);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
+  /* 翻转无法从相位相关里估计出来：沿用调用方当前的翻转状态去搜索平移 / 旋转 / 缩放，并原样带回结果。否则在手动对齐里先翻转再点“自动对齐”，翻转会被悄悄清掉，镜像的图片永远对不上；OpenCV 的仿射估计同样不含镜像，带翻转时改用内置算法 */
+  const fh=!!allow.fh,fv=!!allow.fv;
+  if(!fh&&!fv&&window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B,allow);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
   const W=Math.max(A.width,B.width),H=Math.max(A.height,B.height);const tick=()=>new Promise(r=>setTimeout(r,0));
   const baseScale=allow.scale?Math.min(A.width/B.width,A.height/B.height):1;
-  const evalAt=(N,pa,sc,rot)=>{const pb=grayPatch(B,N,sc,rot,false,false,W,H);const r=phaseCorr(pa.g,pb.g,N);return {...r,sc,rot,f:pa.f}};
+  const evalAt=(N,pa,sc,rot)=>{const pb=grayPatch(B,N,sc,rot,fh,fv,W,H);const r=phaseCorr(pa.g,pb.g,N);return {...r,sc,rot,f:pa.f}};
   // 1) coarse search 128²
   let N=128,pa=grayPatch(A,N,1,0,false,false,W,H),best=null,n=0;
   const scales=allow.scale?[0.85,0.9,0.95,1,1.05,1.1,1.15].map(s=>s*baseScale):[baseScale];if(allow.scale&&!scales.includes(1))scales.push(1);/* 尺寸不同往往只是裁剪 / 留白不同、内容并没有缩放：按尺寸比推出的候选里通常没有 1，补上“不缩放”，否则只能落在邻近的错误比例上，还会用多余的旋转去凑 */const rots=allow.rot?[-6,-4,-2,-1,0,1,2,4,6]:[0];
@@ -399,7 +401,7 @@ async function autoAlign(A,B,allow){
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
   // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
   const whole=fin.rot===0&&fin.sc===1,px=v=>whole?Math.round(v)||0:v;
-  return {dx:px(fin.dx/f),dy:px(fin.dy/f),rot:fin.rot,scale:fin.sc,fh:false,fv:false,conf:Math.min(1,fin.psr/40)};
+  return {dx:px(fin.dx/f),dy:px(fin.dy/f),rot:fin.rot,scale:fin.sc,fh,fv,conf:Math.min(1,fin.psr/40)};
 }
 function alignWithOpenCV(A,B,allow={}){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
   try{const ma=keep(cv.imread(A)),mb=keep(cv.imread(B)),ga=keep(new cv.Mat()),gb=keep(new cv.Mat());cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=keep(new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20));const k1=keep(new cv.KeyPointVector()),k2=keep(new cv.KeyPointVector()),d1=keep(new cv.Mat()),d2=keep(new cv.Mat()),nomask=keep(new cv.Mat());orb.detectAndCompute(ga,nomask,k1,d1);orb.detectAndCompute(gb,nomask,k2,d2);
