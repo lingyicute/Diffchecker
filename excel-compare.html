@@ -231,8 +231,10 @@ function parseXlsx(buf){const z=readZip(buf);
     sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
   if(!sheets.length)throw new Error(t('badZip'));
   const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];const sharedF=Object.create(null);let cols=0;
-    let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=rn>0?rn-1:lastRi+1;lastRi=ri;const cells=[];let ci=-1;
-      for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
+    /* 损坏或伪造的工作表可能声明远超 XLSX 规格上限（1048576 行 × 16384 列）的行 / 列号：
+       照单全收会把 rows 数组撑到那个长度、随后补空行的循环直接耗尽内存，一律钳制在上限以内 */
+    let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=rn>0?Math.min(rn-1,1048575):Math.min(lastRi+1,1048575);lastRi=ri;const cells=[];let ci=-1;
+      for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;if(ci>16383)continue;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
         for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF[si]={f:ch.textContent,r:ri,c:ci}}else if(sh&&sharedF[si]){const mf=sharedF[si];f='='+shiftFormula(mf.f,ri-mf.r,ci-mf.c)}}else if(ch.localName==='is')raw=[...els(ch,'t')].filter(x=>x.parentNode.localName!=='rPh').map(x=>x.textContent).join('')/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
         if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(tt==='d')v=isoDateCell(raw);else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
         cells[ci]={v,f,d:dateStyles.has(s)||tt==='d'};if(ci+1>cols)cols=ci+1}
