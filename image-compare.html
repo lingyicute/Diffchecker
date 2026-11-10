@@ -340,7 +340,8 @@ function cropCanvas(src,r,maxW=112,maxH=84){const s=Math.min(maxW/r.w,maxH/r.h,4
 function renderList(){const el=$('chgList');el.innerHTML='';$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
   if(S.tooMany&&!S.regions.length){el.innerHTML=`<div class="tip">${t('tooDifferent')}</div>`;return}if(!S.regions.length){el.innerHTML=`<div class="tip">${t('noChanges')}</div>`;return}
   S.regions.forEach((r,i)=>{const d=document.createElement('div');d.className='chg-item'+(i===S.active?' active':'');d.title=t('focus');d.innerHTML=`<div class="info"><b>${t('change',{n:i+1})}</b><span>${r.w}×${r.h} @ ${r.x},${r.y} · ${r.px}px</span></div>`;d.prepend(cropCanvas(baseB,r));d.prepend(cropCanvas(baseA,r));
-    d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};el.appendChild(d)})}
+    d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};
+    d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d)})}
 function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay()}
 
 /* ===================== alignment ===================== */
