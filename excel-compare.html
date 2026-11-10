@@ -338,7 +338,8 @@ function compare(gA,gB,hA,hB){
       const byPred=new Map();for(const j of bOnly){const p=bPred(j);if(!byPred.has(p))byPred.set(p,[]);byPred.get(p).push(j)}
       (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
       for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)&&!opts.sortCols?'mov':'eq'/* 对列排序后列的先后不再有意义，不标记“已移动” */});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
-    }else{const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ha=i<nA?String(cellText(headA[i])||''):'',hb=i<nB?String(cellText(headB[i])||''):'',hc=i<nA&&i<nB&&normalize(ha)!==normalize(hb);columns.push({name:(hc&&ha&&hb?`${ha} → ${hb}`:(hb||ha))||colName(i),ia:i<nA?i:-1,ib:i<nB?i:-1,st:i>=nA?'ins':i>=nB?'del':'eq',hdrChg:hc})}}
+    }else{/* 按位置匹配时，“对列排序”要先把两侧的列各自按表头排好再逐个对应：否则只是把已经按原位置配好的列换个显示顺序，仅列顺序不同的两张表仍会被逐列报成修改 */const ord=(h,m)=>{const o=Array.from({length:m},(_,i)=>i);if(opts.sortCols){const key=o.map(i=>normalize(String(cellText(h[i])||'')));o.sort((x,y)=>key[x].localeCompare(key[y])||x-y)}return o},oA=ord(headA,nA),oB=ord(headB,nB);
+      const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ia=i<nA?oA[i]:-1,ib=i<nB?oB[i]:-1,ha=ia>=0?String(cellText(headA[ia])||''):'',hb=ib>=0?String(cellText(headB[ib])||''):'',hc=ia>=0&&ib>=0&&normalize(ha)!==normalize(hb);columns.push({name:(hc&&ha&&hb?`${ha} → ${hb}`:(hb||ha))||colName(ia>=0?ia:ib),ia,ib,st:ia<0?'ins':ib<0?'del':'eq',hdrChg:hc})}}
     if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
   }else{const n=Math.max(cA,cB);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<cA?i:-1,ib:i<cB?i:-1,st:i>=cA?'ins':i>=cB?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}

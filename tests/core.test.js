@@ -645,3 +645,22 @@ test('image.autoAlign: 沿用并带回调用方当前的翻转状态；带翻转
   const flipped = await X.autoAlign(A, B, { rot: true, scale: true, fh: true });
   assert.equal(X.ocv.length, 1); assert.equal(flipped.fh, true); assert.equal(flipped.dx, 3);
 });
+
+test('excel.compare: 按位置匹配列时，“对列排序”先把两侧的列各自按表头排序再逐个对应', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  const A = [['A', 'B', 'C'], [1, 2, 3], [4, 5, 6]], B = [['C', 'A', 'B'], [3, 1, 2], [6, 4, 5]];
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: false, sortRows: false, sortCols: true });
+  const R = excel.compare(G(A), G(B), 0, 0);
+  assert.equal(R.identical, true);
+  assert.deepEqual([...R.columns].map(c => [c.name, c.ia, c.ib]), [['A', 0, 1], ['B', 1, 2], ['C', 2, 0]]);
+  // 列数不同时，排序后多出来的那一列仍按位置记为新增，其余列照常对应
+  const R2 = excel.compare(G([['B', 'A'], [2, 1]]), G([['A', 'B', 'C'], [1, 2, 3]]), 0, 0);
+  assert.deepEqual([...R2.columns].map(c => c.st), ['eq', 'eq', 'ins']);
+  assert.equal(R2.stats.cells, 0); assert.equal(R2.stats.rowsChg, 0);
+  // 关闭后仍按原位置逐列对应，行为不变
+  Object.assign(excel.opts, { sortCols: false });
+  const R3 = excel.compare(G(A), G(B), 0, 0);
+  assert.equal(R3.identical, false);
+  assert.deepEqual([...R3.columns].map(c => [c.ia, c.ib, c.hdrChg]), [[0, 0, true], [1, 1, true], [2, 2, true]]);
+  Object.assign(excel.opts, { matchHeaders: true });
+});
