@@ -515,3 +515,13 @@ test('excel.serialToDate: 伪造的超大序列号不会显示成 NaN-NaN-NaN', 
   const r = excel.serialToDate(1e300, false);
   assert.ok(!/NaN/.test(r));
 });
+
+test('excel.compare: 开启“对列排序”后，仅列顺序不同的两张表视为相同，不再报告列移动', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortRows: false, sortCols: true });
+  const R = excel.compare(G([['A', 'B', 'C'], [1, 2, 3]]), G([['C', 'A', 'B'], [3, 1, 2]]), 0, 0);
+  assert.equal(R.stats.colsMov, 0);
+  assert.equal(R.identical, true);
+  Object.assign(excel.opts, { sortCols: false });
+  assert.equal(excel.compare(G([['A', 'B', 'C'], [1, 2, 3]]), G([['C', 'A', 'B'], [3, 1, 2]]), 0, 0).stats.colsMov, 1);
+});
