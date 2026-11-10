@@ -54,7 +54,7 @@ main{flex:1;width:100%;max-width:1700px;margin:0 auto;padding:22px 28px 50px}
 .stat.del i{background:var(--del-hl)}.stat.ins i{background:var(--ins-hl)}.stat.chg i{background:#f5c542}
 .grid-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;margin-top:14px;max-height:calc(100vh - 150px);background:var(--bg)}
 table.grid{border-collapse:separate;border-spacing:0;font:12.5px/1.45 var(--mono);min-width:100%}
-table.grid th,table.grid td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 8px;vertical-align:top;white-space:pre-wrap;word-break:break-word;max-width:360px;text-align:left}
+table.grid th,table.grid td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 8px;vertical-align:top;white-space:pre-wrap;word-break:break-word;min-width:10ch;max-width:360px;text-align:left}
 table.grid th{position:sticky;top:0;background:var(--bg2);font-weight:600;z-index:2;color:var(--fg)}
 table.grid th.num,table.grid td.num{width:46px;min-width:46px;text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;user-select:none;font-size:11px}
 table.grid th.num{z-index:3}
@@ -92,7 +92,7 @@ tr.focus td{box-shadow:inset 0 -2px 0 var(--accent)}
 footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top:1px solid var(--border)}
 .hidden{display:none!important}
 @media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{gap:14px;padding:0 14px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px}}
-@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,footer,.modal-bg,.offline-notice,.hero,.no-print{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;max-width:none;padding:1px 4px}table.grid tr{break-inside:avoid}table.grid thead{display:table-header-group}body{font-size:11px}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,footer,.modal-bg,.offline-notice,.hero,.no-print{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;min-width:0;max-width:none;padding:1px 4px}table.grid tr{break-inside:avoid}table.grid thead{display:table-header-group}body{font-size:11px}}
 </style>
 </head>
 <body>
