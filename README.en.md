@@ -53,7 +53,7 @@ The interface language follows your browser by default. Use the buttons at the t
 
 ## Files and formats
 
-- **Encoding**: text and CSV files are decoded as UTF-8 first. If that fails, GB18030 is tried (so common GBK Chinese files are read correctly), then windows-1252 (Western European text). UTF-16 with a BOM is also recognised.
+- **Encoding**: text and CSV files are decoded as UTF-8 first. If that fails, GB18030 is tried (so common GBK Chinese files are read correctly), then windows-1252 (Western European text). UTF-16 is also recognised, with or without a BOM (without one it is detected from the distribution of NUL bytes).
 - **Binary files**: the text page rejects files containing NUL bytes instead of filling the editor with garbage.
 - **`.diffchecker` files**: store both sides and the current options, and can be reopened on the matching page. Files from the text page and the spreadsheet page are not interchangeable.
 - **Unsupported formats**: legacy binary `.xls` files must be saved as `.xlsx` or `.csv` first; encrypted or password-protected workbooks must have the password removed.
