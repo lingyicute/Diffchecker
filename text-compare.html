@@ -459,9 +459,9 @@ document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 function loadFile(f,side){const r=new FileReader();r.onerror=()=>notice(t('readFailed',{name:f.name}));r.onload=()=>{const text=decodeBuf(r.result);
   {const z=text.indexOf('\u0000');if(z>=0&&z<8192){notice(t('binaryFile',{name:f.name}));return}}// 含 NUL 字节：几乎一定是二进制文件，按文本对比只会得到乱码
-  if(/\.diffchecker$/i.test(f.name)){let j=null;try{j=JSON.parse(text)}catch(e){}if(!j||typeof j!=='object'){notice(t('wrongFile'));return}
-    if(j&&typeof j==='object'){if(j.type&&j.type!=='text'){notice(t('wrongFile'));return}
-      txtA.value=typeof j.left==='string'?j.left:'';txtB.value=typeof j.right==='string'?j.right:'';fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}}
+  if(/\.diffchecker$/i.test(f.name)){let j=null;try{j=JSON.parse(text)}catch(e){}
+    /* 先整体校验再载入：type 与两侧文本缺一不可，否则随便一个 JSON 文件都会把两侧输入清空，还提示“已恢复保存的对比结果” */if(!j||typeof j!=='object'||j.type!=='text'||typeof j.left!=='string'||typeof j.right!=='string'){notice(t('wrongFile'));return}
+    txtA.value=j.left;txtB.value=j.right;fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}
   (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta(side);notice(t('loaded',{name:f.name}));if(lastDiff||opts.realtime)run(true)};r.readAsArrayBuffer(f)}
 // 只接管“文件”拖放：把选中的文字拖进文本框时要保留浏览器默认的插入行为（无条件 preventDefault 会让文字拖放失效）
 const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
