@@ -56,9 +56,9 @@ main{flex:1;width:100%;max-width:1700px;margin:0 auto;padding:22px 28px 50px}
 table.grid{border-collapse:separate;border-spacing:0;font:12.5px/1.45 var(--mono);min-width:100%}
 table.grid th,table.grid td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 8px;vertical-align:top;white-space:pre-wrap;word-break:break-word;min-width:10ch;max-width:360px;text-align:left}
 table.grid th{position:sticky;top:0;background:var(--bg2);font-weight:600;z-index:2;color:var(--fg)}
-table.grid th.num,table.grid td.num{width:46px;min-width:46px;text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;user-select:none;font-size:11px}
+table.grid th.num,table.grid td.num{width:var(--nw,46px);min-width:var(--nw,46px);text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;user-select:none;font-size:11px}
 table.grid th.num{z-index:3}
-td.num.a,th.num.a{left:0}td.num.b,th.num.b{left:46px;border-right:2px solid var(--border2)}
+td.num.a,th.num.a{left:0}td.num.b,th.num.b{left:var(--nw,46px);border-right:2px solid var(--border2)}
 th.col-ins{background:var(--ins-block);color:var(--ins-fg)}th.col-del{background:var(--del-block);color:var(--del-fg);text-decoration:line-through}th.col-mov{background:var(--mov-block)}
 tr.del td{background:var(--del-block)}tr.ins td{background:var(--ins-block)}tr.del td.num{color:var(--del-fg)}tr.ins td.num{color:var(--ins-fg)}
 td.chg{background:var(--chg-block)}td.cdel{background:var(--del-block)}td.cins{background:var(--ins-block)}
@@ -406,7 +406,8 @@ function render(){const R=RES,wrap=$('gridWrap');const s=R.stats,L=(n,k)=>t(n===
   $('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)));
   if(R.identical){wrap.dataset.changes=0;wrap.innerHTML=`<div class="identical"><div class="ic">✓</div><h3>${esc(t('identicalTitle'))}</h3><p>${esc(t('identicalMsg'))}</p></div>`;return}
   const allCols=R.columns.map((c,k)=>({...c,k})),fltCols=allCols.filter(c=>!opts.hideCols||c.st!=='eq'||R.colChanged.has(c.k)),cols=fltCols.length?fltCols:allCols;
-  let h=`<table class="grid"><thead><tr><th class="num a">#A</th><th class="num b">#B</th>${cols.map(c=>`<th class="col-${c.st}" title="${c.st==='eq'?'':t(c.st==='ins'?'inserted':c.st==='del'?'deleted':'moved')}">${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`).join('')}</tr></thead><tbody>`;
+  /* 行号列默认 46px，只放得下 4 位数：行号上万时按位数加宽（#B 列的吸附位置随之右移），否则行号会折成两行，把每一行都撑高 */const nd=String(R.rows.reduce((m,r)=>Math.max(m,r.na||0,r.nb||0),0)).length;
+  let h=`<table class="grid"${nd>4?` style="--nw:calc(${nd}ch + 19px)"`:''}><thead><tr><th class="num a">#A</th><th class="num b">#B</th>${cols.map(c=>`<th class="col-${c.st}" title="${c.st==='eq'?'':t(c.st==='ins'?'inserted':c.st==='del'?'deleted':'moved')}">${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`).join('')}</tr></thead><tbody>`;
   let changeNo=0,i=0;const rows=R.rows,CTX=2;
   while(i<rows.length){const r=rows[i];
     if(r.type==='eq'&&opts.hideRows){let j=i;while(j<rows.length&&rows[j].type==='eq')j++;const run=j-i;const head=i===0?0:CTX,tail=j===rows.length?0:CTX;if(run-head-tail>1&&!expanded.has(i)){for(let k=i;k<i+head;k++)h+=rowHtml(rows[k],cols);h+=`<tr class="collapsed" data-i="${i}" tabindex="0" role="button"><td colspan="${cols.length+2}">⋯ ${esc(t('unchangedRows',{n:run-head-tail}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;for(let k=j-tail;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}for(let k=i;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}
