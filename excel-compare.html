@@ -335,9 +335,12 @@ function compare(gA,gB,hA,hB){
   const shared=columns.map((c,k)=>c.ia>=0&&c.ib>=0?k:-1).filter(k=>k>=0);
   let idxA=dataA.map((_,i)=>i),idxB=dataB.map((_,i)=>i);
   const cellsA=dataA.map(r=>proj(r,'A')),cellsB=dataB.map(r=>proj(r,'B'));const normA=cellsA.map(r=>r.map(normalize)),normB=cellsB.map(r=>r.map(normalize));
-  const keyOf=(nr)=>shared.map(k=>nr[k]).join('\u0001').replace(/\u0001+$/,'');
+  // 行键必须能区分每一个单元格：CSV 单元格里可能含 \u0001 控制字符，直接拿它当分隔符拼接会把不同内容拼成相同的键
+  //（['a\u0001b','1'] 与 ['a','b\u00011'] 拼接结果同为 'a\u0001b\u00011'，内容不同的两行会被当成完全相同的行而漏报改动）。
+  // 改用 JSON 序列化（自带转义、必然单射），并沿用原约定：忽略末尾共有列里为空的单元格。
+  const keyOf=(nr)=>{const a=shared.map(k=>nr[k]);let e=a.length;while(e&&a[e-1]==='')e--;return JSON.stringify(a.slice(0,e))};
   // 排序只能以两侧共有的列为主键：新增 / 删除的列在另一侧恒为空，若参与排序，两侧会按不同的列排出不同的顺序，相同的行也无法对齐
-  if(opts.sortRows){const sk=N=>N.map(r=>[keyOf(r),r.join('\u0001')]),kA=sk(normA),kB=sk(normB);const cmp=K=>(x,y)=>{const p=K[x],q=K[y];return p[0]<q[0]?-1:p[0]>q[0]?1:p[1]<q[1]?-1:p[1]>q[1]?1:x-y};idxA.sort(cmp(kA));idxB.sort(cmp(kB))}
+  if(opts.sortRows){const sk=N=>N.map(r=>[keyOf(r),JSON.stringify(r)]),kA=sk(normA),kB=sk(normB);const cmp=K=>(x,y)=>{const p=K[x],q=K[y];return p[0]<q[0]?-1:p[0]>q[0]?1:p[1]<q[1]?-1:p[1]>q[1]?1:x-y};idxA.sort(cmp(kA));idxB.sort(cmp(kB))}
   const outRows=[];if(!shared.length){idxA.forEach(i=>outRows.push({type:'del',ai:i}));idxB.forEach(j=>outRows.push({type:'ins',bi:j}))}else{
     const keysA=idxA.map(i=>keyOf(normA[i])),keysB=idxB.map(i=>keyOf(normB[i]));
     const ops=diffSeq(keysA,keysB);let D=[],I=[];const sharedNormA=normA.map(r=>shared.map(k=>r[k])),sharedNormB=normB.map(r=>shared.map(k=>r[k]));
