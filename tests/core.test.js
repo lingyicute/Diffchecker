@@ -539,3 +539,12 @@ test('excel.compare: 整列为空的尾部列（如 CSV 行尾多余的分隔符
   }
   Object.assign(excel.opts, { mode: 'table' });
 });
+
+test('excel.inlineDiff: 忽略大小写时，仅大小写不同的字符不标为改动，且仍可无损还原', () => {
+  Object.assign(excel.opts, { ignoreCase: true });
+  const segs = excel.inlineDiff('Hello World', 'hello Earth');
+  assert.equal(segs.map(s => s.a).join(''), 'Hello World'); assert.equal(segs.map(s => s.b).join(''), 'hello Earth');
+  assert.equal([segs[0].t, segs[0].a, segs[0].b].join('|'), '0|Hello |hello ');
+  Object.assign(excel.opts, { ignoreCase: false });
+  assert.notEqual(excel.inlineDiff('Hello World', 'hello Earth')[0].t, 0);
+});

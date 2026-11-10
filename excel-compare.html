@@ -282,10 +282,11 @@ function midSnake(a,b,a0,a1,b0,b1,eq,lim=MYERS_LIMIT){const N=a1-a0,M=b1-b0,MAX=
 const WORD_RE=/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|(?:(?![\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF])[\p{L}\p{M}\p{N}_])+|\s+|[^\s\p{L}\p{M}\p{N}_]/gu;
 const INLINE_MAX_TOKENS=20000;
 function inlineDiff(l,r){const A=l.length+r.length>400?(l.match(WORD_RE)||[]):Array.from(l),B=l.length+r.length>400?(r.match(WORD_RE)||[]):Array.from(r);
+  /* 忽略大小写时按小写比较 token（显示仍用原文）：否则仅大小写不同的字符会被高亮成改动，与“忽略大小写差异”自相矛盾 */const fold=x=>opts.ignoreCase?x.map(s=>s.toLowerCase()):x,na=fold(A),nb=fold(B);
   if(A.length+B.length>INLINE_MAX_TOKENS){// 超长单元格（最长 32767 字符）：只裁掉公共前后缀，中间整体标记为改动，避免 Myers 的 O(ND) 卡死页面（与文本页一致）
-    let p=0;while(p<A.length&&p<B.length&&A[p]===B[p])p++;let q=0;while(q<A.length-p&&q<B.length-p&&A[A.length-1-q]===B[B.length-1-q])q++;
+    let p=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;let q=0;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
     const m=[],add=(t,a,b)=>{if(a||b)m.push({t,a,b})};add(EQ,A.slice(0,p).join(''),B.slice(0,p).join(''));add(DEL,A.slice(p,A.length-q).join(''),'');add(INS,'',B.slice(p,B.length-q).join(''));add(EQ,A.slice(A.length-q).join(''),B.slice(B.length-q).join(''));return m}
-  const ops=diffSeq(A,B);const m=[];for(const [op,i,j] of ops){const s={t:op,a:op===INS?'':A[i],b:op===DEL?'':B[j]};const p=m[m.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else m.push(s)}return m}
+  const ops=diffSeq(na,nb);const m=[];for(const [op,i,j] of ops){const s={t:op,a:op===INS?'':A[i],b:op===DEL?'':B[j]};const p=m[m.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else m.push(s)}return m}
 
 /* ===================== comparison engine ===================== */
 const opts={mode:'table',val:'standard',matchHeaders:true,ignoreWs:false,ignoreCase:false,normDates:true,sortRows:false,sortCols:false,hideRows:false,hideCols:false,showOld:true};
