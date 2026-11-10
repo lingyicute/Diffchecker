@@ -609,3 +609,17 @@ test('excel.parseCsv: 出现行数相同时，优先选每行个数一致的分�
   // 普通逗号分隔的文件不受影响，正文里偶尔出现的分号也不会抢走分隔符
   assert.deepEqual(g('a,b;c\n1,2;3\n4,5,6'), [['a', 'b;c'], ['1', '2;3'], ['4', '5', '6']]);
 });
+
+test('excel.shiftFormula: 整列（A:A）与整行（1:1）引用同样按位移平移，$ 锁定、工作表名与大写 3D 引用保持不变', () => {
+  const s = excel.shiftFormula;
+  assert.equal(s('SUM(A:A)', 0, 1), 'SUM(B:B)');
+  assert.equal(s('SUM(A:A)', 3, 0), 'SUM(A:A)');
+  assert.equal(s('INDEX(B:B,ROW(1:1))', 1, 0), 'INDEX(B:B,ROW(2:2))');
+  assert.equal(s('SUM($A:B,C:$D)', 0, 2), 'SUM($A:D,E:$D)');
+  assert.equal(s('SUM($1:2,3:$4)', 2, 0), 'SUM($1:4,5:$4)');
+  assert.equal(s('Sheet2!A:A+A1', 1, 1), 'Sheet2!B:B+B2');
+  assert.equal(s('\'A:B\'!A1&"1:1"', 1, 0), '\'A:B\'!A2&"1:1"');
+  assert.equal(s('JAN:MAR!A1', 1, 1), 'JAN:MAR!B2');
+  // 平移后越界的引用保持原样
+  assert.equal(s('SUM(XFD:XFD)', 0, 1), 'SUM(XFD:XFD)');
+});

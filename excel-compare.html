@@ -204,8 +204,11 @@ function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCo
 const xstr=s=>s.indexOf('_x')<0?s:s.replace(/_x([0-9A-Fa-f]{4})_/g,(m,h)=>String.fromCharCode(parseInt(h,16)));
 // 共享公式（<f t="shared" si="…"/>）：只有主单元格带公式文本，其余单元格要按位移平移相对引用（$ 锁定的行 / 列不动，字符串与带引号的工作表名里的内容不动）
 function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
-  return f.replace(/("(?:[^"]|"")*")|('(?:[^']|'')*')|(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\w(!])/g,(m,s1,s2,ca,col,ra,row,off,str)=>{
+  /* 除了 A1 形式的单元格引用，还要平移整列（A:A）与整行（1:1）引用：`ROW(1:1)` 向下填充、`SUM(A:A)` 向右填充都是常见写法，不平移会让每个单元格显示同一个公式 */
+  return f.replace(/("(?:[^"]|"")*")|('(?:[^']|'')*')|(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\w(!])|(\$?)([A-Z]{1,3}):(\$?)([A-Z]{1,3})(?![\w(!])|(\$?)(\d+):(\$?)(\d+)(?![\w(!])/g,(m,s1,s2,ca,col,ra,row,xa,xc,xb,xd,ya,yr,yb,yd,off,str)=>{
     if(s1||s2||(off>0&&/[\w.]/.test(str[off-1])))return m;
+    if(xc!=null){const c1=xa?colIndex(xc):colIndex(xc)+dc,c2=xb?colIndex(xd):colIndex(xd)+dc;if(c1<0||c1>16383||c2<0||c2>16383)return m;return xa+(xa?xc:colName(c1))+':'+xb+(xb?xd:colName(c2))}
+    if(yr!=null){const r1=ya?+yr:+yr+dr,r2=yb?+yd:+yd+dr;if(r1<1||r1>1048576||r2<1||r2>1048576)return m;return ya+r1+':'+yb+r2}
     const ci=ca?colIndex(col):colIndex(col)+dc,ri=ra?+row:+row+dr;if(ci<0||ci>16383||ri<1)return m;
     return (ca||'')+(ca?col:colName(ci))+(ra||'')+ri})}
 function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.round(v*86400)%86400,p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀。贴近午夜的值四舍五入到 86400 秒时回绕为 00:00:00——Excel 同样按最近的整秒显示（带日期的值也是进位到次日），不能单独钳成 23:59:59，否则与日期时间 / 时长两条路径不一致，且和 Excel 里看到的值对不上
