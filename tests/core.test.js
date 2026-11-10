@@ -504,3 +504,14 @@ test('image.invertAlign: 带翻转的对齐参数求逆后仍能把点映射回�
     assert.ok(Math.abs(back[0] - p[0]) < 1e-6 && Math.abs(back[1] - p[1]) < 1e-6, `${fh},${fv}: ${back} != ${p}`);
   }
 });
+
+test('excel.serialToDate: 贴近午夜的纯时间按最近整秒回绕为 00:00:00，与 Excel 及日期时间路径一致', () => {
+  assert.equal(excel.serialToDate(0.9999999, false), '00:00:00');
+  assert.equal(excel.serialToDate(0.5, false), '12:00:00');
+  assert.equal(excel.serialToDate(45443.9999999653, false), '2024-06-01');
+});
+
+test('excel.serialToDate: 伪造的超大序列号不会显示成 NaN-NaN-NaN', () => {
+  const r = excel.serialToDate(1e300, false);
+  assert.ok(!/NaN/.test(r));
+});
