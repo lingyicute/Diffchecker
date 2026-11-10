@@ -683,3 +683,16 @@ test('文本页 CSS 的自动识别与着色：结果正确，且不会在超长
   assert.equal(syn.synClasses(big, 'css').length, big.length);
   assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0}ms`);
 });
+
+test('文本页语法自动识别：缩进的 Python / JS 仍能识别，且不会在大量连续空行上回溯成 O(n²)', () => {
+  const s = script('text-compare.html');
+  const { detectSyntax } = run(between(s, 'const SYN={', '/* ===================== state'), 'detectSyntax');
+  assert.equal(detectSyntax('x = 1\n\n\n    \tdef run(a, b):\n        return a'), 'py');
+  assert.equal(detectSyntax('notes\n\n  elif done:\n    pass'), 'py');
+  assert.equal(detectSyntax('\n\n  from os import path, sep as s\n'), 'py');
+  assert.equal(detectSyntax('// header\n\n\n  export default class Foo {}'), 'js');
+  assert.equal(detectSyntax('def is a word here\nexported goods'), '');
+  const t0 = Date.now();
+  assert.equal(detectSyntax('x' + '\n'.repeat(200000) + 'y'), ''); // 原先约需数分钟
+  assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0}ms`);
+});
