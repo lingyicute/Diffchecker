@@ -384,9 +384,11 @@ async function loadFile(f,side){$('err'+side).textContent='';try{let wb;const bu
     else{wb=parseCsv(decodeBuf(buf),/\.tsv$/i.test(f.name)?'\t':undefined)}
     setWorkbook(side,wb,f.name);if(RES)run();notice(t('loaded',{name:f.name}))}catch(e){console.error(e);$('err'+side).textContent=t('parseError',{name:f.name,msg:e.message})}}
 const fromJsonGrid=g=>({type:'json',sheets:[{name:g.name||'Sheet1',grid:{rows:g.rows.map(r=>r.map(v=>v&&typeof v==='object'?{v:v.v==null?'':String(v.v),f:typeof v.f==='string'?v.f:null,d:false}:{v:v==null?'':String(v),f:null,d:false})),cols:Math.max(Number(g.cols)||0,g.rows.reduce((n,r)=>Math.max(n,r.length),0))}}],load:s=>s.grid});
-function setWorkbook(side,wb,name){WB[side]=wb;NAMES[side]=name;$('name'+side).textContent=name;$('err'+side).textContent='';$('drop'+side).classList.add('hidden');const visible=wb.sheets.findIndex(s=>!s.hidden);SEL[side]={sheet:visible<0?0:visible,header:0,auto:true};autoHeader(side);renderDetails(side);
-  // auto-select a sheet with the same name on the other side
-  const other=side==='A'?'B':'A';if(WB[other]){const o=WB[other].sheets.findIndex(s=>s.name===wb.sheets[SEL[side].sheet].name);if(o>=0&&o!==SEL[other].sheet){SEL[other].sheet=o;autoHeader(other);renderDetails(other)}}}
+function setWorkbook(side,wb,name){WB[side]=wb;NAMES[side]=name;$('name'+side).textContent=name;$('err'+side).textContent='';$('drop'+side).classList.add('hidden');const visible=wb.sheets.findIndex(s=>!s.hidden);SEL[side]={sheet:visible<0?0:visible,header:0,auto:true};
+  // 另一侧已有工作簿时，新载入的一侧优先跟随它当前选中的工作表（选同名表），而不是反过来改掉用户先前在另一侧的选择；
+  // 新工作簿里没有同名表时，才让另一侧改选与新工作簿同名的表
+  const other=side==='A'?'B':'A',mine=WB[other]?wb.sheets.findIndex(s=>s.name===WB[other].sheets[SEL[other].sheet].name):-1;if(mine>=0)SEL[side].sheet=mine;autoHeader(side);renderDetails(side);
+  if(WB[other]&&mine<0){const o=WB[other].sheets.findIndex(s=>s.name===wb.sheets[SEL[side].sheet].name);if(o>=0&&o!==SEL[other].sheet){SEL[other].sheet=o;autoHeader(other);renderDetails(other)}}}
 function autoHeader(side){const g=WB[side].load(WB[side].sheets[SEL[side].sheet]);SEL[side].header=detectHeader(g.rows);SEL[side].auto=true}
 function renderDetails(side){const wb=WB[side],sel=SEL[side],det=$('det'+side);const g=wb.load(wb.sheets[sel.sheet]);det.classList.remove('hidden');
   det.innerHTML=`<label>${t('sheet')} <select data-sheet>${wb.sheets.map((s,i)=>`<option value="${i}" ${i===sel.sheet?'selected':''}>${esc(s.name)}${s.hidden?` (${esc(t('hiddenSheet'))})`:''}</option>`).join('')}</select></label><label title="${esc(t('headerTip'))}">${t('headerLine')} <input type="number" min="1" data-header value="${sel.header+1}"></label><span style="color:var(--fg2)">${t('rowsCols',{r:trimRows(g.rows).length,c:g.cols})}</span>${sel.auto&&sel.header>0?`<span class="note">${esc(t('headerDetected',{line:sel.header+1}))}</span>`:''}`;
