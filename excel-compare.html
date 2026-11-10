@@ -92,7 +92,7 @@ tr.focus td{box-shadow:inset 0 -2px 0 var(--accent)}
 footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top:1px solid var(--border)}
 .hidden{display:none!important}
 @media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{gap:14px;padding:0 14px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px}}
-@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar,.panel,footer,.modal-bg,.offline-notice,.hero{display:none!important}main{padding:0;max-width:none}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;max-width:none;padding:1px 4px}table.grid tr{break-inside:avoid}table.grid thead{display:table-header-group}body{font-size:11px}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,footer,.modal-bg,.offline-notice,.hero{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;max-width:none;padding:1px 4px}table.grid tr{break-inside:avoid}table.grid thead{display:table-header-group}body{font-size:11px}}
 </style>
 </head>
 <body>
@@ -205,8 +205,8 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
     if(s1||s2||(off>0&&/[\w.]/.test(str[off-1])))return m;
     const ci=ca?colIndex(col):colIndex(col)+dc,ri=ra?+row:+row+dr;if(ci<0||ci>16383||ri<1)return m;
     return (ca||'')+(ca?col:colName(ci))+(ra||'')+ri})}
-function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.min(Math.round(v*86400),86399),p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀。贴近次日午夜的值（如 0.9999999）四舍五入后得 86400 秒，不能 %86400 回绕成 00:00:00（Excel 显示 23:59:59），钳到当天最后一秒
-  const base=Date.UTC(1899,11,30)+(d1904?1462*86400000:v>=1&&v<60?86400000:0);const d=new Date(base+Math.round(v*86400)*1000);const p=n=>String(n).padStart(2,'0');let s=`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;if(d.getUTCHours()||d.getUTCMinutes()||d.getUTCSeconds())s+=` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;return s}
+function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.round(v*86400)%86400,p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀。贴近午夜的值四舍五入到 86400 秒时回绕为 00:00:00——Excel 同样按最近的整秒显示（带日期的值也是进位到次日），不能单独钳成 23:59:59，否则与日期时间 / 时长两条路径不一致，且和 Excel 里看到的值对不上
+  const base=Date.UTC(1899,11,30)+(d1904?1462*86400000:v>=1&&v<60?86400000:0);const d=new Date(base+Math.round(v*86400)*1000);if(isNaN(d.getTime()))return String(v);/* 伪造的超大序列号会得到 Invalid Date，不要显示成 NaN-NaN-NaN */const p=n=>String(n).padStart(2,'0');let s=`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;if(d.getUTCHours()||d.getUTCMinutes()||d.getUTCSeconds())s+=` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;return s}
 // 时长格式（[h]:mm:ss）：小时数可以超过 24，不能当作日期显示
 function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return (neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}
 // t="d" 单元格（ISO 8601 文本，如 2024-03-05T00:00:00 / 10:30:00）：统一成与日期序列号一致的显示，否则同一日期在两种存储方式下会被误报为修改
@@ -233,8 +233,8 @@ function parseXlsx(buf){const z=readZip(buf);
   const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];const sharedF=Object.create(null);let cols=0;
     /* 损坏或伪造的工作表可能声明远超 XLSX 规格上限（1048576 行 × 16384 列）的行 / 列号：
        照单全收会把 rows 数组撑到那个长度、随后补空行的循环直接耗尽内存，一律钳制在上限以内 */
-    let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=rn>0?Math.min(rn-1,1048575):Math.min(lastRi+1,1048575);lastRi=ri;const cells=[];let ci=-1;
-      for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;if(ci>16383)continue;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
+    let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=Number.isInteger(rn)&&rn>0?rn-1:lastRi+1;/* 超出规格上限（或非整数行号）的行直接丢弃：钳到末行会让多个伪造行互相覆盖，小数下标则会变成数组的普通属性而丢数据 */if(ri>1048575)continue;lastRi=ri;const cells=[];let ci=-1;
+      for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;if(ci<0||ci>16383)continue;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
         for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF[si]={f:ch.textContent,r:ri,c:ci}}else if(sh&&sharedF[si]){const mf=sharedF[si];f='='+shiftFormula(mf.f,ri-mf.r,ci-mf.c)}}else if(ch.localName==='is')raw=[...els(ch,'t')].filter(x=>x.parentNode.localName!=='rPh').map(x=>x.textContent).join('')/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
         if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='inlineStr'||tt==='str'||tt==='e')v=raw??'';else if(tt==='d')v=isoDateCell(raw);else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
         cells[ci]={v,f,d:dateStyles.has(s)||tt==='d'};if(ci+1>cols)cols=ci+1}
