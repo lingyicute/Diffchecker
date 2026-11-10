@@ -555,3 +555,11 @@ test('excel.xstr: 解码 xlsx 字符串里的 _xHHHH_ 转义，_x005F_ 表示字
   assert.equal(excel.xstr('a_x0041_b_x4e2d_'), 'aAb中');
   assert.equal(excel.xstr('plain_text_x12'), 'plain_text_x12');
 });
+
+test('computeDiff: 空文本按 0 行处理，和空白输入对比时不会多报一处空行的删除 / 新增', () => {
+  const o = { rules: [] };
+  const add = text.computeDiff('', 'a\nb', o); assert.equal(add.nDel, 0); assert.equal(add.nIns, 2);
+  const del = text.computeDiff('a', '', o); assert.equal(del.nDel, 1); assert.equal(del.nIns, 0);
+  const none = text.computeDiff('', '', o); assert.equal(none.nDel + none.nIns, 0);
+  const nl = text.computeDiff('a\n', 'a', o); assert.equal(nl.nDel, 1); assert.equal(nl.nIns, 0); // 末尾换行的差异仍会报告
+});

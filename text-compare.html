@@ -330,7 +330,7 @@ function makeNorm(o){
 function transform(text,o){
   text=text.replace(/\r\n?/g,'\n');
   if(o.joinLines)text=text.replace(/\n/g,' ');
-  let lines=text.split('\n');
+  let lines=text===''?[]:text.split('\n');// 空文本是 0 行而不是 1 个空行：否则和空白输入对比时总会多报一处空行的删除 / 新增
   if(o.trim)lines=lines.map(l=>l.trim());if(o.lower)lines=lines.map(l=>l.toLowerCase());if(o.sort)lines=lines.slice().sort((a,b)=>a<b?-1:a>b?1:0);
   return lines;
 }
