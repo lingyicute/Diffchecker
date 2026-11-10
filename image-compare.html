@@ -397,7 +397,9 @@ async function autoAlign(A,B,allow){
   for(const dr of allow.rot?[-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick()}
   // Both patches are drawn with their top-left at the frame origin (same as drawAligned with dx=dy=0), so the
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
-  return {dx:fin.dx/f,dy:fin.dy/f,rot:fin.rot,scale:fin.sc,fh:false,fv:false,conf:Math.min(1,fin.psr/40)};
+  // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
+  const whole=fin.rot===0&&fin.sc===1,px=v=>whole?Math.round(v)||0:v;
+  return {dx:px(fin.dx/f),dy:px(fin.dy/f),rot:fin.rot,scale:fin.sc,fh:false,fv:false,conf:Math.min(1,fin.psr/40)};
 }
 function alignWithOpenCV(A,B,allow={}){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
   try{const ma=keep(cv.imread(A)),mb=keep(cv.imread(B)),ga=keep(new cv.Mat()),gb=keep(new cv.Mat());cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=keep(new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20));const k1=keep(new cv.KeyPointVector()),k2=keep(new cv.KeyPointVector()),d1=keep(new cv.Mat()),d2=keep(new cv.Mat()),nomask=keep(new cv.Mat());orb.detectAndCompute(ga,nomask,k1,d1);orb.detectAndCompute(gb,nomask,k2,d2);
