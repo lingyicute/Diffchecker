@@ -563,3 +563,15 @@ test('computeDiff: 空文本按 0 行处理，和空白输入对比时不会多�
   const none = text.computeDiff('', '', o); assert.equal(none.nDel + none.nIns, 0);
   const nl = text.computeDiff('a\n', 'a', o); assert.equal(nl.nDel, 1); assert.equal(nl.nIns, 0); // 末尾换行的差异仍会报告
 });
+
+test('xe: 导出 xlsx 时转义字面的 _xHHHH_，经读取器的 xstr 解码后与原文一致', () => {
+  for (const [f, end] of [['text-compare.html', 'function colName'], ['excel-compare.html', 'function makeXlsx']]) {
+    const xe = run(between(script(f), 'const xe=', end), 'xe', '').xe;
+    assert.equal(xe('a_x000D_b'), 'a_x005F_x000D_b', f);
+    assert.equal(xe('a_b & <c>'), 'a_b &amp; &lt;c&gt;', f);
+    const al = ['_', 'x', '0', '0', 'D', '5', 'F', 'a'];
+    for (const s of ['_x000D_x000D_', '_x005F_', '__x000A__', ...Array.from({ length: 3000 }, () => Array.from({ length: rnd(16) }, () => al[rnd(al.length)]).join(''))]) {
+      assert.equal(excel.xstr(xe(s)), s, f + ' ' + s);
+    }
+  }
+});
