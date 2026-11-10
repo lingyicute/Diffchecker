@@ -19,7 +19,7 @@ const text = (() => {
 const excel = (() => {
   const s = script('excel-compare.html');
   const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isoDateCell,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula');
+  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isoDateCell,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula,xstr');
 })();
 
 const inflate = (() => {
@@ -547,4 +547,11 @@ test('excel.inlineDiff: 忽略大小写时，仅大小写不同的字符不标�
   assert.equal([segs[0].t, segs[0].a, segs[0].b].join('|'), '0|Hello |hello ');
   Object.assign(excel.opts, { ignoreCase: false });
   assert.notEqual(excel.inlineDiff('Hello World', 'hello Earth')[0].t, 0);
+});
+
+test('excel.xstr: 解码 xlsx 字符串里的 _xHHHH_ 转义，_x005F_ 表示字面的下划线', () => {
+  assert.equal(excel.xstr('line1_x000D_\nline2'), 'line1\r\nline2');
+  assert.equal(excel.xstr('_x005F_x000D_'), '_x000D_');
+  assert.equal(excel.xstr('a_x0041_b_x4e2d_'), 'aAb中');
+  assert.equal(excel.xstr('plain_text_x12'), 'plain_text_x12');
 });
