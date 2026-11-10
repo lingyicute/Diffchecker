@@ -205,7 +205,7 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
     if(s1||s2||(off>0&&/[\w.]/.test(str[off-1])))return m;
     const ci=ca?colIndex(col):colIndex(col)+dc,ri=ra?+row:+row+dr;if(ci<0||ci>16383||ri<1)return m;
     return (ca||'')+(ca?col:colName(ci))+(ra||'')+ri})}
-function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.round(v*86400)%86400,p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀
+function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.min(Math.round(v*86400),86399),p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀。贴近次日午夜的值（如 0.9999999）四舍五入后得 86400 秒，不能 %86400 回绕成 00:00:00（Excel 显示 23:59:59），钳到当天最后一秒
   const base=Date.UTC(1899,11,30)+(d1904?1462*86400000:v>=1&&v<60?86400000:0);const d=new Date(base+Math.round(v*86400)*1000);const p=n=>String(n).padStart(2,'0');let s=`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;if(d.getUTCHours()||d.getUTCMinutes()||d.getUTCSeconds())s+=` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;return s}
 // 时长格式（[h]:mm:ss）：小时数可以超过 24，不能当作日期显示
 function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return (neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}
