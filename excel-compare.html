@@ -328,7 +328,7 @@ function compare(gA,gB,hA,hB){
       const bOnly=[];for(let j=0;j<nB;j++)if(!usedB.has(j))bOnly.push(j);const bPred=j=>{for(let k=j-1;k>=0;k--)if(usedB.has(k))return k;return -1};
       const byPred=new Map();for(const j of bOnly){const p=bPred(j);if(!byPred.has(p))byPred.set(p,[]);byPred.get(p).push(j)}
       (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
-      for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)?'mov':'eq'});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
+      for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)&&!opts.sortCols?'mov':'eq'/* 对列排序后列的先后不再有意义，不标记“已移动” */});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
     }else{const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ha=i<nA?String(cellText(headA[i])||''):'',hb=i<nB?String(cellText(headB[i])||''):'',hc=i<nA&&i<nB&&normalize(ha)!==normalize(hb);columns.push({name:(hc&&ha&&hb?`${ha} → ${hb}`:(hb||ha))||colName(i),ia:i<nA?i:-1,ib:i<nB?i:-1,st:i>=nA?'ins':i>=nB?'del':'eq',hdrChg:hc})}}
     if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
