@@ -324,7 +324,7 @@ function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns order
   while(bp<insSorted.length){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}return out}
 function compare(gA,gB,hA,hB){
   const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows),cA=usedCols(rowsA),cB=usedCols(rowsB);let columns=[];let dataA,dataB,startA,startB;
-  if(opts.mode==='table'){const headA=(rowsA[hA]||[]),headB=(rowsB[hB]||[]);const nA=cA,nB=cB;const nameOf=(h,i)=>normalize(String(cellText(h[i])||'')).trim()||('__col'+i);
+  if(opts.mode==='table'){/* 表头行号超出数据范围时按“没有表头”处理：否则 rows.slice(hA+1) 会丢掉两侧所有行，两个内容不同的表会被误判为完全相同 */hA=hA>=0&&hA<rowsA.length?hA:-1;hB=hB>=0&&hB<rowsB.length?hB:-1;const headA=(rowsA[hA]||[]),headB=(rowsB[hB]||[]);const nA=cA,nB=cB;const nameOf=(h,i)=>normalize(String(cellText(h[i])||'')).trim()||('__col'+i);
     if(opts.matchHeaders){const usedB=new Set();const mapAB=new Map();const nmB=new Map(),qpos=new Map();for(let j=0;j<nB;j++){const n=nameOf(headB,j);const q=nmB.get(n);if(q)q.push(j);else nmB.set(n,[j])}
       for(let i=0;i<nA;i++){const n=nameOf(headA,i),q=nmB.get(n),k=qpos.get(n)||0;if(q&&k<q.length){mapAB.set(i,q[k]);usedB.add(q[k]);qpos.set(n,k+1)}}
       // moved detection via LIS over matched B indices

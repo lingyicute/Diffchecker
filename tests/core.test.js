@@ -586,3 +586,18 @@ test('excel.parseCsv: 首行是标题 / 空行或只有一列时，仍按后续�
   assert.deepEqual(g('Report, A, B, C\na;b\n1;2'), [['Report, A, B, C'], ['a', 'b'], ['1', '2']]);
   assert.deepEqual(g('a\tb\n1\t2'), [['a', 'b'], ['1', '2']]);
 });
+
+test('excel.compare: 表头行号超出数据范围时按无表头比较，不会把两侧所有行都丢掉', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortRows: false, sortCols: false });
+  const R = excel.compare(G([['A'], [1], [2]]), G([['B'], [3], [4]]), 9, 9);
+  assert.equal(R.identical, false);
+  assert.equal(R.stats.rowsDel, 3);
+  assert.equal(R.stats.rowsIns, 3);
+  assert.equal(R.rows.length, 6);
+  // 合法的表头行仍然只比较表头以下的行（第一行是第 2 行，不是表头）
+  const ok = excel.compare(G([['A'], [1], [2]]), G([['A'], [1], [3]]), 0, 0);
+  assert.equal(ok.rows[0].na, 2);
+  assert.equal(ok.stats.rowsDel, 1);
+  assert.equal(ok.stats.rowsIns, 1);
+});
