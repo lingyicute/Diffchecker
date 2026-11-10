@@ -380,7 +380,10 @@ const $=id=>document.getElementById(id);
 const opts={realtime:false,hideUnchanged:false,noWrap:false,hideWs:false,lower:false,sort:false,trim:false,joinLines:false,igQuotes:false,igDashes:false,rules:[],syntax:'',preset:'highlights',type:'split',level:'smart'};
 const OPT_ENUM={preset:['highlights','redline','accessible'],type:['split','unified'],level:['smart','word','char'],syntax:['','auto','json','js','py','xml','css','sql']};
 function mergeOpts(src){if(!src||typeof src!=='object')return;for(const k of Object.keys(opts)){if(!Object.prototype.hasOwnProperty.call(src,k))continue;const v=src[k];if(k==='rules'){if(Array.isArray(v))opts.rules=v.filter(x=>typeof x==='string')}else if(OPT_ENUM[k]){if(OPT_ENUM[k].includes(v))opts[k]=v}else if(typeof v===typeof opts[k])opts[k]=v}}
-function decodeBuf(buf){const u=new Uint8Array(buf);if(u[0]===0xFF&&u[1]===0xFE)return new TextDecoder('utf-16le').decode(u);if(u[0]===0xFE&&u[1]===0xFF)return new TextDecoder('utf-16be').decode(u);try{return new TextDecoder('utf-8',{fatal:true}).decode(u)}catch(e){try{return new TextDecoder('gb18030',{fatal:true}).decode(u)}catch(e2){try{return new TextDecoder('windows-1252').decode(u)}catch(e3){return new TextDecoder().decode(u)}}}}
+function decodeBuf(buf){const u=new Uint8Array(buf);if(u[0]===0xFF&&u[1]===0xFE)return new TextDecoder('utf-16le').decode(u);if(u[0]===0xFE&&u[1]===0xFF)return new TextDecoder('utf-16be').decode(u);try{const s=new TextDecoder('utf-8',{fatal:true}).decode(u);
+  // 无 BOM 的 UTF-16：字节流同样是合法 UTF-8（NUL 是合法字符），直接解会得到字符间夹 \0 的乱码；按 NUL 在奇 / 偶位的占比识别后按 UTF-16 重解
+  if(s.includes('\u0000')){let n=0,le=0,be=0;const lim=Math.min(u.length,1024);for(let i=0;i+1<lim;i+=2){n++;if(u[i+1]===0)le++;if(u[i]===0)be++}if(le/n>.3)return new TextDecoder('utf-16le').decode(u);if(be/n>.3)return new TextDecoder('utf-16be').decode(u)}
+  return s}catch(e){try{return new TextDecoder('gb18030',{fatal:true}).decode(u)}catch(e2){try{return new TextDecoder('windows-1252').decode(u)}catch(e3){return new TextDecoder().decode(u)}}}}
 try{mergeOpts(JSON.parse(lsGet('text-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('text-opts',JSON.stringify(opts));
 let lastDiff=null,expanded=new Set(),focusIdx=-1,fileNames={A:'',B:''};
