@@ -322,8 +322,10 @@ function inlineDiff(l,r,level,norm){
 function makeNorm(o){
   // 忽略规则要和正文走同样的规范化（引号 / 破折号 / 小写），否则“忽略引号差异”或“转为小写”开启后，规则永远匹配不上
   const fold=s=>{if(o.igQuotes)s=s.replace(/[“”„‟«»"]/g,'"').replace(/[‘’‚‛‹›']/g,"'");if(o.igDashes)s=s.replace(/[\u2010-\u2015\u2212]/g,'-');return s};
-  const rules=(o.rules||[]).filter(Boolean).map(r=>{r=fold(r);return o.lower?r.toLowerCase():r}).filter(Boolean);
-  return s=>{s=fold(s);for(const r of rules)s=s.split(r).join('');if(o.hideWs)s=s.replace(/\s+/g,' ').trim();return s};
+  // 忽略空白时，规则与正文要先把连续空白同样归一成单个空格再匹配：否则规则必须碰巧与正文的空格个数完全一致才能生效
+  //（正文会先归一化再删规则，规则自身却不归一化，习惯上应当等价的 “x  y” 与 “x y” 匹配不上）；纯空白规则归一化后仍表示“一段空白”
+  const rules=(o.rules||[]).filter(Boolean).map(r=>{r=fold(r);if(o.hideWs)r=r.replace(/\s+/g,' ');return o.lower?r.toLowerCase():r}).filter(Boolean);
+  return s=>{s=fold(s);if(o.hideWs)s=s.replace(/\s+/g,' ');for(const r of rules)s=s.split(r).join('');if(o.hideWs)s=s.replace(/\s+/g,' ').trim();return s};
 }
 function transform(text,o){
   text=text.replace(/\r\n?/g,'\n');
