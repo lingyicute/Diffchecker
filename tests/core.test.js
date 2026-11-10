@@ -575,3 +575,14 @@ test('xe: 导出 xlsx 时转义字面的 _xHHHH_，经读取器的 xstr 解码�
     }
   }
 });
+
+test('excel.parseCsv: 首行是标题 / 空行或只有一列时，仍按后续行识别分隔符', () => {
+  const g = s => JSON.parse(JSON.stringify(excel.parseCsv(s).sheets[0].grid.rows.map(r => r.map(c => c.v))));
+  assert.deepEqual(g('\na;b\n1;2'), [[''], ['a', 'b'], ['1', '2']]);
+  assert.deepEqual(g('Report title\na;b\n1;2'), [['Report title'], ['a', 'b'], ['1', '2']]);
+  // 字段中间的引号不开启引用，不能吞掉后面的行而让分隔符识别退回逗号
+  assert.deepEqual(g('Report title\n5" x;1\n2;3'), [['Report title'], ['5" x', '1'], ['2', '3']]);
+  // 标题行里的逗号比数据行的分号还多，仍以出现行数最多的分号为准
+  assert.deepEqual(g('Report, A, B, C\na;b\n1;2'), [['Report, A, B, C'], ['a', 'b'], ['1', '2']]);
+  assert.deepEqual(g('a\tb\n1\t2'), [['a', 'b'], ['1', '2']]);
+});
