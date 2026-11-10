@@ -422,7 +422,9 @@ function render(){
   });
   const unified=opts.type==='unified';
   // table-layout:fixed 只按第一行的单元格定列宽：开启“隐藏未修改的行”且表格以折叠条（colspan=4）开头时，四列会被均分、行号列和代码列一样宽，所以用 <colgroup> 显式给出各列宽度
-  let h=`<table class="diff ${opts.noWrap?'nowrap':''}"><colgroup>${unified?'<col class="cn"><col class="cn"><col class="cs"><col>':'<col class="cn"><col><col class="cn"><col>'}</colgroup>`;
+  // 行号列默认 48px，只放得下 4 位数：行数上万时按位数加宽（1ch 即等宽字体里一个数字的宽度），否则行号会被折成两行，把每一行都撑高一倍
+  const nd=String(Math.max(d.A.length,d.B.length)).length,cn=`<col class="cn"${nd>4?` style="width:calc(${nd}ch + 16px)"`:''}>`;
+  let h=`<table class="diff ${opts.noWrap?'nowrap':''}"><colgroup>${unified?cn+cn+'<col class="cs"><col>':cn+'<col>'+cn+'<col>'}</colgroup>`;
   const cell=(side,idx,segs)=>{const txt=side==='l'?d.A[idx]:d.B[idx],c=(side==='l'?hlA:hlB)?.[idx]||null;return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
   for(const r of rows){
     if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}" tabindex="0" role="button"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;continue}
