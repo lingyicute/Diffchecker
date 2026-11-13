@@ -361,10 +361,10 @@ function compare(gA,gB,hA,hB){
   const stats={rowsDel:0,rowsIns:0,rowsChg:0,cells:0,colsIns:columns.filter(c=>c.st==='ins').length,colsDel:columns.filter(c=>c.st==='del').length,colsMov:columns.filter(c=>c.st==='mov').length};const colChanged=new Set();
   columns.forEach((c,k)=>{if(c.hdrChg){colChanged.add(k);stats.cells++}});
   const result=outRows.map(e=>{const r={type:e.type,ai:e.ai,bi:e.bi,na:e.ai!=null?e.ai+startA:null,nb:e.bi!=null?e.bi+startB:null,cells:[]};let rowChg=false;
-    for(let k=0;k<columns.length;k++){const c=columns[k];const a=e.ai!=null?cellsA[e.ai][k]:'',b=e.bi!=null?cellsB[e.bi][k]:'';let st='eq',segs=null;
-      if(e.type==='del'||e.type==='ins'){st=e.type==='del'?'rdel':'rins';if(a||b)colChanged.add(k)}/* 整行新增 / 删除的内容也属于改动：所在列不能被“隐藏未修改的列”藏起来 */else if(c.ia<0||c.ib<0){st=c.ia<0?'cins':'cdel';if((a||b))colChanged.add(k)}else{const na=normA[e.ai][k],nb=normB[e.bi][k];if(na!==nb){st=!a?'cins':!b?'cdel':'chg';segs=st==='chg'?inlineDiff(a,b):null;stats.cells++;rowChg=true;colChanged.add(k)}}
+    let hasColData=false;for(let k=0;k<columns.length;k++){const c=columns[k];const a=e.ai!=null?cellsA[e.ai][k]:'',b=e.bi!=null?cellsB[e.bi][k]:'';let st='eq',segs=null;
+      if(e.type==='del'||e.type==='ins'){st=e.type==='del'?'rdel':'rins';if(a||b)colChanged.add(k)}/* 整行新增 / 删除的内容也属于改动：所在列不能被“隐藏未修改的列”藏起来 */else if(c.ia<0||c.ib<0){st=c.ia<0?'cins':'cdel';if(a||b){hasColData=true;colChanged.add(k)}}/* 新增 / 删除列的内容单独记下，不增加共有列的行 / 单元格修改数，但不能在“隐藏未修改的行”中折叠 */else{const na=normA[e.ai][k],nb=normB[e.bi][k];if(na!==nb){st=!a?'cins':!b?'cdel':'chg';segs=st==='chg'?inlineDiff(a,b):null;stats.cells++;rowChg=true;colChanged.add(k)}}
       r.cells.push({a,b,st,segs})}
-    if(e.type==='del')stats.rowsDel++;else if(e.type==='ins')stats.rowsIns++;else if(e.type==='chg'){if(!rowChg)r.type='eq';else stats.rowsChg++}return r});
+    r.hasColData=hasColData;if(e.type==='del')stats.rowsDel++;else if(e.type==='ins')stats.rowsIns++;else if(e.type==='chg'){if(!rowChg)r.type='eq';else stats.rowsChg++}return r});
   for(const r of result)if(r.type==='chg')r.cells.forEach((c,k)=>{if(c.st!=='eq')colChanged.add(k)});
   return {columns,rows:result,stats,colChanged,identical:result.every(r=>r.type==='eq'&&r.cells.every(c=>c.st==='eq'))&&columns.every(c=>c.st==='eq'&&!c.hdrChg)&&stats.cells===0}}
 
@@ -415,8 +415,8 @@ function render(){const R=RES,wrap=$('gridWrap');const s=R.stats,L=(n,k)=>t(n===
   let h=`<table class="grid"${nd>4?` style="--nw:calc(${nd}ch + 19px)"`:''}><thead><tr><th class="num a">#A</th><th class="num b">#B</th>${cols.map(c=>`<th class="col-${c.st}" title="${c.st==='eq'?'':t(c.st==='ins'?'inserted':c.st==='del'?'deleted':'moved')}">${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`).join('')}</tr></thead><tbody>`;
   let changeNo=0,i=0;const rows=R.rows,CTX=2;
   while(i<rows.length){const r=rows[i];
-    if(r.type==='eq'&&opts.hideRows){let j=i;while(j<rows.length&&rows[j].type==='eq')j++;const run=j-i;const head=i===0?0:CTX,tail=j===rows.length?0:CTX;if(run-head-tail>1&&!expanded.has(i)){for(let k=i;k<i+head;k++)h+=rowHtml(rows[k],cols);h+=`<tr class="collapsed" data-i="${i}" tabindex="0" role="button"><td colspan="${cols.length+2}">⋯ ${esc(t('unchangedRows',{n:run-head-tail}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;for(let k=j-tail;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}for(let k=i;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}
-    const id=r.type!=='eq'?`focus-${changeNo++}`:'';h+=rowHtml(r,cols,id);i++}
+    if(r.type==='eq'&&!r.hasColData&&opts.hideRows){let j=i;while(j<rows.length&&rows[j].type==='eq'&&!rows[j].hasColData)j++;const run=j-i;const head=i===0?0:CTX,tail=j===rows.length?0:CTX;if(run-head-tail>1&&!expanded.has(i)){for(let k=i;k<i+head;k++)h+=rowHtml(rows[k],cols);h+=`<tr class="collapsed" data-i="${i}" tabindex="0" role="button"><td colspan="${cols.length+2}">⋯ ${esc(t('unchangedRows',{n:run-head-tail}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;for(let k=j-tail;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}for(let k=i;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}
+    const id=r.type!=='eq'||r.hasColData?`focus-${changeNo++}`:'';h+=rowHtml(r,cols,id);i++}
   wrap.innerHTML=h+'</tbody></table>';wrap.dataset.changes=changeNo;{const fe=focusIdx>=0&&$('focus-'+focusIdx);if(fe)fe.classList.add('focus')}wrap.querySelectorAll('tr.collapsed').forEach(tr=>{const open=()=>{const i=tr.rowIndex;expanded.add(+tr.dataset.i);render();focusRow(wrap,i)};tr.onclick=open;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}})}
 /* 展开折叠块会把整张表重绘，带焦点的折叠条随之消失，焦点掉回 <body>：Firefox / Safari 里下一次 Tab 又从页面开头数起，
    有很多折叠块时每展开一个都得重新 Tab 过来。重绘后折叠条原来的位置正好是展开出来的第一行，把焦点放到这一行，Tab 就从这里继续 */
