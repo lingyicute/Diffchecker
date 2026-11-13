@@ -757,3 +757,29 @@ test('文本页语法自动识别：SQL / CSS / import…from 的判断不再在
     assert.equal(detectSyntax(str), ref(str), JSON.stringify(str));
   }
 });
+
+test('excel.compare: 新增或删除列含数据时，对应行不能被隐藏未修改的行折叠', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  const saved = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { mode: 'table', matchHeaders: true, hideRows: true, sortRows: false, sortCols: false });
+    const left = G([['ID'], ['1'], ['2'], ['3']]);
+    const right = G([['ID', 'Note'], ['1', 'new'], ['2', ''], ['3', 'also new']]);
+    for (const [a, b, status] of [[left, right, 'cins'], [right, left, 'cdel']]) {
+      const result = excel.compare(a, b, 0, 0);
+      assert.deepEqual(Array.from(result.rows, r => r.type), ['eq', 'eq', 'eq']);
+      assert.deepEqual(Array.from(result.rows, r => r.hasColData), [true, false, true]);
+      assert.equal(result.stats.rowsChg, 0); // 新列有独立统计，不计入共有列的修改数
+      assert.equal(result.rows[0].cells[1].st, status);
+      assert.equal(result.rows[2].cells[1].st, status);
+      assert.ok(result.colChanged.has(1));
+      const nodes = { stats: { innerHTML: '' }, modeSeg: { querySelectorAll: () => [] }, valSeg: { querySelectorAll: () => [] }, gridWrap: { dataset: {}, querySelectorAll: () => [] } };
+      const ctx = { result, options: excel.opts, nodes };
+      vm.createContext(ctx);
+      vm.runInContext(`const RES=result,opts=options,focusIdx=-1,expanded=new Set(),t=k=>k,esc=String,$=id=>nodes[id];${between(script('excel-compare.html'), 'function renderCell', 'function goChange')}render()`, ctx);
+      assert.match(nodes.gridWrap.innerHTML, /also new/);
+      assert.doesNotMatch(nodes.gridWrap.innerHTML, /class="collapsed"/);
+      assert.equal(nodes.gridWrap.dataset.changes, 2);
+    }
+  } finally { Object.assign(excel.opts, saved); }
+});
