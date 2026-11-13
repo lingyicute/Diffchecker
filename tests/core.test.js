@@ -367,6 +367,43 @@ test('zipStore → readZip: 写出的 zip 能被读取器原样读回（含 UTF-
   assert.equal(zipLib.crc32(enc.encode('123456789')), 0xCBF43926);
 });
 
+test('readZip: ZIP 注释含伪结束标记时仍定位真实目录，损坏的条目不能静默读入', async () => {
+  const zip = Buffer.from(await zipLib.zipStore([{ name: 'xl/workbook.xml', data: new TextEncoder().encode('workbook data') }]).arrayBuffer());
+  const read = b => zipLib.readZip(Uint8Array.from(b).buffer);
+  const commented = Buffer.from(zip);
+  commented.writeUInt16LE(24, commented.length - 2);
+  const comment = Buffer.alloc(24);
+  comment.writeUInt32LE(0x06054b50, 2); // 恰好位于文件最后 22 字节的伪 EOCD
+  const z = read(Buffer.concat([commented, comment]));
+  assert.equal(z.text('xl/workbook.xml'), 'workbook data');
+  assert.equal(z.get('constructor'), null); // ZIP 文件名不能继承 Object.prototype
+  const namedUndefined = Buffer.from(await zipLib.zipStore([{ name: 'undefined', data: new TextEncoder().encode('real entry') }]).arrayBuffer());
+  assert.equal(read(namedUndefined).get('missing'), null); // 缺失的大小写别名不能误查到名为 undefined 的文件
+  assert.equal(read(namedUndefined).text('undefined'), 'real entry');
+
+  const corrupt = Buffer.from(zip);
+  const dataStart = 30 + corrupt.readUInt16LE(26) + corrupt.readUInt16LE(28);
+  corrupt[dataStart] ^= 1; // 长度不变，只修改内容
+  assert.throws(() => read(corrupt).text('xl/workbook.xml'), /badZip/);
+
+  const badDir = Buffer.from(zip);
+  badDir.writeUInt16LE(2, badDir.length - 22 + 10); // 声称有两项，实际上只有一项
+  assert.throws(() => read(badDir), /badZip/);
+
+  // 真正的 .xlsx 通常使用 DEFLATE；同样须验证解压后的内容而不只是压缩长度
+  const packed = require('node:zlib').deflateRawSync(Buffer.from('workbook data'));
+  const oldCd = zip.readUInt32LE(zip.length - 22 + 16);
+  const local = Buffer.from(zip.subarray(0, dataStart)), central = Buffer.from(zip.subarray(oldCd, zip.length - 22)), end = Buffer.from(zip.subarray(zip.length - 22));
+  local.writeUInt16LE(8, 8); local.writeUInt32LE(packed.length, 18);
+  central.writeUInt16LE(8, 10); central.writeUInt32LE(packed.length, 20);
+  end.writeUInt32LE(dataStart + packed.length, 16);
+  const deflated = Buffer.concat([local, packed, central, end]);
+  assert.equal(read(deflated).text('xl/workbook.xml'), 'workbook data');
+  const wrongCrc = Buffer.from(deflated);
+  wrongCrc[dataStart + packed.length + 16] ^= 1;
+  assert.throws(() => read(wrongCrc).text('xl/workbook.xml'), /badZip/);
+});
+
 test('excel.parseCsv: 按 RFC 4180 序列化的随机表格能原样解析回来（含逗号、引号、换行、CRLF）', () => {
   let seed = 12345;
   const rand = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
