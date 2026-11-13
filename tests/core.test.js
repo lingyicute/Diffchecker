@@ -280,6 +280,20 @@ test('makeNorm: 忽略规则与正文使用相同的引号 / 小写规范化', (
   assert.equal(diff.nDel + diff.nIns, 2);
 });
 
+test('excel.normalize: 只规范化真实存在的日期，非法月末和非闰年不能产生伪相等', () => {
+  const saved = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { normDates: true, ignoreWs: false, ignoreCase: false, mode: 'table', matchHeaders: true, sortRows: false, sortCols: false });
+    for (const v of ['2023/02/29', '1900/02/29', '2024/04/31', '2024/06/31', '2024/13/01']) assert.equal(excel.normalize(v), v);
+    for (const [v, expected] of [['2024/02/29', '2024-02-29'], ['2000/02/29', '2000-02-29'], ['2024/04/30', '2024-04-30']]) assert.equal(excel.normalize(v), expected);
+    const grid = v => ({ rows: [[{ v: 'Date', f: null, d: false }], [{ v, f: null, d: false }]], cols: 1 });
+    const bad = excel.compare(grid('2023/02/29'), grid('2023-02-29'), 0, 0);
+    assert.equal(bad.identical, false);
+    assert.equal(bad.stats.rowsDel, 1);
+    assert.equal(bad.stats.rowsIns, 1);
+  } finally { Object.assign(excel.opts, saved); }
+});
+
 test('excel.compare: 整行新增 / 删除的内容所在列算作有改动（隐藏未修改的列时不能丢数据）', () => {
   const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
   Object.assign(excel.opts, { mode: 'table', sortRows: false, matchHeaders: true });

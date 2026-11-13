@@ -317,9 +317,11 @@ const saveOpts=()=>lsSet('excel-opts',JSON.stringify(opts));
 const DATE_RX=/^\s*(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})|(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}))(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$/;
 function cellText(c){if(!c)return '';if(opts.val==='formulas'&&c.f)return c.f;return c.v??''}
 const TIME_RX=/^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/;
+const DAYS_IN_MONTH=[31,28,31,30,31,30,31,31,30,31,30,31];
 function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);const p=n=>String(n).padStart(2,'0');if(!m){const tm=TIME_RX.exec(s);if(tm&&+tm[1]<=23&&+tm[2]<=59&&+(tm[3]||0)<=59)s=p(tm[1])+':'+tm[2]+':'+(tm[3]||'00')}// 纯时间统一成 HH:MM:SS，与 .xlsx 里的时间单元格一致
     if(m){const yr=m[1]||m[6],[mo,dy]=m[1]?[+m[2],+m[3]]:(+m[4]<=12&&+m[5]>12?[+m[4],+m[5]]:[+m[5],+m[4]]);/* 第二位 >12 时只可能是 月/日/年；否则按 日/月/年 */
-      if(mo>=1&&mo<=12&&dy>=1&&dy<=31&&(!m[7]||(+m[7]<=23&&+m[8]<=59&&+(m[9]||0)<=59))){s=`${yr}-${p(mo)}-${p(dy)}`+(m[7]?` ${p(m[7])}:${m[8]}:${m[9]||'00'}`:'');if(s.endsWith(' 00:00:00'))s=s.slice(0,-9)/* 午夜时刻等同于纯日期：.xlsx 的日期单元格午夜时只显示日期 */}}}
+      const y=+yr,leap=mo===2&&y%4===0&&(y%100!==0||y%400===0);/* 非法月末（含非闰年的 2 月 29 日）不能规范化，否则不同的无效日期文本会误判相同 */
+      if(mo>=1&&mo<=12&&dy>=1&&dy<=DAYS_IN_MONTH[mo-1]+(leap?1:0)&&(!m[7]||(+m[7]<=23&&+m[8]<=59&&+(m[9]||0)<=59))){s=`${yr}-${p(mo)}-${p(dy)}`+(m[7]?` ${p(m[7])}:${m[8]}:${m[9]||'00'}`:'');if(s.endsWith(' 00:00:00'))s=s.slice(0,-9)/* 午夜时刻等同于纯日期：.xlsx 的日期单元格午夜时只显示日期 */}}}
   if(opts.ignoreWs)s=s.replace(/\s+/g,' ').trim();if(opts.ignoreCase)s=s.toLowerCase();return s}
 function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&(String(c.v).trim()!==''||c.f)).length;counts.push(n);if(n>bestN)bestN=n}
   for(let i=0;i<lim;i++)if(counts[i]>=2&&counts[i]>=.6*bestN){best=i;break}return best}
