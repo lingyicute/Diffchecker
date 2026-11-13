@@ -390,7 +390,14 @@ try{mergeOpts(JSON.parse(lsGet('text-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('text-opts',JSON.stringify(opts));
 let lastDiff=null,expanded=new Set(),focusIdx=-1,fileNames={A:'',B:''};
 const txtA=$('txtA'),txtB=$('txtB');
-function updateMeta(side){for(const [s,id,ta] of [['A','metaA',txtA],['B','metaB',txtB]])if(!side||side===s){const v=ta.value,c=(n,k)=>`${n} ${t(n===1?k+'1':k)}`;/* 数量为 1 时英文用单数（1 line · 1 word），与差异统计的写法一致 */$(id).textContent=v?`${c(v.replace(/\r\n?/g,'\n').replace(/\n$/,'').split('\n').length,'lines')} · ${c((v.match(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|[^\s\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]+/g)||[]).length,'words')} · ${c(v.length,'characters')}`:''}}
+/* 行 / 词 / 字符统计不再用正则 match 把几百万个词物化成数组再数长度：粘贴几十 MB 的日志后一次统计要 ~700ms，改为单遍扫描只需几十毫秒。
+   口径与原正则一致：行数 = 换行数 + 1（结尾的换行不另算一行）；词 = 单个 CJK 字符，或一段连续的非空白、非 CJK 字符（空白按 JS 正则 \s 的定义） */
+const isWs=c=>c===32||(c>=9&&c<=13)||c===0xa0||c===0x1680||(c>=0x2000&&c<=0x200a)||c===0x2028||c===0x2029||c===0x202f||c===0x205f||c===0x3000||c===0xfeff;
+const isCjk=c=>(c>=0x3040&&c<=0x30ff)||(c>=0x3400&&c<=0x4dbf)||(c>=0x4e00&&c<=0x9fff)||(c>=0xac00&&c<=0xd7af);
+function countText(v){let lines=1,words=0,run=false;const n=v.length;for(let i=0;i<n;i++){const c=v.charCodeAt(i);
+  if(c===10||c===13){if(c===13&&v.charCodeAt(i+1)===10)i++;if(i<n-1)lines++;run=false}else if(isWs(c))run=false;else if(isCjk(c)){words++;run=false}else if(!run){run=true;words++}}
+  return {lines,words,chars:n}}
+function updateMeta(side){for(const [s,id,ta] of [['A','metaA',txtA],['B','metaB',txtB]])if(!side||side===s){const v=ta.value,c=(n,k)=>`${n} ${t(n===1?k+'1':k)}`;/* 数量为 1 时英文用单数（1 line · 1 word），与差异统计的写法一致 */if(!v){$(id).textContent='';continue}const {lines,words,chars}=countText(v);$(id).textContent=`${c(lines,'lines')} · ${c(words,'words')} · ${c(chars,'characters')}`}}
 function run(keep){const d=computeDiff(txtA.value,txtB.value,opts);lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:'smooth',block:'start'})}
 const CTX=3;// 隐藏未修改行时，每个折叠块首尾各保留的行数（页面、PNG 导出共用）
 function render(){
@@ -450,7 +457,8 @@ function focusRow(wrap,i){const row=wrap.querySelector('table')?.rows[i];if(!row
 function goChange(dir){const n=+$('diffScroll').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('findBtn').onclick=()=>run();
-let rt;const realtimeRun=side=>{updateMeta(side);if(opts.realtime){clearTimeout(rt);rt=setTimeout(run,250)}};
+let rt;const mt={A:0,B:0};/* 统计改为停顿 150ms 后再做：超大文本下每敲一个键都把全文扫一遍会卡住输入；两侧各用一个计时器，快速切换输入框时另一侧的统计不会被取消 */
+const realtimeRun=side=>{clearTimeout(mt[side]);mt[side]=setTimeout(()=>updateMeta(side),150);if(opts.realtime){clearTimeout(rt);rt=setTimeout(run,250)}};
 txtA.addEventListener('input',()=>realtimeRun('A'));txtB.addEventListener('input',()=>realtimeRun('B'));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();run()}});
 $('swapBtn').onclick=()=>{const v=txtA.value;txtA.value=txtB.value;txtB.value=v;fileNames={A:fileNames.B,B:fileNames.A};updateMeta();if(lastDiff)run(true)};

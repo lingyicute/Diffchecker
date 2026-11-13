@@ -696,3 +696,16 @@ test('文本页语法自动识别：缩进的 Python / JS 仍能识别，且不�
   assert.equal(detectSyntax('x' + '\n'.repeat(200000) + 'y'), ''); // 原先约需数分钟
   assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0}ms`);
 });
+
+test('文本页 countText: 行 / 词 / 字符统计与原先的正则口径一致，且不物化词数组', () => {
+  const s = script('text-compare.html');
+  const X = run(between(s, 'const isWs=', 'function updateMeta'), 'countText', ''), countText = v => ({ ...X.countText(v) });/* vm 里创建的对象原型不同，摊平后再 deepEqual */
+  const W = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|[^\s\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]+/g;
+  const ref = v => ({ lines: v.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n').length, words: (v.match(W) || []).length, chars: v.length });
+  const al = ['a', 'Z', '1', '_', ',', ' ', '  ', '\t', '\n', '\r', '\r\n', '\u00a0', '\u3000', '\u2028', '中', '文', 'あ', '한', '😀', '\ufeff', '\u200b'];
+  for (let it = 0; it < 3000; it++) {
+    const v = Array.from({ length: 1 + rnd(12) }, () => al[rnd(al.length)]).join('');
+    assert.deepEqual(countText(v), ref(v), JSON.stringify(v));
+  }
+  for (const v of ['a', 'a\n', 'a\n\n', '\n', '\r', 'a\r\nb\r\n', 'x\ry', ' 中 文 ', 'foo_bar,baz 😀x'] ) assert.deepEqual(countText(v), ref(v), JSON.stringify(v));
+});
