@@ -516,14 +516,15 @@ function pairedRows(collapse){const d=lastDiff,out=[];d.blocks.forEach((b,bi)=>{
   else for(const p of b.pairs)out.push({l:p.l,r:p.r,changed:true})});return out}
 async function exportPng(){
   const d=lastDiff,rows=pairedRows(true),unified=exportLayout==='unified';const dark=theme==='dark';
-  const W=1600,LH=20,PAD=16,font='13px '+(getComputedStyle(document.body).getPropertyValue('--mono').trim()||'monospace');
+  const css=getComputedStyle(document.body),cssVar=(n,d)=>css.getPropertyValue(n).trim()||d,W=1600,LH=20,PAD=16,font='13px '+cssVar('--mono','monospace');
+  /* 增删行的底色与行内高亮直接取当前主题的 CSS 变量：原先写死的是浅色主题的淡色，深色背景上 9% 透明度的红 / 绿几乎看不见 */const col={del:cssVar('--del-block','rgba(255,46,0,.09)'),ins:cssVar('--ins-block','rgba(0,180,144,.12)'),delHl:cssVar('--del-hl','rgba(255,46,0,.3)'),insHl:cssVar('--ins-hl','rgba(0,180,144,.34)')};
   const lines=unified?rows.reduce((n,r)=>n+(r.changed?(r.l!=null)+(r.r!=null):1),0):rows.length;
   const H=PAD*2+40+lines*LH;if(H>32000)throw Object.assign(new Error('image too tall'),{tooTall:true});const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
   ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14);
   ctx.font=font;const colW=unified?W-PAD*2:(W-PAD*2)/2;let y=PAD+40;
-  const drawLine=(x,txt,num,kind,segs,side,width)=>{if(kind)ctx.fillStyle=kind==='del'?'rgba(255,46,0,.09)':'rgba(0,180,144,.12)',ctx.fillRect(x,y,width,LH);ctx.fillStyle=dark?'#7d858d':'#9aa1a8';ctx.textAlign='right';ctx.fillText(num==null?'':String(num+1),x+40,y+14);ctx.textAlign='left';
+  const drawLine=(x,txt,num,kind,segs,side,width)=>{if(kind)ctx.fillStyle=kind==='del'?col.del:col.ins,ctx.fillRect(x,y,width,LH);ctx.fillStyle=dark?'#7d858d':'#9aa1a8';ctx.textAlign='right';ctx.fillText(num==null?'':String(num+1),x+40,y+14);ctx.textAlign='left';
     let cx=x+52;ctx.save();ctx.beginPath();ctx.rect(x,y,width,LH);ctx.clip();const parts=segs?segs.filter(s=>side==='l'?s.a:s.b).map(s=>({tx:(side==='l'?s.a:s.b).replace(/\t/g,'    '),m:s.t!==EQ})):[{tx:txt.replace(/\t/g,'    '),m:false}];
-    for(const p of parts){const w=ctx.measureText(p.tx).width;if(p.m){ctx.fillStyle=kind==='del'?'rgba(255,46,0,.35)':'rgba(0,180,144,.4)';ctx.fillRect(cx,y+2,w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.tx,cx,y+14);cx+=w;if(cx>x+width)break}ctx.restore()};
+    for(const p of parts){const w=ctx.measureText(p.tx).width;if(p.m){ctx.fillStyle=kind==='del'?col.delHl:col.insHl;ctx.fillRect(cx,y+2,w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.tx,cx,y+14);cx+=w;if(cx>x+width)break}ctx.restore()};
   for(const r of rows){if(r.collapsed){ctx.fillStyle=dark?'#1f2226':'#f6f8f7';ctx.fillRect(PAD,y,W-PAD*2,LH);ctx.fillStyle=dark?'#aeb6be':'#626971';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('⋯ '+t('unchangedLines',{n:r.collapsed}),W/2,y+14);ctx.textAlign='left';ctx.font=font;y+=LH;continue}
     let segs=null;if(r.changed&&r.l!=null&&r.r!=null){const ck=opts.level+'|'+r.l+'|'+r.r;segs=d.segCache.get(ck);if(!segs){segs=inlineDiff(d.A[r.l],d.B[r.r],opts.level,d.norm);d.segCache.set(ck,segs)}}
     if(unified){if(r.l!=null){drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);y+=LH}if(r.changed&&r.r!=null){drawLine(PAD,d.B[r.r],r.r,'ins',segs,'r',colW);y+=LH}}
