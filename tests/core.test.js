@@ -709,3 +709,21 @@ test('文本页 countText: 行 / 词 / 字符统计与原先的正则口径一�
   }
   for (const v of ['a', 'a\n', 'a\n\n', '\n', '\r', 'a\r\nb\r\n', 'x\ry', ' 中 文 ', 'foo_bar,baz 😀x'] ) assert.deepEqual(countText(v), ref(v), JSON.stringify(v));
 });
+
+test('excel.inlineDiff: 忽略空白时空白差异不标成改动，且仍能无损还原', () => {
+  const saved = excel.opts.ignoreWs;
+  try {
+    excel.opts.ignoreWs = true;
+    const join = (segs, k) => segs.map(s => s[k]).join('');
+    const bad = s => s.t !== 0 && !(s.t === 1 ? s.a : s.b).trim();
+    for (const [l, r] of [['a  b x', 'a b y'], ['  a b x', 'a b y'], ['x  y', 'x y z'], ['a\tb', 'a b'], ['ab', 'a b']]) {
+      const segs = excel.inlineDiff(l, r);
+      assert.equal(join(segs, 'a'), l); assert.equal(join(segs, 'b'), r);
+      assert.ok(!segs.some(bad), JSON.stringify([l, r, segs]));
+    }
+    assert.ok(excel.inlineDiff('x  y', 'x y z').every(s => s.t === 0 || s.b === 'z'));
+    assert.ok(excel.inlineDiff('a  b', 'a b').every(s => s.t === 0));
+    excel.opts.ignoreWs = false;
+    assert.ok(excel.inlineDiff('a  b', 'a b').some(s => s.t !== 0));
+  } finally { excel.opts.ignoreWs = saved; }
+});
