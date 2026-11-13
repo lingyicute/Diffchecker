@@ -442,8 +442,11 @@ function render(){
     }
   }
   scroll.innerHTML=h+'</table>';scroll.dataset.changes=changeNo;{const fe=focusIdx>=0&&$('focus-'+focusIdx);if(fe)fe.classList.add('focus')}
-  scroll.querySelectorAll('tr.collapsed').forEach(tr=>{const open=()=>{expanded.add(+tr.dataset.bi);render()};tr.onclick=open;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}});// 折叠条同样可用键盘展开
+  scroll.querySelectorAll('tr.collapsed').forEach(tr=>{const open=()=>{const i=tr.rowIndex;expanded.add(+tr.dataset.bi);render();focusRow(scroll,i)};tr.onclick=open;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}});// 折叠条同样可用键盘展开
 }
+/* 展开折叠块会把整张表重绘，带焦点的折叠条随之消失，焦点掉回 <body>：Firefox / Safari 里下一次 Tab 又从页面开头数起，
+   有很多折叠块时每展开一个都得重新 Tab 过来。重绘后折叠条原来的位置正好是展开出来的第一行，把焦点放到这一行，Tab 就从这里继续 */
+function focusRow(wrap,i){const row=wrap.querySelector('table')?.rows[i];if(!row)return;row.tabIndex=-1;try{row.focus({preventScroll:true})}catch(e){row.focus()}}
 function goChange(dir){const n=+$('diffScroll').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('findBtn').onclick=()=>run();
