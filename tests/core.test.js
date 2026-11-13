@@ -727,3 +727,33 @@ test('excel.inlineDiff: 忽略空白时空白差异不标成改动，且仍能�
     assert.ok(excel.inlineDiff('a  b', 'a b').some(s => s.t !== 0));
   } finally { excel.opts.ignoreWs = saved; }
 });
+
+test('文本页语法自动识别：SQL / CSS / import…from 的判断不再在大量 SELECT / { / import 上回溯成 O(n²)，且与原正则等价', () => {
+  const s = script('text-compare.html');
+  const { detectSyntax } = run(between(s, 'const SYN={', '/* ===================== state'), 'detectSyntax');
+  assert.equal(detectSyntax('select 1\n-- notes\nSELECT a FROM t'), 'sql');
+  assert.equal(detectSyntax('a{color:red}'), 'css');
+  assert.equal(detectSyntax('b{}\na{margin:0}'), 'css');
+  assert.equal(detectSyntax("import x from\n'./x'"), 'js'); // from 与引号之间的空白可以跨行
+  for (const [name, src] of [['SELECT', 'SELECT\n'.repeat(60000)], ['{', 'a{'.repeat(60000)], ['import', 'import '.repeat(30000)]]) {
+    const t0 = Date.now();
+    assert.equal(detectSyntax(src), '', name); // 原先各需数秒到数十秒
+    assert.ok(Date.now() - t0 < 1500, `${name}: ${Date.now() - t0}ms`);
+  }
+  // 与原来的整体正则逐一对照
+  const ref = str => {
+    str = str.trim();
+    if (/^[\[{][\s\S]*[\]}]$/.test(str)) { try { JSON.parse(str); return 'json'; } catch (e) {} }
+    if (/^<\?xml|^<!doctype|^<[a-z!]/i.test(str)) return 'xml';
+    if (/^[ \t]*(def|class)\s+\w+.*:\s*$|^[ \t]*elif\b|\bself\.|^[ \t]*print\(|^[ \t]*(from\s+[\w.]+\s+)?import\s+[\w.]+(\s*,\s*[\w.]+)*(\s+as\s+\w+)?\s*$/m.test(str)) return 'py';
+    if (/\b(?:const|let|var)\s+[\w$]+\s*[=;:,]|\bfunction\s*[\w$]*\s*\(|=>|\bimport\b[^\n]*\bfrom\s+['"]|^[ \t]*export\s+(?:default|const|function|class)\b/m.test(str)) return 'js';
+    if (/\bSELECT\b[\s\S]*\bFROM\b/i.test(str)) return 'sql';
+    if (/[\w-]\s*\{[^}]*:[^}]*\}/.test(str)) return 'css';
+    return '';
+  };
+  const tok = ['SELECT', 'select', ' FROM ', 'from', '{', '}', ':', ';', 'a', '-', '\n', 'import ', ' from ', "'", '"', 'x', ' ', '\r\n', '=', '(', ')', 'color', 'b1'];
+  for (let it = 0; it < 30000; it++) {
+    const str = Array.from({ length: 1 + rnd(14) }, () => tok[rnd(tok.length)]).join('');
+    assert.equal(detectSyntax(str), ref(str), JSON.stringify(str));
+  }
+});
