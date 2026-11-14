@@ -231,7 +231,10 @@ function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.round(v*86400)%86400,p
 // 时长格式（[h]:mm:ss）：小时数可以超过 24，不能当作日期显示
 function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return (neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}
 // t="d" 单元格（ISO 8601 文本，如 2024-03-05T00:00:00 / 10:30:00）：统一成与日期序列号一致的显示，否则同一日期在两种存储方式下会被误报为修改
-function isoDateCell(raw){const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)(\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?\s*$/.exec(raw||'');if(!m||(!m[1]&&!m[4]))return raw??'';
+function isoDateCell(raw){const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)(\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?(?:Z|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?\s*$/.exec(raw||'');if(!m||(!m[1]&&!m[4]))return raw??'';
+  /* t="d" 也可能是伪造的非法日期 / 时间。不能在验证前丢掉时刻或时区，否则非法的完整文本会与另一个单元格里的截断文本伪相等。 */
+  const y=+(m[1]||0),mo=+(m[2]||0),dy=+(m[3]||0),h=+(m[4]||0),mi=+(m[5]||0),se=+(m[6]||0),dim=mo===2?28+(y%4===0&&(y%100!==0||y%400===0)?1:0):[4,6,9,11].includes(mo)?30:31;
+  if(h>23||mi>59||se>59||(m[1]&&(mo<1||mo>12||dy<1||dy>dim)))return raw??'';
   const tm=m[4]?`${m[4]}:${m[5]}:${m[6]||'00'}`:'';if(!m[1])return tm;const d=`${m[1]}-${m[2]}-${m[3]}`;return tm&&tm!=='00:00:00'?d+' '+tm:d}
 // 只认完整的 ZIP 签名（PK\x03\x04 / 空包 PK\x05\x06 / 分卷 PK\x07\x08）；仅凭 "PK" 两个字节会把以 PK 开头的 CSV 误判成 xlsx
 const isZipSig=u=>u[0]===0x50&&u[1]===0x4B&&((u[2]===3&&u[3]===4)||(u[2]===5&&u[3]===6)||(u[2]===7&&u[3]===8));
