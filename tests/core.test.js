@@ -188,7 +188,7 @@ test('inlineDiff: 超长行只裁剪公共前后缀，仍能无损还原且不�
 const img = (() => {
   const s = script('image-compare.html');
   const code = between(s, 'function dilate', 'function scan') + between(s, 'function fft1d', 'function grayPatch') + between(s, 'function phaseCorr', 'async function autoAlign') + between(s, 'function invertAlign', "$('swapBtn')");
-  return run(code, 'dilate,detect,phaseCorr,invertAlign', 'const defAlign=()=>({dx:0,dy:0,rot:0,scale:1,fh:false,fv:false});');
+  return run(code, 'dilate,detect,dedupeRegions,phaseCorr,invertAlign', 'const defAlign=()=>({dx:0,dy:0,rot:0,scale:1,fh:false,fv:false});');
 })();
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 
@@ -216,6 +216,35 @@ test('image.detect: 分组半径决定相邻差异块是否合并，过小的块
   assert.equal(grouped.length, 2);
   const big = grouped.find(r => r.w > 10);
   assert.equal([big.x, big.y, big.w, big.h, big.px].join(), '5,5,15,6,72');
+});
+
+test('image.dedupeRegions: 与暴力 IoU 去重等价，不相交区域不再触发平方级比较', () => {
+  const reference = all => {
+    const keep = [];
+    for (const r of all) {
+      let dup = false;
+      for (const k of keep) {
+        const ix = Math.max(0, Math.min(r.x + r.w, k.x + k.w) - Math.max(r.x, k.x));
+        const iy = Math.max(0, Math.min(r.y + r.h, k.y + k.h) - Math.max(r.y, k.y));
+        const inter = ix * iy;
+        if (inter && inter / (r.w * r.h + k.w * k.h - inter) >= .4) { dup = true; break; }
+      }
+      if (!dup) keep.push(r);
+    }
+    return keep;
+  };
+  const shape = rows => Array.from(rows, r => [r.x, r.y, r.w, r.h, r.px]);
+  const r = lcg(19);
+  for (let it = 0; it < 100; it++) {
+    const all = Array.from({ length: 1 + Math.floor(r() * 45) }, () => ({
+      x: Math.floor(r() * 120), y: Math.floor(r() * 100), w: 1 + Math.floor(r() * 25), h: 1 + Math.floor(r() * 20), px: 1,
+    }));
+    assert.deepEqual(shape(img.dedupeRegions(all)), shape(reference(all)));
+  }
+  const many = Array.from({ length: 30000 }, (_, i) => ({ x: (i % 250) * 65, y: Math.floor(i / 250) * 65, w: 1, h: 1, px: 1 }));
+  const started = Date.now(), kept = img.dedupeRegions(many);
+  assert.equal(kept.length, many.length);
+  assert.ok(Date.now() - started < 1500, `去重耗时 ${Date.now() - started}ms`);
 });
 
 test('image.phaseCorr: 峰值给出 B 相对 A 的平移（符号为 -d）', () => {
