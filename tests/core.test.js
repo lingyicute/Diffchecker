@@ -539,6 +539,15 @@ test('excel.isoDateCell: t="d" 的 ISO 日期与日期序列号的显示一致',
   assert.equal(excel.isoDateCell(null), '');
 });
 
+test('excel.isoDateCell: 非法日历日期、越界时间与时区保持原文，不能截断后伪相等', () => {
+  for (const value of [
+    '2023-02-29', '2024-02-30T00:00:00', '2024-04-31T08:00:00Z', '2024-13-01',
+    '2024-01-01T24:00:00', '2024-01-01T12:60:00', '25:00:00', '2024-01-01T00:00:00+25:00',
+  ]) assert.equal(excel.isoDateCell(value), value);
+  assert.equal(excel.isoDateCell('2024-02-29T00:00:00'), '2024-02-29');
+  assert.equal(excel.isoDateCell('2024-02-29T08:05:09+05:30'), '2024-02-29 08:05:09');
+});
+
 test('image.invertAlign: 带翻转的对齐参数求逆后仍能把点映射回原位', () => {
   // 与 drawAligned 相同的映射：以图片中心为原点，先翻转、再缩放、再旋转，最后平移
   const map = (al, w, h, [x, y]) => {
