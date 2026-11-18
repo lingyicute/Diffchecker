@@ -256,15 +256,25 @@ function buildBases(){const W=Math.max(S.A.w,S.B.w),H=Math.max(S.A.h,S.B.h);S.sc
   baseB=mk(S.W,S.H);drawAligned(baseB.getContext('2d'),S.B.c,S.align,S.scale);
   dataA=ca.getImageData(0,0,S.W,S.H);dataB=baseB.getContext('2d').getImageData(0,0,S.W,S.H);computeDiffMap()}
 function drawAligned(ctx,img,al,s){ctx.save();ctx.scale(s,s);const w=img.width,h=img.height;ctx.translate(w/2+al.dx,h/2+al.dy);ctx.rotate(al.rot*Math.PI/180);ctx.scale(al.scale*(al.fh?-1:1),al.scale*(al.fv?-1:1));ctx.drawImage(img,-w/2,-h/2);ctx.restore()}
-function computeDiffMap(){const a=dataA.data,b=dataB.data,n=S.W*S.H;diffMap=new Uint8Array(n);signMap=new Int8Array(n);diffCount=0;
-  for(let i=0,p=0;i<n;i++,p+=4){const aa=a[p+3],ba=b[p+3];let dr,dg,db;if(aa<255||ba<255){// blend onto white
-      const fa=aa/255,fb=ba/255;dr=(a[p]*fa+255*(1-fa))-(b[p]*fb+255*(1-fb));dg=(a[p+1]*fa+255*(1-fa))-(b[p+1]*fb+255*(1-fb));db=(a[p+2]*fa+255*(1-fa))-(b[p+2]*fb+255*(1-fb))}else{dr=a[p]-b[p];dg=a[p+1]-b[p+1];db=a[p+2]-b[p+2]}
-    const m=Math.max(Math.abs(dr),Math.abs(dg),Math.abs(db));const mq=Math.min(255,Math.round(m));diffMap[i]=mq;if(mq)diffCount++;const lum=dr*.299+dg*.587+db*.114;signMap[i]=lum<0?1:-1;/* 1: B lighter → removed */}}
+function diffPixels(a,b,map,sign,rgba){
+  let changed=0;
+  const delta=(black,opacity)=>Math.min(255,Math.round(Math.max(Math.abs(black),Math.abs(black+opacity))));
+  for(let i=0,p=0;p<a.length;i++,p+=4){
+    // 对黑、白底分别比较预乘后的颜色：不漏掉透明度变化，也不比较全透明像素下不可见的 RGB。
+    const aa=a[p+3],ba=b[p+3],fa=aa/255,fb=ba/255,opacity=ba-aa;
+    const dr=a[p]*fa-b[p]*fb,dg=a[p+1]*fa-b[p+1]*fb,db=a[p+2]*fa-b[p+2]*fb;
+    const r=delta(dr,opacity),g=delta(dg,opacity),bl=delta(db,opacity),m=Math.max(r,g,bl);
+    if(map)map[i]=m;if(sign)sign[i]=dr*.299+dg*.587+db*.114+opacity<0?1:-1;
+    if(rgba){rgba[p]=r;rgba[p+1]=g;rgba[p+2]=bl;rgba[p+3]=255}if(m)changed++;
+  }
+  return changed;
+}
+function computeDiffMap(){const n=S.W*S.H;diffMap=new Uint8Array(n);signMap=new Int8Array(n);diffCount=diffPixels(dataA.data,dataB.data,diffMap,signMap)}
 function compositeCanvas(mode){const W=S.W,H=S.H,c=mk(W,H),ctx=c.getContext('2d');
   if(mode==='fade'){ctx.drawImage(baseA,0,0);ctx.globalAlpha=S.fade;ctx.drawImage(baseB,0,0);ctx.globalAlpha=1}
   else if(mode==='slider'){ctx.drawImage(baseB,0,0);ctx.save();ctx.beginPath();ctx.rect(0,0,Math.round(W*S.sliderPos),H);ctx.clip();ctx.drawImage(baseA,0,0);ctx.restore()}
   else if(mode==='flicker'){ctx.drawImage(flickShow()===0?baseA:baseB,0,0)}
-  else if(mode==='subtract'){const out=ctx.createImageData(W,H),o=out.data,a=dataA.data,b=dataB.data;const bl=(d,p,c)=>{const al=d[p+3];return al===255?d[p+c]:d[p+c]*al/255+255-al},ab=(p,c)=>Math.round(Math.abs(bl(a,p,c)-bl(b,p,c)));for(let p=0;p<o.length;p+=4){o[p]=ab(p,0);o[p+1]=ab(p,1);o[p+2]=ab(p,2);o[p+3]=255}ctx.putImageData(out,0,0)}
+  else if(mode==='subtract'){const out=ctx.createImageData(W,H);diffPixels(dataA.data,dataB.data,null,null,out.data);ctx.putImageData(out,0,0)}
   else if(mode==='highlight'){const out=ctx.createImageData(W,H),o=out.data,a=dataA.data,b=dataB.data,thr=S.hlThr,ctxMode=S.hlMode==='context';
     for(let i=0,p=0;i<diffMap.length;i++,p+=4){if(diffMap[i]>thr){if(signMap[i]>0){o[p]=235;o[p+1]=50;o[p+2]=35}else{o[p]=30;o[p+1]=180;o[p+2]=90}o[p+3]=255}else if(ctxMode){const fa=a[p+3]/255;const g=(a[p]*.299+a[p+1]*.587+a[p+2]*.114)*fa+255*(1-fa);const v=Math.round(255-(255-g)*.45);o[p]=o[p+1]=o[p+2]=v;o[p+3]=255}else{o[p]=o[p+1]=o[p+2]=255;o[p+3]=255}}
     ctx.putImageData(out,0,0)}

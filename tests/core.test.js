@@ -1048,3 +1048,13 @@ test('XLSX 写入拒绝超出行、列、文本规格的结果，而不截断数
     assert.throws(() => makeXlsx([{ name: 'Test', rows: [[{ v: 'x'.repeat(32768) }]] }]), /exportXlsxLimit/);
   }
 });
+
+test('图片像素差异同时比较颜色和透明度，忽略全透明像素隐藏的颜色', () => {
+  const { diffPixels } = run(between(script('image-compare.html'), 'function diffPixels', 'function computeDiffMap'), 'diffPixels');
+  const a = [255, 255, 255, 0, 255, 0, 0, 0, 20, 30, 40, 255];
+  const b = [255, 255, 255, 255, 0, 0, 255, 0, 20, 35, 40, 255];
+  const map = new Uint8Array(3), rgba = new Uint8Array(12);
+  assert.equal(diffPixels(a, b, map, null, rgba), 2);
+  assert.deepEqual([...map], [255, 0, 5]);
+  assert.deepEqual([...rgba], [255, 255, 255, 255, 0, 0, 0, 255, 0, 5, 0, 255]);
+});
