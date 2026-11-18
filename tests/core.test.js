@@ -18,8 +18,8 @@ const text = (() => {
 })();
 const excel = (() => {
   const s = script('excel-compare.html');
-  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function scanCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
-  return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isoDateCell,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula,xstr');
+  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'const MAX_IMPORTED_CELLS=', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
+  return run(code, 'compare,parseCsv,scanCsv,opts,serialToDate,serialToElapsed,isoDateCell,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula,xstr');
 })();
 
 const inflate = (() => {
@@ -1178,14 +1178,14 @@ test('XLSX 单元格地址保留实际坐标并拒绝越界或非法地址', () 
 
 const worksheet = (() => {
   const s = script('excel-compare.html');
-  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseSheetRows', '// 检测和实际解析');
+  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'const MAX_IMPORTED_CELLS=', '// 检测和实际解析');
   const { parseSheetRows } = run(code, 'parseSheetRows');
   const node = (localName, attrs = {}, children = [], textContent = '') => ({
     localName, children, textContent, getAttribute: name => attrs[name] ?? null, hasAttribute: name => Object.hasOwn(attrs, name),
   });
   const row = (n, ...cells) => node('row', n == null ? {} : { r: n }, cells);
-  const cell = (ref, value, type) => node('c', { r: ref, t: type }, value === undefined ? [] : [node('v', {}, [], value)]);
-  const readRows = (rows, sst = []) => parseSheetRows({ children: rows }, sst, new Map(), false, true, n => n.textContent);
+  const cell = (ref, value, type) => node('c', { ...(ref == null ? {} : { r: ref }), t: type }, value === undefined ? [] : [node('v', {}, [], value)]);
+  const readRows = (rows, sst = [], limit) => parseSheetRows({ children: rows }, sst, new Map(), false, true, n => n.textContent, limit);
   return { node, row, cell, readRows };
 })();
 
@@ -1221,4 +1221,15 @@ test('共享公式：组号按数值匹配，同一组内必须有唯一的主�
   assert.equal(rows[0][0].f, '=B1');
   assert.throws(() => readRows([row('1', f('A1', '01', 'B1'), f('B1', '1', 'C1'))]), /badZip/);
   assert.throws(() => readRows([row('1', f('A1', undefined, 'B1'))]), /badZip/);
+});
+
+
+test('表格导入预算：收集 CSV 字段和 XLSX 单元格时即拒绝超限', () => {
+  assert.equal(excel.scanCsv('a,b\nc,d', ',', true, Infinity, 4).rows.length, 2);
+  assert.throws(() => excel.scanCsv('a,b\nc,d', ',', true, Infinity, 3), /importTooLarge/);
+  assert.throws(() => excel.parseCsv(','.repeat(16384), ','), /importTooLarge/);
+  const { row, cell, readRows } = worksheet;
+  const rows = [row('3', cell('A3'), cell('B3', 'data'))];
+  assert.equal(readRows(rows, [], 2).rows[2][1].v, 'data');
+  assert.throws(() => readRows(rows, [], 1), /importTooLarge/);
 });

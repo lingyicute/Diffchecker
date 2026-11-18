@@ -163,6 +163,8 @@ Object.assign(I18N.en,{rowsRemoved1:'row removed',rowsAdded1:'row added',rowsCha
 Object.assign(I18N.zh,{rowsRemoved1:'行删除',rowsAdded1:'行新增',rowsChanged1:'行修改',cellsChanged1:'个单元格修改',colsAdded1:'列新增',colsRemoved1:'列删除',colsMoved1:'列移动',hiddenSheet:'已隐藏',tipTable:'按表头对齐行和列，适合结构化的表格',tipRows:'按顺序逐行比较，适用于任意布局',wrongFile:'此 .diffchecker 文件不是由 Excel 对比工具生成的',legacyXls:'不支持旧版 .xls 文件，请先另存为 .xlsx 或 .csv。',badZip:'不是有效的 .xlsx 文件',xlSheet:'对比结果',exportFailed:'导出失败，请重试。',colsMoved:'列移动',encrypted:'此工作簿已加密或设有打开密码，请先在 Excel 中取消密码后重试。'});
 I18N.en.binaryTable='This is not a text spreadsheet (it contains NUL characters).';
 I18N.zh.binaryTable='文件含有 NUL 字符，无法按文本表格读取。';
+I18N.en.importTooLarge='The sheet has too many cells or columns to load in the browser.';
+I18N.zh.importTooLarge='表格的单元格或列数过多，无法在浏览器中读取。';
 I18N.en.compareTooLarge='This comparison is too large for the browser. Compare smaller ranges or sheets.';
 I18N.zh.compareTooLarge='比较范围过大，请缩小数据范围或分工作表比较。';
 I18N.en.compareFailed='Could not compare these sheets.';
@@ -367,16 +369,17 @@ function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'
     if(root.localName!=='worksheet'||!body)bad();
     return sheet.grid=parseSheetRows(body,sst,dateStyles,d1904,compat,richText)};
   return {sheets,load,type:'xlsx'}}
-function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
+const MAX_IMPORTED_CELLS=1000000;
+function parseSheetRows(body,sst,dateStyles,d1904,compat,richText,limit=MAX_IMPORTED_CELLS){
   const bad=()=>{throw new Error(t('badZip'))};
-  const rows=[],seenRows=new Set(),sharedF=new Map(),pending=[];let cols=0;
+  const rows=[],seenRows=new Set(),sharedF=new Map(),pending=[];let cols=0,declared=0;
   // 不把损坏的坐标钳到别的单元格；无显式行号时优先使用该行第一个带坐标的单元格。
   let lastRi=-1;for(const r of body.children){if(r.localName!=='row')continue;
     const rn=r.getAttribute('r'),first=[...r.children].find(c=>c.localName==='c'&&c.hasAttribute('r')),start=first&&cellAddress(first.getAttribute('r'));
     const ri=rn==null?(start?.row??lastRi+1):/^\d+$/.test(rn)?+rn-1:NaN;
     if(!Number.isInteger(ri)||ri<0||ri>=1048576||seenRows.has(ri))bad();
     seenRows.add(ri);lastRi=ri;const cells=[],seenCols=new Set();let ci=-1;
-    for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r'),addr=ref==null?null:cellAddress(ref);
+    for(const c of r.children){if(c.localName!=='c')continue;if(++declared>limit)throw new Error(t('importTooLarge'));const ref=c.getAttribute('r'),addr=ref==null?null:cellAddress(ref);
       if(ref!=null&&(!addr||addr.row!==ri))bad();ci=addr?.col??ci+1;if(ci>=16384||seenCols.has(ci))bad();seenCols.add(ci);
       const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null,shared=null,d=tt==='d';
       for(const ch of c.children){
@@ -400,12 +403,12 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
       cells[ci]={v,f,d};if(shared!=null)pending.push({shared,cell:cells[ci],ri,ci});if(ci+1>cols)cols=ci+1}
     if(cells.length){rows[ri]=cells}}
   for(const {shared,cell,ri,ci} of pending){const master=sharedF.get(shared);if(!master)bad();cell.f='='+shiftFormula(master.f,ri-master.r,ci-master.c)}
-  for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];return {rows,cols};
+  const empty=Object.freeze([]);for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=empty;return {rows,cols};
 }
 // 检测和实际解析共用同一个引号状态机；是否处于字段开头取决于当前候选分隔符。
-function scanCsv(text,delim,collect,maxRows=Infinity){
-  const rows=[],freq=new Map();let row=[],cell='',fields=1,n=0,hit=0,top=0,errors=0,state=0,quoted=false,quoteEvidence=false;
-  const pushCell=()=>{if(state===3)quoted=true;if(collect){row.push(cell);cell=''}state=0};
+function scanCsv(text,delim,collect,maxRows=Infinity,limit=MAX_IMPORTED_CELLS){
+  const rows=[],freq=new Map();let row=[],cell='',fields=1,n=0,hit=0,top=0,errors=0,state=0,stored=0,quoted=false,quoteEvidence=false;
+  const pushCell=()=>{if(state===3)quoted=true;if(collect){if(++stored>limit||row.length>=16384)throw new Error(t('importTooLarge'));row.push(cell);cell=''}state=0};
   const endRow=()=>{pushCell();if(collect){rows.push(row);row=[]}if(fields>1){quoteEvidence||=quoted;hit++;const count=(freq.get(fields)||0)+1;freq.set(fields,count);top=Math.max(top,count)}fields=1;quoted=false;n++};
   for(let i=0;i<text.length&&n<maxRows;i++){
     const ch=text[i];
