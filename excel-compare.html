@@ -10,7 +10,7 @@
 <style>
 :root{--bg:#fff;--bg2:#f6f8f7;--bg3:#eef1f0;--fg:#202329;--fg2:#626971;--fg3:#9aa1a8;--border:#e6e8eb;--border2:#d5d9dd;--accent:#20a464;--accent2:#15834a;--accent-bg:#ecf8f1;--danger:#d13415;--shadow:0 6px 28px rgba(0,0,0,.08);--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 --ins-block:rgba(0,180,144,.13);--ins-hl:rgba(0,180,144,.36);--ins-fg:#0d5c4c;--del-block:rgba(255,46,0,.09);--del-hl:rgba(255,46,0,.32);--del-fg:#6b1a0a;--chg-block:rgba(255,190,0,.16);--mov-block:rgba(120,90,255,.12)}
-[data-theme="dark"]{--bg:#17191c;--bg2:#1f2226;--bg3:#262a2f;--fg:#ebedef;--fg2:#aeb6be;--fg3:#7d858d;--border:#353a3f;--border2:#454a50;--accent:#5bd494;--accent2:#5bd494;--accent-bg:#1c2b23;--danger:#ff9680;--shadow:0 6px 28px rgba(0,0,0,.4);--ins-fg:#c8f5e6;--del-fg:#ffd7cc;--chg-block:rgba(255,190,0,.14)}
+@media not print{[data-theme="dark"]{--bg:#17191c;--bg2:#1f2226;--bg3:#262a2f;--fg:#ebedef;--fg2:#aeb6be;--fg3:#7d858d;--border:#353a3f;--border2:#454a50;--accent:#5bd494;--accent2:#5bd494;--accent-bg:#1c2b23;--danger:#ff9680;--shadow:0 6px 28px rgba(0,0,0,.4);--ins-fg:#c8f5e6;--del-fg:#ffd7cc;--chg-block:rgba(255,190,0,.14)}}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;min-height:100vh}
 html[lang="zh"] body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
@@ -94,7 +94,7 @@ tr.focus td,th.focus{box-shadow:inset 0 -2px 0 var(--accent)}
 footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top:1px solid var(--border)}
 .hidden{display:none!important}
 @media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{gap:14px;padding:0 14px;flex-wrap:wrap}.offline-tools{gap:16px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px}}
-@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,footer,.modal-bg,.offline-notice,.hero,.no-print{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;min-width:0;max-width:none;padding:1px 4px}table.grid tr{break-inside:avoid}table.grid thead{display:table-header-group}body{font-size:11px}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,footer,.modal-bg,.offline-notice,.hero,.no-print{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;min-width:0;max-width:none;padding:1px 4px}table.grid tr{break-inside:avoid}table.grid thead{display:table-header-group}body{font-size:11px;display:block;height:auto}}
 </style>
 </head>
 <body>
@@ -665,10 +665,7 @@ $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exp
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(NAMES.A,'original')+'-vs-'+stem(NAMES.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
-/* 以浅色主题打印；部分浏览器（如 Safari、移动端）的 window.print() 不阻塞，必须等 afterprint 之后再恢复主题，否则打印出来的仍是深色 */
-function printLight(){const root=document.documentElement;let ended=false;const fin=()=>{if(ended)return;ended=true;window.removeEventListener('afterprint',fin);root.dataset.theme=theme};
-  root.dataset.theme='light';window.addEventListener('afterprint',fin);try{window.print()}catch(e){fin();throw e}}
-$('exportGo').onclick=()=>{$('exportModal').close();if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')printLight();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t(e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
+$('exportGo').onclick=()=>{$('exportModal').close();if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')window.print();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t(e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
 function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':c.st==='mov'?' (⇄)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?(opts.showOld?`${c.a} → ${c.b}`:c.b):c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
 function csvField(value){
   let v=String(value),first=v.replace(/^[\s\u200b\u2060]+/u,'');
