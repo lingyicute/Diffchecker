@@ -1191,6 +1191,14 @@ test('image.autoAlign: 同时允许旋转和缩放时，终步仍评估仅缩放
   assert.equal(r.scale, 1.01);
 });
 
+test('image.autoAlign: 中等分辨率通过而最终峰值不足时返回失败', async () => {
+  const code = between(script('image-compare.html'), 'async function autoAlign', 'function alignWithOpenCV');
+  const pre = 'const window={};function grayPatch(src,N){return {g:N,f:1}}'
+    + 'function phaseCorr(a,b){return {dx:0,dy:0,psr:b===512?5:30}}';
+  const { autoAlign } = run(code, 'autoAlign', pre), dims = { width: 96, height: 64 };
+  assert.equal(await autoAlign(dims, dims, { rot: false, scale: false }), null);
+});
+
 test('文本打印视图可以使用不同布局，但不改当前布局、不复制导航标识', () => {
   const s = script('text-compare.html'), d = text.computeDiff('old line', 'new line', { rules: [] });
   const ctx = { d, opts: { type: 'split', level: 'smart', syntax: '' }, inlineDiff: text.inlineDiff };

@@ -554,11 +554,13 @@ async function autoAlign(A,B,allow){
   N=256;pa=grayPatch(A,N,1,0,false,false,W,H);let ref=evalAt(N,pa,best.sc,best.rot);
   const scales2=allow.scale?[-0.03,-0.015,0,0.015,0.03].map(d=>best.sc*(1+d)):[best.sc];const rots2=allow.rot?[-1,-0.5,0,0.5,1].map(d=>best.rot+d):[0];
   for(const sc of scales2)for(const rot of rots2){if(sc===best.sc&&rot===best.rot)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0){await tick();if(!active())return null}}
-  if(!ref||ref.psr<4)return null;
+  // 无关图片也会在大量候选位移中偶然出现低峰；仅接受可靠的相关峰。
+  const minPsr=8;if(!Number.isFinite(ref.psr)||ref.psr<minPsr)return null;
   // 3) final translation at 512²
   N=512;pa=grayPatch(A,N,1,0,false,false,W,H);let fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
   /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显更优才替换 */
   for(const dr of allow.rot?[0,-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick();if(!active())return null}
+  if(!Number.isFinite(fin.psr)||fin.psr<minPsr)return null;
   // Both patches are drawn with their top-left at the frame origin (same as drawAligned with dx=dy=0), so the
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
   // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
