@@ -269,10 +269,14 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
   }
   return out+f.slice(pos);
 }
-function serialToDate(v,d1904,timeOnly=v>=0&&v<1&&!d1904,compat=true){
-  const seconds=Math.round(v*86400);if(!Number.isSafeInteger(seconds))return String(v);
-  const day=Math.floor(seconds/86400),sec=seconds-day*86400,p=n=>String(n).padStart(2,'0');
-  const time=`${p(Math.floor(sec/3600))}:${p(Math.floor(sec%3600/60))}:${p(sec%60)}`;
+function secondFraction(digits){const f=(digits||'').replace(/0+$/,'');return f?'.'+f:''}
+function clockText(ticks,precision){const unit=10**precision,seconds=Math.floor(ticks/unit),pad=n=>String(n).padStart(2,'0');
+  const frac=ticks%unit?secondFraction(String(ticks%unit).padStart(precision,'0')):'';
+  return `${pad(Math.floor(seconds/3600))}:${pad(Math.floor(seconds%3600/60))}:${pad(seconds%60)}${frac}`;
+}
+function serialToDate(v,d1904,timeOnly=v>=0&&v<1&&!d1904,compat=true,precision=0){
+  const dayTicks=86400*10**precision,ticks=Math.round(v*dayTicks);if(!Number.isSafeInteger(ticks))return String(v);
+  const day=Math.floor(ticks/dayTicks),sec=ticks-day*dayTicks,time=clockText(sec,precision),p=n=>String(n).padStart(2,'0');
   if(timeOnly)return time;
   // 兼容旧 Excel 的 1900 闰年错误：序列 60 不能和序列 59 显示成同一天。
   let date;
@@ -283,7 +287,7 @@ function serialToDate(v,d1904,timeOnly=v>=0&&v<1&&!d1904,compat=true){
   }
   return sec?date+' '+time:date;
 }
-function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return Number.isSafeInteger(s)?(neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60):String(v)}
+function serialToElapsed(v,precision=0){const ticks=Math.round(Math.abs(v)*86400*10**precision);return Number.isSafeInteger(ticks)?(v<0?'-':'')+clockText(ticks,precision):String(v)}
 function customDateKind(format){
   const bare=format.replace(/"[^"]*"|[\\_*]./g,'');
   if(/\[(?:h+|m+|s+)\]/i.test(bare))return 'elapsed';
@@ -291,8 +295,11 @@ function customDateKind(format){
   if(!/[ymdhs]/i.test(code)||/[#0?]/.test(code.replace(/\.0+/g,'')))return '';
   return /[yd]/i.test(code)||!/[hs]/i.test(code)?'date':'time';
 }
+function dateNumberStyle(format){
+  const kind=customDateKind(format),m=/s+\]?\.(0+)/i.exec(format.replace(/"[^"]*"|[\\_*]./g,''));
+  return {kind,precision:kind?Math.min(3,m?.[1].length||0):0};
+}
 // t="d" 单元格（ISO 8601 文本，如 2024-03-05T00:00:00 / 10:30:00）：统一成与日期序列号一致的显示，否则同一日期在两种存储方式下会被误报为修改
-const secondFraction=digits=>{const f=(digits||'').replace(/0+$/,'');return f?'.'+f:''};
 function isoDateCell(raw){
   // SpreadsheetML 的日期/时间是本地时刻，最多三位小数秒；带时区的非标准值保留原文。
   const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?\s*$/.exec(raw||'');if(!m||(!m[1]&&!m[4]))return raw??'';
@@ -324,9 +331,9 @@ function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'
   const dateStyles=new Map(),stx=relatedText('styles','styles.xml');
   if(stx){const st=xml(stx),custom=new Map(),nfs=els(st,'numFmts')[0];
     // 只读 numFmts，忽略条件格式 dxf 里可能同号的 numFmt。
-    for(const nf of nfs?els(nfs,'numFmt'):[])custom.set(+nf.getAttribute('numFmtId'),customDateKind(nf.getAttribute('formatCode')||''));
+    for(const nf of nfs?els(nfs,'numFmt'):[])custom.set(+nf.getAttribute('numFmtId'),dateNumberStyle(nf.getAttribute('formatCode')||''));
     const timeIds=new Set([18,19,20,21,32,33,45,47]),xfs=els(st,'cellXfs')[0];
-    if(xfs)[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),kind=custom.get(id)??(id===46?'elapsed':timeIds.has(id)?'time':DATE_IDS.has(id)?'date':'');if(kind)dateStyles.set(i,kind)});
+    if(xfs)[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),style=custom.get(id)??{kind:id===46?'elapsed':timeIds.has(id)?'time':DATE_IDS.has(id)?'date':'',precision:id===47?1:0};if(style.kind)dateStyles.set(i,style)});
   }
   const sheets=[];for(const sh of els(wb,'sheet')){
     // Transitional 与 Strict 的 r:id 命名空间不同；非 worksheet 部件（如 chartsheet）不参与比较。
@@ -368,7 +375,7 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
       else if(tt==='s'){const idx=+raw;if(!/^\d+$/.test(raw.trim())||idx>=sst.length)bad();v=sst[idx]}
       else if(tt==='b'){const b=raw.trim().toLowerCase();if(!/^(0|1|false|true)$/.test(b))bad();v=b==='1'||b==='true'?'TRUE':'FALSE'}
       else if(tt==='str')v=xstr(raw);else if(tt==='inlineStr'||tt==='e')v=raw;else if(tt==='d')v=isoDateCell(raw);
-      else if(raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(dateStyles.get(s)==='elapsed'?serialToElapsed(n):serialToDate(n,d1904,dateStyles.get(s)==='time',compat)):String(+n.toPrecision(15))):raw}else v='';
+      else if(raw.trim()!==''){const n=Number(raw),style=dateStyles.get(s);v=isFinite(n)?(style?(style.kind==='elapsed'?serialToElapsed(n,style.precision):serialToDate(n,d1904,style.kind==='time',compat,style.precision)):String(+n.toPrecision(15))):raw}else v='';
       cells[ci]={v,f,d:dateStyles.has(s)||tt==='d'};if(shared!=null)pending.push({shared,cell:cells[ci],ri,ci});if(ci+1>cols)cols=ci+1}
     if(cells.length){rows[ri]=cells}}
   for(const {shared,cell,ri,ci} of pending){const master=sharedF.get(shared);if(!master)bad();cell.f='='+shiftFormula(master.f,ri-master.r,ci-master.c)}

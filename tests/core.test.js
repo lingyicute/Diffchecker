@@ -989,7 +989,7 @@ test('表格会话：保留实际行宽与公式，拒绝结构无效的单元�
 });
 
 test('Excel 日期系统：日期格式的 0、虚拟闰日与超过一天的纯时间', () => {
-  const code = between(script('excel-compare.html'), 'function serialToDate', '// t="d"');
+  const code = between(script('excel-compare.html'), 'function secondFraction', '// t="d"');
   const { serialToDate, customDateKind, serialToElapsed } = run(code, 'serialToDate,customDateKind,serialToElapsed');
   assert.equal(serialToDate(0, true, false), '1904-01-01');
   assert.equal(serialToDate(0.5, true, false), '1904-01-01 12:00:00');
@@ -1000,6 +1000,18 @@ test('Excel 日期系统：日期格式的 0、虚拟闰日与超过一天的纯
   for (const [format, kind] of [['yyyy-mm-dd hh:mm', 'date'], ['mm', 'date'], ['hh:mm:ss.000', 'time'], ['h:mm AM/PM', 'time'], ['[h]:mm', 'elapsed'], ['0.00 "days"', '']]) {
     assert.equal(customDateKind(format), kind, format);
   }
+});
+
+test('Excel 数值时间：格式精度决定小数秒，跨秒及午夜正确进位', () => {
+  const code = between(script('excel-compare.html'), 'function secondFraction', '// t="d"');
+  const { serialToDate, serialToElapsed, dateNumberStyle } = run(code, 'serialToDate,serialToElapsed,dateNumberStyle');
+  assert.deepEqual({ ...dateNumberStyle('yyyy-mm-dd hh:mm:ss.000') }, { kind: 'date', precision: 3 });
+  assert.deepEqual({ ...dateNumberStyle('[s].00') }, { kind: 'elapsed', precision: 2 });
+  assert.deepEqual({ ...dateNumberStyle('hh:mm:ss ".000"') }, { kind: 'time', precision: 0 });
+  assert.equal(serialToDate(45356 + 0.125 / 86400, false, false, true, 3), '2024-03-05 00:00:00.125');
+  assert.equal(serialToDate(0.5 + 0.2 / 86400, false, true, true, 1), '12:00:00.2');
+  assert.equal(serialToDate(1 - 0.0004 / 86400, false, true, true, 3), '00:00:00');
+  assert.equal(serialToElapsed(-(90001.125 / 86400), 3), '-25:00:01.125');
 });
 
 test('XLSX 部件路径：以当前部件目录为基准解析相对路径', () => {
