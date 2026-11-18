@@ -12,7 +12,7 @@ A dependency-free, front-end-only toolkit for comparing text, images and spreads
 
 ## Getting started
 
-There is nothing to install or build. Open `index.html` in a browser (it redirects to the text comparison), or drop the whole folder onto any static web server.
+There is nothing to install or build. Open `index.html` in a modern browser that supports native dialogs (it redirects to the text comparison), or drop the whole folder onto any static web server.
 
 The interface language follows your browser by default. Use the buttons at the top right to switch between English and 中文, and between dark and light themes.
 
@@ -34,7 +34,7 @@ The interface language follows your browser by default. Use the buttons at the t
 - Automatic or manual alignment (shift, rotate, scale, flip). If the two images differ in size you are offered automatic alignment.
 - Differing regions are detected and listed; click one to jump to it. Sensitivity is adjustable and several scans can be combined.
 - Paste images from the clipboard (`Ctrl` / `⌘` + `V`).
-- Export the current view as PNG, or a PDF report with a summary, the source images and a change list.
+- Compare image transparency as well as colour. Export a PNG at full or working resolution, or print a PDF report with a summary, the unaligned source images and a change list.
 
 ### Spreadsheet comparison
 
@@ -58,14 +58,16 @@ The interface language follows your browser by default. Use the buttons at the t
 - **`.diffchecker` files**: store both sides and the current options, and can be reopened on the matching page. Files from the text page and the spreadsheet page are not interchangeable.
 - **Unsupported formats**: legacy binary `.xls` files must be saved as `.xlsx` or `.csv` first; encrypted or password-protected workbooks must have the password removed.
 - **Dates and numbers**: numbers in `.xlsx` files are read with 15 significant digits, matching what Excel displays. With "Normalize dates" on, text such as `2024/3/5`, `15.03.2024` or `2024-03-05 00:00:00` is compared as an ISO date, and `9:30` as `09:30:00`, so comparing a CSV against an `.xlsx` does not report false differences. For dates written as `x/y/yyyy`, the second number greater than 12 means month/day/year; otherwise day/month/year is assumed.
-- **CSV export**: non-numeric text starting with `=`, `+`, `-` or `@` is prefixed with a single quote, so Excel does not execute it as a formula.
+- **CSV export**: non-numeric text starting with `=`, `+`, `-` or `@` (including full-width variants and after leading whitespace) is prefixed with a single quote to keep it as text. Signed numeric values remain unchanged. If an imported file has ambiguous delimiters, save it as `.tsv` or `.xlsx` first.
 - **Large inputs**: the diff algorithm has a cost cap for files with many repeated lines and huge numbers of differences. The result is still a valid diff but may not be the shortest one. Very long lines or cells only have their common prefix and suffix trimmed, and the middle is marked as changed.
-- **PNG export**: a text comparison taller than 32000 px cannot be exported as a single PNG. Turn on "Hide unchanged lines", or export a PDF / Excel file instead.
+- **Text PNG**: long lines wrap. If the rendered image is taller than 32000 px, turn on "Hide unchanged lines" or export a PDF / Excel file instead.
+- **Image limits**: each source can have up to 32 Mi pixels, with sides no longer than 16384 px. Preview and region detection cap the longest side at 2600 px. PNG export allows up to 16 Mi pixels; select working resolution if the full-size PNG is too large.
+- **Spreadsheet limits**: an uncompressed XLSX part may be up to 64 MiB. The expanded comparison can cover up to 500,000 positions across both sides, including row numbers. Chart sheets are not compared. Use another export format if the result exceeds Excel’s row, column or cell-length limits.
 
 ## Privacy and security
 
 - The pages ship with a strict Content Security Policy: the text and spreadsheet pages use `default-src 'none'` and load no external resources; the image page additionally allows same-origin scripts, `blob:` and `wasm-unsafe-eval`.
-- Image alignment uses a built-in FFT phase-correlation algorithm by default. If you inline `opencv.js` into the page (or include it with a `<script>` before the page script), ORB feature-based alignment is used automatically instead.
+- Image alignment uses a built-in FFT phase-correlation algorithm by default. If you inline `opencv.js` into the page (or include it with a `<script>` before the page script), ORB feature-based alignment is attempted when rotation and scaling are allowed and no flip is active. The built-in algorithm covers the other cases.
 
 ## Development and testing
 
