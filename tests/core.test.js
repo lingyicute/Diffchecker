@@ -18,7 +18,7 @@ const text = (() => {
 })();
 const excel = (() => {
   const s = script('excel-compare.html');
-  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
+  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function scanCsv', '/* ===================== diff core') + between(s, 'const EQ=0', '/* ===================== UI: loading');
   return run(code, 'compare,parseCsv,opts,serialToDate,serialToElapsed,isoDateCell,isZipSig,pairBlock,normalize,inlineDiff,shiftFormula,xstr');
 })();
 
@@ -1005,4 +1005,11 @@ test('readZip: 本地条目名、长度必须与中央目录相符', async () =>
     const changed = Buffer.from(buf); changed[offset] ^= 1;
     assert.throws(() => zipLib.readZip(Uint8Array.from(changed).buffer).text('data'), /badZip/);
   }
+});
+
+test('CSV: 按候选分隔符解析引号，拒绝未闭合字段', () => {
+  const read = (s, d) => JSON.parse(JSON.stringify(excel.parseCsv(s, d).sheets[0].grid.rows.map(r => r.map(c => c.v))));
+  assert.deepEqual(read('ID;Label\n1;"first, line\nsecond"\n2;"last, row"'), [['ID', 'Label'], ['1', 'first, line\nsecond'], ['2', 'last, row']]);
+  assert.deepEqual(read('a,tag;ok\nb,"one|two"\nc,x', ','), [['a', 'tag;ok'], ['b', 'one|two'], ['c', 'x']]);
+  assert.throws(() => read('ID,Label\n1,"not closed'), /badCsvQuotes/);
 });

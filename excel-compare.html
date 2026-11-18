@@ -167,6 +167,8 @@ I18N.en.compareFailed='Could not compare these sheets.';
 I18N.zh.compareFailed='无法完成表格比较。';
 I18N.en.zipPartTooLarge='A workbook part exceeds the 64 MiB uncompressed limit.';
 I18N.zh.zipPartTooLarge='工作簿的单个部件解压后超过 64 MiB 上限。';
+I18N.en.badCsvQuotes='A quoted field was not closed.';
+I18N.zh.badCsvQuotes='表格中有未闭合的带引号字段。';
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -321,10 +323,32 @@ function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'
       if(cells.length){rows[ri]=cells}}
     for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];sheet.grid={rows,cols};return sheet.grid};
   return {sheets,load,type:'xlsx'}}
-function parseCsv(text,delim){if(!delim){/* 只看首行时，首行是标题 / 空行（或只有一列）就会选错分隔符，整张表被读成单列：改为统计前几行引号外出现的次数，优先选出现行数最多的分隔符 */const cands=[',','\t',';','|'],hit={},tot={},freq={};let cur={};cands.forEach(d=>{hit[d]=0;tot[d]=0;freq[d]={}});const endLine=()=>{for(const d of cands)if(cur[d]){hit[d]++;freq[d][cur[d]]=(freq[d][cur[d]]||0)+1}cur={}};let q=false,lines=0;for(let i=0;i<text.length&&lines<10;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"')i++;else q=false}}else if(ch==='"'){/* 与下面的解析一致：引号只在字段开头才开启引用，字段中间的 5" 之类不算，否则会吞掉后面的所有行 */if(i===0||'\n\r,\t;|'.includes(text[i-1]))q=true}else if(ch==='\n'||ch==='\r'){lines++;endLine();if(ch==='\r'&&text[i+1]==='\n')i++}else if(tot[ch]!=null){tot[ch]++;cur[ch]=(cur[ch]||0)+1}}endLine();/* 出现行数相同时，优先选“每行个数一致”的分隔符：真正的列分隔符每行个数固定，而正文里的逗号个数忽多忽少（总数多不代表它是分隔符） */const top=d=>Math.max(0,...Object.values(freq[d]));delim=cands.reduce((a,b)=>hit[b]>hit[a]||(hit[b]===hit[a]&&(top(b)>top(a)||(top(b)===top(a)&&tot[b]>tot[a])))?b:a,',')}
-  const rows=[];let row=[],cell='',q=false,quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}else if(ch==='"'&&cell===''){q=true;quoted=true}else if(ch===delim){row.push(cell);cell=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell='';quoted=false}else cell+=ch}
-  if(cell!==''||row.length||quoted){row.push(cell);rows.push(row)}let cols=0;/* quoted：文件以 "" 结尾的空字段行也要保留 */const grid=rows.map(r=>{cols=Math.max(cols,r.length);return r.map(v=>({v,f:null,d:false}))});
-  const sheet={name:'Sheet1',target:'',grid:{rows:grid,cols}};return {sheets:[sheet],load:s=>s.grid,type:'csv'}}
+// 检测和实际解析共用同一个引号状态机；是否处于字段开头取决于当前候选分隔符。
+function scanCsv(text,delim,collect,maxRows=Infinity){
+  const rows=[],freq=new Map();let row=[],cell='',fields=1,n=0,hit=0,top=0,errors=0,state=0;
+  const pushCell=()=>{if(collect){row.push(cell);cell=''}state=0};
+  const endRow=()=>{pushCell();if(collect){rows.push(row);row=[]}if(fields>1){hit++;const count=(freq.get(fields)||0)+1;freq.set(fields,count);top=Math.max(top,count)}fields=1;n++};
+  for(let i=0;i<text.length&&n<maxRows;i++){
+    const ch=text[i];
+    if(state===2){if(ch==='"'&&text[i+1]==='"'){if(collect)cell+='"';i++}else if(ch==='"')state=3;else if(collect)cell+=ch;continue}
+    if(ch===delim){pushCell();fields++;continue}
+    if(ch==='\r'||ch==='\n'){endRow();if(ch==='\r'&&text[i+1]==='\n')i++;continue}
+    if(state===0&&ch==='"'){state=2;continue}
+    if(state===3)errors++;
+    state=1;if(collect)cell+=ch;
+  }
+  if(state===2){if(collect)throw new Error(t('badCsvQuotes'));errors++}
+  if(n<maxRows&&(fields>1||state!==0))endRow();
+  return {rows,hit,top,errors};
+}
+function parseCsv(text,delim){
+  if(!delim){let best;for(const d of [',','\t',';','|']){
+    const s=scanCsv(text,d,false,10);
+    if(!best||s.hit>best.hit||(s.hit===best.hit&&(s.top>best.top||s.top===best.top&&s.errors<best.errors))){best=s;delim=d}
+  }}
+  let cols=0;const grid=scanCsv(text,delim,true).rows.map(r=>{cols=Math.max(cols,r.length);return r.map(v=>({v,f:null,d:false}))});
+  const sheet={name:'Sheet1',target:'',grid:{rows:grid,cols}};return {sheets:[sheet],load:s=>s.grid,type:'csv'}
+}
 
 /* ===================== diff core (shared with text tool) ===================== */
 const EQ=0,DEL=1,INS=2;
