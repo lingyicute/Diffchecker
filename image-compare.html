@@ -251,7 +251,7 @@ function comparisonFrame(a,b,al){
   if(!(al.scale>0)||!Number.isSafeInteger(w)||!Number.isSafeInteger(h)||w>64*MAX_CANVAS_DIM||h>64*MAX_CANVAS_DIM)throw new Error('alignOutOfRange');
   return {x:left||0,y:top||0,w,h};
 }
-let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0;
+let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0,highlightTimer=0;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 
 /* ===================== loading ===================== */
@@ -264,7 +264,7 @@ function closeAlign(){stopAuto();$('alignModal').close()}
 function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();
   $('pmGo').onclick=$('pmSkip').onclick=null;
-  clearInterval(flickTimer);clearTimeout(scanTimer);scanTimer=0;clearTimeout(window._hlt);holdSide=0;flickState=0;
+  clearInterval(flickTimer);clearTimeout(scanTimer);clearTimeout(highlightTimer);scanTimer=highlightTimer=0;holdSide=0;flickState=0;
   S.W=S.H=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
   stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
@@ -369,10 +369,19 @@ function compositeCanvas(mode,sourceA=baseA,sourceB=baseB){const W=sourceA.width
 function flickShow(){return holdSide||flickState?(holdSide===1?0:holdSide===2?1:flickState):0}
 /* ===================== view / stage ===================== */
 const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null;
-function renderStage(){stage.innerHTML='';stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
+function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
   if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';wrap.style.paddingTop='24px';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap);overlay=null;mainCanvas=null}
   else{mainCanvas=compositeCanvas(S.mode);stage.appendChild(mainCanvas);overlay=mk(W,H);overlay.id='overlay';stage.appendChild(overlay);drawOverlay();
-    if(S.mode==='slider'){sliderEl=document.createElement('div');sliderEl.className='sl-handle';sliderEl.style.height=H+'px';sliderEl.style.left=(W*S.sliderPos-1)+'px';stage.appendChild(sliderEl);sliderEl.onpointerdown=e=>{e.stopPropagation();sliderEl.setPointerCapture(e.pointerId);const mv=ev=>{const r=stage.getBoundingClientRect();S.sliderPos=Math.max(0,Math.min(1,(ev.clientX-r.left)/(W*S.zoom)));sliderEl.style.left=(W*S.sliderPos-1)+'px';paintBaseMode(mainCanvas.getContext('2d'),'slider',baseA,baseB)};sliderEl.onpointermove=mv;sliderEl.onpointerup=sliderEl.onpointercancel=()=>{sliderEl.onpointermove=null}}}}
+    if(S.mode==='slider'){
+      const handle=sliderEl=document.createElement('div'),canvas=mainCanvas;
+      handle.className='sl-handle';handle.style.height=H+'px';handle.style.left=(W*S.sliderPos-1)+'px';stage.appendChild(handle);
+      handle.onpointerdown=e=>{if(e.button!==0||!e.isPrimary)return;e.stopPropagation();handle.setPointerCapture(e.pointerId);
+        handle.onpointermove=ev=>{if(ev.pointerId!==e.pointerId||handle!==sliderEl)return;const r=stage.getBoundingClientRect();
+          S.sliderPos=Math.max(0,Math.min(1,(ev.clientX-r.left)/(W*S.zoom)));handle.style.left=(W*S.sliderPos-1)+'px';paintBaseMode(canvas.getContext('2d'),'slider',baseA,baseB)};
+        handle.onlostpointercapture=()=>{handle.onpointermove=null};
+      };
+    }
+  }
   $('flickTag').classList.toggle('hidden',S.mode!=='flicker');applyTransform();$('ctlFade').classList.toggle('hidden',S.mode!=='fade');$('ctlFlicker').classList.toggle('hidden',S.mode!=='flicker');$('ctlHighlight').classList.toggle('hidden',S.mode!=='highlight');
   clearInterval(flickTimer);if(S.mode==='flicker'){flickTimer=setInterval(()=>{flickState^=1;redrawFlicker()},S.flick);redrawFlicker()}}
 function redrawFlicker(){if(!mainCanvas||S.mode!=='flicker')return;const s=flickShow();paintBaseMode(mainCanvas.getContext('2d'),'flicker',baseA,baseB);$('flickTag').textContent=s===0?t('fOriginal'):t('fChanged')}
@@ -393,7 +402,7 @@ $('flickRange').oninput=e=>{S.flick=2100-+e.target.value;if(S.mode==='flicker'){
 const hold=(side,on)=>{holdSide=on?side:0;redrawFlicker()};
 for(const [id,side] of [['holdA',1],['holdB',2]]){const b=$(id);b.onpointerdown=()=>hold(side,true);b.onpointerup=b.onpointerleave=b.onpointercancel=()=>hold(side,false)}
 document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.target.matches('input,textarea,select'))return;if(e.key==='1')hold(1,true);if(e.key==='2')hold(2,true)});document.addEventListener('keyup',e=>{if(e.key==='1'||e.key==='2')hold(0,false)});window.addEventListener('blur',()=>hold(0,false));
-$('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(window._hlt);window._hlt=setTimeout(renderStage,60)};
+$('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(highlightTimer);highlightTimer=setTimeout(()=>{highlightTimer=0;if(S.W&&S.mode==='highlight')renderStage()},60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
 $('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('sbToggle');/* 收起后按钮仍写着“收起侧边栏”、aria-expanded 也不变，读屏与悬停提示都对不上当前状态 */b.setAttribute('aria-expanded',String(!c));b.dataset.i18nTitle=c?'sbTipOpen':'sbTip';b.title=t(b.dataset.i18nTitle);b.textContent=c?'⇤':'⇥'};
 
