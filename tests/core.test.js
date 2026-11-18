@@ -1075,3 +1075,11 @@ test('图片区域检测：环形区域不重复统计内部区域，并始终�
   assert.equal(img.detect(mask, W, H, { minBlobArea: 1, maxBlobAreaFraction: 1 }, rect, 0, partial, 1), false);
   assert.equal(partial.length, 1);
 });
+
+test('图片工作画布：极窄的输入仍至少保留一个像素', () => {
+  const { workingFrame, fitsCanvas } = run(between(script('image-compare.html'), 'const MAXDIM=', 'let baseA'), 'workingFrame,fitsCanvas');
+  assert.deepEqual({ ...workingFrame(12000, 1) }, { w: 2600, h: 1, scale: 2600 / 12000 });
+  assert.deepEqual({ ...workingFrame(1, 12000) }, { w: 1, h: 2600, scale: 2600 / 12000 });
+  assert.equal(fitsCanvas(3000, 6000, 32 * 1024 * 1024), true);
+  assert.equal(fitsCanvas(16384, 4096, 32 * 1024 * 1024), false);
+});
