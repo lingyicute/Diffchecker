@@ -277,7 +277,12 @@ const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).include
 for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.target!==d||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();d.click()};
   d.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();d.classList.add('drag')});d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drag')});d.addEventListener('drop',e=>{d.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
-document.addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(!it)return;const f=it.getAsFile();if(!f)return;e.preventDefault();loadFile(f,!S.A&&!pending.A?'A':!S.B&&!pending.B?'B':openTarget)});
+document.addEventListener('paste',e=>{
+  if(document.querySelector('dialog[open]')||e.target.closest?.('input,textarea,select,[contenteditable]'))return;
+  const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/')),f=it?.getAsFile();if(!f)return;
+  const focused=document.activeElement?.closest('#dropA,#dropB');
+  e.preventDefault();loadFile(f,focused?focused.id.slice(-1):!S.A&&!pending.A?'A':!S.B&&!pending.B?'B':openTarget);
+});
 async function loadFile(f,side){
   cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side];
   if(!f.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|tiff?)$/i.test(f.name)){notice(t('decodeFail',{name:f.name}));return}
