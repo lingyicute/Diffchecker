@@ -106,7 +106,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
 .hidden{display:none!important}
 #report{display:none}
 @media (max-width:1000px){.inputs{grid-template-columns:1fr}.work,.work.collapsed{grid-template-columns:1fr}.align-grid{grid-template-columns:1fr}.sidebar{height:auto;max-height:420px}.offline-navigation{gap:14px;padding:0 14px;flex-wrap:wrap}.offline-tools{gap:16px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px}}
-@media print{html,body{background:#fff!important;color:#000!important}body>*{display:none!important}#report{display:block!important;font-family:system-ui,sans-serif;color:#000}#report h1{font-size:18px}#report h2{font-size:14px;margin:18px 0 6px;page-break-after:avoid}#report img{max-width:100%;max-height:85vh;display:block;border:1px solid #ccc}#report .srcs{display:grid;grid-template-columns:1fr 1fr;gap:12px}#report .crops{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}#report .crop{page-break-inside:avoid;border:1px solid #ddd;padding:6px;font-size:11px}#report .crop img{max-height:220px;margin:4px auto}#report table{border-collapse:collapse;font-size:11px}#report td,#report th{border:1px solid #ccc;padding:3px 6px}}
+@media print{html,body{background:#fff!important;color:#000!important}body.printing-image-report{display:block;height:auto}body.printing-image-report>*{display:none!important}body.printing-image-report>#report{display:block!important;font-family:system-ui,sans-serif;color:#000}#report h1{font-size:18px}#report h2{font-size:14px;margin:18px 0 6px;page-break-after:avoid}#report img{max-width:100%;max-height:85vh;display:block;border:1px solid #ccc}#report .srcs{display:grid;grid-template-columns:1fr 1fr;gap:12px}#report .crops{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}#report .crop{page-break-inside:avoid;border:1px solid #ddd;padding:6px;font-size:11px}#report .crop img{max-height:220px;margin:4px auto}#report table{border-collapse:collapse;font-size:11px}#report td,#report th{border:1px solid #ccc;padding:3px 6px}}
 </style>
 </head>
 <body>
@@ -641,8 +641,8 @@ $('exportGo').onclick=async()=>{
       if(!blob)throw new Error('PNG encoding failed');download(blob,filename);return;
     }
     rep.innerHTML=reportHtml(exportCanvas());await Promise.all([...rep.querySelectorAll('img')].map(decodeReportImage));
-    printing=true;window.print();
-  }catch(e){printing=false;rep.replaceChildren();console.error(e);notice(t(e.message==='pngTooLarge'?'pngTooLarge':'exportFailed'))}
+    printing=true;document.body.classList.add('printing-image-report');window.print();
+  }catch(e){clearPrintReport();console.error(e);notice(t(e.message==='pngTooLarge'?'pngTooLarge':'exportFailed'))}
   finally{exporting=false}
 };
 
@@ -655,7 +655,8 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
   if(variant){x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor (second person, pressure systems)',40,560)}else{x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor',40,560)}
   x.strokeStyle='#bbb';x.strokeRect(40,480,420,60);x.fillStyle='#000';x.font='13px monospace';x.fillText(variant?'CHK 8f31c2a9 · build 1122':'CHK 7a9e01bd · build 1047',52,515);return c}
 $('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:'smooth'})};
-window.addEventListener('afterprint',()=>{printing=false;$('report').replaceChildren()});
+function clearPrintReport(){printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
+window.addEventListener('afterprint',()=>{if(printing)clearPrintReport()});
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('hidden'))fit()});
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
