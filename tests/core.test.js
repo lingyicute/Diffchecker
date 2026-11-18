@@ -891,3 +891,19 @@ test('excel.compare: 新增或删除列含数据时，对应行不能被隐藏�
     }
   } finally { Object.assign(excel.opts, saved); }
 });
+
+test('文本行内差异：先在整行应用规则，再按粒度比较且还原原文', () => {
+  for (const level of ['char', 'word', 'smart']) {
+    const norm = text.makeNorm({ hideWs: true, igQuotes: true, rules: ['“tag” here', 'OMIT'] });
+    const a = '  left  “tag”   here old😀', b = 'left new😀 OMIT ';
+    const spans = text.inlineDiff(a, b, level, norm);
+    assert.equal(spans.map(s => s.a).join(''), a);
+    assert.equal(spans.map(s => s.b).join(''), b);
+    assert.equal(spans.filter(s => s.t === 1).map(s => s.a).join(''), 'old');
+    assert.equal(spans.filter(s => s.t === 2).map(s => s.b).join(''), 'new');
+    assert.equal(norm.project(a).key, norm(a));
+    assert.equal(norm.project(b).key, norm(b));
+  }
+  const w = text.makeNorm({ hideWs: true });
+  assert.equal(text.inlineDiff('a b', 'ab', 'char', w).filter(s => s.t === 1).map(s => s.a).join(''), ' ');
+});

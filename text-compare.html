@@ -291,6 +291,7 @@ const tokWords=s=>s.match(WORD_RE)||[];
 const tokChars=(s,ws)=>ws?(s.match(/\s+|[^\s]/gu)||[]):Array.from(s);
 const INLINE_MAX_TOKENS=20000;
 function inlineDiff(l,r,level,norm){
+  if(norm.project)return inlineProjected(l,r,level,norm.project);
   const hideWs=norm(' ')==='',tk=level==='char'&&l.length+r.length<=20000?s=>tokChars(s,hideWs):tokWords;const A=tk(l),B=tk(r);
   if(A.length+B.length>INLINE_MAX_TOKENS){// 超长行（如压缩后的 JSON）：只裁掉公共前后缀，中间整体标记为改动，避免 Myers 的 O(ND) 卡死页面
     const na=A.map(norm),nb=B.map(norm);let p=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;
@@ -327,7 +328,39 @@ function makeNorm(o){
   // 忽略空白时，规则与正文要先把连续空白同样归一成单个空格再匹配：否则规则必须碰巧与正文的空格个数完全一致才能生效
   //（正文会先归一化再删规则，规则自身却不归一化，习惯上应当等价的 “x  y” 与 “x y” 匹配不上）；纯空白规则归一化后仍表示“一段空白”
   const rules=(o.rules||[]).filter(Boolean).map(r=>{r=fold(r);if(o.hideWs)r=r.replace(/\s+/g,' ');return o.lower?r.toLowerCase():r}).filter(Boolean);
-  return s=>{s=fold(s);if(o.hideWs)s=s.replace(/\s+/g,' ');for(const r of rules)s=s.split(r).join('');if(o.hideWs)s=s.replace(/\s+/g,' ').trim();return s};
+  const norm=s=>{s=fold(s);if(o.hideWs)s=s.replace(/\s+/g,' ');for(const r of rules)s=s.split(r).join('');if(o.hideWs)s=s.replace(/\s+/g,' ').trim();return s};
+  if(!o.hideWs&&!rules.length)return norm;
+  // 先按整行规则得出比较键，再把差异映射回原坐标。逐词 / 逐字符删规则会漏掉跨边界的匹配。
+  norm.project=raw=>{
+    let key=fold(raw),offsets=null;
+    function rewrite(matches,replacement){
+      let read=0,write=0,map=null;const parts=[];
+      const copy=(a,b)=>{parts.push(key.slice(a,b));for(let i=a;i<b;i++)map[write++]=offsets?offsets[i]:i};
+      for(const [a,b] of matches){map??=new Uint32Array(key.length);copy(read,a);parts.push(replacement);if(replacement)map[write++]=offsets?offsets[a]:a;read=b}
+      if(map){copy(read,key.length);key=parts.join('');offsets=map.subarray(0,write)}
+    }
+    function* whitespace(){for(const m of key.matchAll(/\s+/g))if(m[0]!==' ')yield [m.index,m.index+m[0].length]}
+    function* literal(r){for(let i=key.indexOf(r);i>=0;i=key.indexOf(r,i+r.length))yield [i,i+r.length]}
+    if(o.hideWs)rewrite(whitespace(),' ');
+    for(const r of rules)rewrite(literal(r),'');
+    let start=0;
+    if(o.hideWs){rewrite(whitespace(),' ');start=key.startsWith(' ')?1:0;key=key.trim()}
+    return {key,at:i=>offsets?offsets[start+i]:start+i};
+  };
+  return norm;
+}
+function inlineProjected(l,r,level,project){
+  const A=project(l),B=project(r),segs=inlineDiff(A.key,B.key,level,s=>s),out=[];
+  let ai=0,bi=0,ap=0,bp=0;
+  const add=(t,a,b)=>{if(!a&&!b)return;const p=out[out.length-1];if(p?.t===t){p.a+=a;p.b+=b}else out.push({t,a,b})};
+  for(const s of segs){
+    for(let i=0;i<Math.max(s.a.length,s.b.length);i++){
+      const hasA=i<s.a.length,hasB=i<s.b.length,a=hasA?A.at(ai++):ap,b=hasB?B.at(bi++):bp;
+      add(EQ,l.slice(ap,a),r.slice(bp,b));
+      ap=a+Number(hasA);bp=b+Number(hasB);add(s.t,l.slice(a,ap),r.slice(b,bp));
+    }
+  }
+  add(EQ,l.slice(ap),r.slice(bp));return out;
 }
 function transform(text,o){
   text=text.replace(/\r\n?/g,'\n');
