@@ -251,7 +251,7 @@ function comparisonFrame(a,b,al){
   if(!(al.scale>0)||!Number.isSafeInteger(w)||!Number.isSafeInteger(h)||w>64*MAX_CANVAS_DIM||h>64*MAX_CANVAS_DIM)throw new Error('alignOutOfRange');
   return {x:left||0,y:top||0,w,h};
 }
-let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0;
+let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 
 /* ===================== loading ===================== */
@@ -264,7 +264,7 @@ function closeAlign(){stopAuto();$('alignModal').close()}
 function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();
   $('pmGo').onclick=$('pmSkip').onclick=null;
-  clearInterval(flickTimer);clearTimeout(window._sc);clearTimeout(window._hlt);holdSide=0;flickState=0;
+  clearInterval(flickTimer);clearTimeout(scanTimer);scanTimer=0;clearTimeout(window._hlt);holdSide=0;flickState=0;
   S.W=S.H=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
   stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
@@ -451,7 +451,7 @@ function detect(thrMask,W,H,o,rect,radius,out,limit=Infinity){
 function dedupeRegions(all){const keep=[],grid=new Map(),CELL=32,cells=(r,fn)=>{const x0=Math.floor(r.x/CELL),x1=Math.floor((r.x+r.w-1)/CELL),y0=Math.floor(r.y/CELL),y1=Math.floor((r.y+r.h-1)/CELL);for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)fn(x+','+y)};
   for(const r of all){const near=new Set();cells(r,key=>{const bucket=grid.get(key);if(bucket)for(const k of bucket)near.add(k)});let dup=false;for(const k of near){const ix=Math.max(0,Math.min(r.x+r.w,k.x+k.w)-Math.max(r.x,k.x)),iy=Math.max(0,Math.min(r.y+r.h,k.y+k.h)-Math.max(r.y,k.y));const inter=ix*iy;if(inter&&inter/(r.w*r.h+k.w*k.h-inter)>=.4){dup=true;break}}if(!dup){keep.push(r);cells(r,key=>{const bucket=grid.get(key);if(bucket)bucket.push(r);else grid.set(key,[r])})}}return keep}
 const MAX_SCAN_REGIONS=8000,MAX_PASSES=8;
-function scan(keepPasses){const W=S.W,H=S.H;if(!W||!H)return;const all=[];let truncated=false;
+function scan(keepPasses){clearTimeout(scanTimer);scanTimer=0;const W=S.W,H=S.H;if(!W||!H)return;const all=[];let truncated=false;
   for(const p of S.passes){if(!p.enabled)continue;const o=p.options,m=new Uint8Array(W*H),out=[];
     for(let i=0;i<m.length;i++)m[i]=diffMap[i]>o.diffThreshold?1:0;
     if(!detect(m,W,H,o,{x0:0,y0:0,x1:W,y1:H},o.groupingRadius,out,MAX_SCAN_REGIONS))truncated=true;
@@ -465,7 +465,7 @@ function renderPasses(){const el=$('passes');$('addPass').disabled=S.passes.leng
     ${[['diffThreshold',0,255,1,t('diffThreshold')],['groupingRadius',0,30,1,t('grouping')],['minBlobArea',1,2000,1,t('minBlob')],['maxBlobAreaFraction',1,100,1,t('maxRegion')]].map(([k,mn,mx,st,lbl])=>`<div class="row"><span title="${k}">${lbl}</span><input type="range" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${k==='maxBlobAreaFraction'?Math.round(o[k]*100):o[k]}"><span class="val">${k==='maxBlobAreaFraction'?Math.round(o[k]*100)+'%':o[k]}</span></div>`).join('')}`;
     d.querySelector('[data-rm]').onclick=()=>{S.passes.splice(i,1);scan()};d.querySelector('[data-en]').onclick=()=>{p.enabled=!p.enabled;scan()};
     d.querySelector('select').onchange=e=>{if(e.target.value==='__custom__'){p.linked=false}else{p.linked=true;p.presetId=e.target.value;p.options=presetOptions(p.presetId)}scan()};
-    d.querySelectorAll('input[type=range]').forEach(r=>{r.oninput=()=>{const k=r.dataset.k;p.options[k]=k==='maxBlobAreaFraction'?r.value/100:+r.value;p.linked=false;r.nextElementSibling.textContent=k==='maxBlobAreaFraction'?r.value+'%':r.value;d.querySelector('select').value='__custom__';clearTimeout(window._sc);window._sc=setTimeout(()=>scan(true),120)}});el.appendChild(d)});if(fq&&el.children[fi])el.children[fi].querySelector(fq).focus()}
+    d.querySelectorAll('input[type=range]').forEach(r=>{r.oninput=()=>{const k=r.dataset.k;p.options[k]=k==='maxBlobAreaFraction'?r.value/100:+r.value;p.linked=false;r.nextElementSibling.textContent=k==='maxBlobAreaFraction'?r.value+'%':r.value;d.querySelector('select').value='__custom__';clearTimeout(scanTimer);scanTimer=setTimeout(()=>scan(true),120)}});el.appendChild(d)});if(fq&&el.children[fi])el.children[fi].querySelector(fq).focus()}
 $('addPass').onclick=()=>{if(S.passes.length>=MAX_PASSES)return;S.passes.push(newPass(S.passes.length%2?'graphics-large-blocks':'tiny-specks'));scan()};
 function cropCanvas(src,r,maxW=112,maxH=84){const s=Math.min(maxW/r.w,maxH/r.h,4);const c=mk(Math.max(1,r.w*s),Math.max(1,r.h*s));const cx=c.getContext('2d');cx.imageSmoothingEnabled=s<1;cx.drawImage(src,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c}
 function renderList(){const el=$('chgList');el.innerHTML='';$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
@@ -627,7 +627,7 @@ let exporting=false,printing=false;
 $('exportGo').onclick=async()=>{
   $('exportModal').close();if(!S.W||exporting||printing)return;
   exporting=true;const rep=$('report');
-  try{if(expFmt==='png'){
+  try{if(scanTimer)scan(true);if(expFmt==='png'){
       const filename=baseName()+'.png',c=exportCanvas(!$('expWorking').checked),blob=await new Promise(r=>c.toBlob(r,'image/png'));
       if(!blob)throw new Error('PNG encoding failed');download(blob,filename);return;
     }
