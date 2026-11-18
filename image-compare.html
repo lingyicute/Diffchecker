@@ -94,7 +94,7 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 50px}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
 .align-grid{display:grid;grid-template-columns:1fr 240px;gap:14px}
 .align-view{position:relative;height:460px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--checker);cursor:move;touch-action:none}
-.align-view canvas{position:absolute;left:0;top:0;transform-origin:0 0}
+.align-view canvas{position:absolute;left:0;top:0;width:100%;height:100%}
 .align-ctl .row input[type=number]{width:80px;border:1px solid var(--border2);border-radius:6px;padding:3px 6px;background:var(--bg);font-size:12px}
 .chk{display:flex;align-items:center;gap:6px;font-size:13px;padding:3px 0}
 .err{color:var(--danger);font-size:12px}
@@ -173,7 +173,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
       <label class="chk"><input type="checkbox" id="allowRot" checked> <span data-i18n="rotate">Rotate</span></label>
       <label class="chk"><input type="checkbox" id="allowScale" checked> <span data-i18n="scale">Scale</span></label>
       <button class="btn primary" id="autoAlignBtn" style="width:100%;margin:6px 0 4px" data-i18n="autoAlignBtn">Auto Align Images</button>
-      <div class="err" id="alignErr"></div>
+      <div class="err" id="alignErr" role="status"></div>
       <h4 style="margin:14px 0 6px;font-size:12px;text-transform:uppercase;color:var(--fg3)" data-i18n="manual">Align Manually</h4>
       <div class="row"><span>X</span><input type="number" id="alDx" step="1"></div>
       <div class="row"><span>Y</span><input type="number" id="alDy" step="1"></div>
@@ -223,6 +223,8 @@ Object.assign(I18N.en,{workingExport:'Export at working resolution',pngTooLarge:
 Object.assign(I18N.zh,{workingExport:'以工作分辨率导出',pngTooLarge:'原始尺寸的 PNG 过大，请勾选工作分辨率后重试。'});
 I18N.en.alignOutOfRange='The aligned images span too large a frame. Reduce the shift or scale.';
 I18N.zh.alignOutOfRange='对齐后的画幅过大，请减小平移量或缩放比例。';
+I18N.en.invalidAlignment='Enter finite alignment values and a positive scale.';
+I18N.zh.invalidAlignment='请输入有效的对齐数值，缩放比例必须为正数。';
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -310,9 +312,9 @@ $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$(
 // 交换两张图时同步求逆对齐参数，保持已对齐的效果。
 // drawAligned 的线性部分是 L = s·R(θ)·F（F 为翻转对角阵），L⁻¹ = (1/s)·F·R(−θ)：
 // 无翻转或同时水平 + 垂直翻转（F = −I，与旋转可交换）时为 R(−θ)·F；只有一个方向翻转时 F·R(−θ) = R(θ)·F，旋转角保持不变。
-function invertAlign(al,a,b){const th=al.rot*Math.PI/180,c=Math.cos(th),s=Math.sin(th),k=1/al.scale,vx=a.w/2-b.w/2-al.dx,vy=a.h/2-b.h/2-al.dy,ux=k*(c*vx+s*vy)*(al.fh?-1:1),uy=k*(-s*vx+c*vy)*(al.fv?-1:1),one=!!al.fh!==!!al.fv;
+function invertAlign(al,a,b){const th=(al.rot%360)*Math.PI/180,c=Math.cos(th),s=Math.sin(th),k=1/al.scale,vx=a.w/2-b.w/2-al.dx,vy=a.h/2-b.h/2-al.dy,ux=k*(c*vx+s*vy)*(al.fh?-1:1),uy=k*(-s*vx+c*vy)*(al.fv?-1:1),one=!!al.fh!==!!al.fv;
   return {dx:b.w/2+ux-a.w/2,dy:b.h/2+uy-a.h/2,rot:one?al.rot:-al.rot,scale:k,fh:!!al.fh,fv:!!al.fv}}
-$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;cancelLoads();const a=S.A,b=S.B,al=S.align;setImage('A',b.c,b.name,true);setImage('B',a.c,a.name,true);S.align=invertAlign(al,a,b);compare()};
+$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;const a=S.A,b=S.B,al=invertAlign(S.align,a,b);try{comparisonFrame(b,a,al)}catch(e){notice(t('alignOutOfRange'));return}cancelLoads();setImage('A',b.c,b.name,true);setImage('B',a.c,a.name,true);S.align=al;compare()};
 $('resetBtn').onclick=()=>{cancelLoads();clearComparison();S.align=defAlign();S.passes=[];S.seeded=false;S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
 
 /* ===================== compositing ===================== */
@@ -478,7 +480,14 @@ function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').que
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0};
 $('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.showModal();initAlignView()};
 $('alignCancel').onclick=closeAlign;
-$('alignApply').onclick=()=>{try{comparisonFrame(S.A,S.B,alTmp)}catch(e){$('alignErr').textContent=t('alignOutOfRange');return}S.align={...alTmp};closeAlign();compare()};
+const alignFields=[['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']];
+const validAlignValue=(k,v)=>Number.isFinite(v)&&(k!=='scale'||v>0&&Number.isFinite(1/v));
+$('alignApply').onclick=()=>{
+  const invalid=alignFields.find(([id,k])=>!validAlignValue(k,$(id).valueAsNumber));
+  if(invalid){$('alignErr').textContent=t('invalidAlignment');$(invalid[0]).focus();return}
+  try{comparisonFrame(S.A,S.B,alTmp)}catch(e){$('alignErr').textContent=t('alignOutOfRange');return}
+  S.align={...alTmp};closeAlign();compare();
+};
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
 function initAlignView(){
   const v=$('alignView'),f=S.frame,w=workingFrame(f.w,f.h);alView.sx=w.w/f.w;alView.sy=w.h/f.h;
@@ -489,15 +498,16 @@ function initAlignView(){
 function drawAlign(){
   const v=$('alignView'),w=v.clientWidth,h=v.clientHeight,k=Math.min(2,window.devicePixelRatio||1),sx=alView.sx*alView.z,sy=alView.sy*alView.z;
   for(const side of ['A','B']){const canvas=$('align'+side),pw=Math.round(w*k),ph=Math.round(h*k);
-    if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph;canvas.style.width=w+'px';canvas.style.height=h+'px'}
+    if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
     const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,pw,ph);
     ctx.setTransform(k,0,0,k,alView.x*k,alView.y*k);
     if(side==='A')ctx.drawImage(S.A.c,0,0,S.A.w*sx,S.A.h*sy);else drawAligned(ctx,S.B.c,alTmp,sx,sy);
   }
   $('alignB').style.opacity=$('alOpacity').value/100;
 }
-function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=alTmp.scale.toFixed(4);$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
-for(const [id,k] of [['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']])$(id).oninput=e=>{const v=parseFloat(e.target.value);if(isFinite(v)&&(k!=='scale'||v>0)){stopAuto();alTmp[k]=v;drawAlign()}};
+function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=Number(alTmp.scale.toPrecision(8));$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
+for(const [id,k] of alignFields)$(id).oninput=e=>{stopAuto();$('alignErr').textContent='';const v=e.target.valueAsNumber;if(validAlignValue(k,v)){alTmp[k]=v;drawAlign()}};
+for(const id of ['allowRot','allowScale'])$(id).onchange=()=>{stopAuto();$('alignErr').textContent=''};
 $('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
 {const v=$('alignView');v.onpointerdown=e=>{stopAuto();v.setPointerCapture(e.pointerId);const sx=e.clientX,sy=e.clientY,odx=alTmp.dx,ody=alTmp.dy;v.onpointermove=ev=>{alTmp.dx=odx+(ev.clientX-sx)/(alView.z*alView.sx);alTmp.dy=ody+(ev.clientY-sy)/(alView.z*alView.sy);syncAlignInputs();drawAlign()};v.onpointerup=v.onpointercancel=()=>{v.onpointermove=null}};
  v.addEventListener('wheel',e=>{e.preventDefault();const r=v.getBoundingClientRect();const cx=e.clientX-r.left,cy=e.clientY-r.top;const z=Math.max(.02,Math.min(10,alView.z*(e.deltaY<0?1.12:1/1.12)));const k=z/alView.z;alView.x=cx-(cx-alView.x)*k;alView.y=cy-(cy-alView.y)*k;alView.z=z;drawAlign()},{passive:false})}
