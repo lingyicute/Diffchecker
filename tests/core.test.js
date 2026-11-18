@@ -1038,3 +1038,13 @@ test('XLSX 字符串导出保留回车、控制字符及有效代理对', () => 
     assert.doesNotMatch(xe(s), /[\x00\r\x1b\ufffe]/);
   }
 });
+
+test('XLSX 写入拒绝超出行、列、文本规格的结果，而不截断数据', () => {
+  for (const f of ['text-compare.html', 'excel-compare.html']) {
+    const code = between(script(f), 'const xe=', 'function exportXlsx');
+    const { makeXlsx } = run(code, 'makeXlsx', 'const TextEncoder=class{encode(){}};' + (f.startsWith('excel') ? 'function colName(){return "A"}' : ''));
+    assert.throws(() => makeXlsx([{ name: 'Test', rows: new Array(1048577) }]), /exportXlsxLimit/);
+    assert.throws(() => makeXlsx([{ name: 'Test', rows: [new Array(16385)] }]), /exportXlsxLimit/);
+    assert.throws(() => makeXlsx([{ name: 'Test', rows: [[{ v: 'x'.repeat(32768) }]] }]), /exportXlsxLimit/);
+  }
+});
