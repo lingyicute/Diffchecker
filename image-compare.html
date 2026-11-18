@@ -229,19 +229,56 @@ let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=nu
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 
 /* ===================== loading ===================== */
-let openTarget='A';
+let openTarget='A',alignJob=0;
+const loadVersion={A:0,B:0},pending={A:false,B:false};
+function cancelLoad(side){loadVersion[side]++;pending[side]=false}
+function cancelLoads(){cancelLoad('A');cancelLoad('B')}
+function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false}
+function closeAlign(){stopAuto();$('alignModal').classList.remove('open')}
+function clearComparison(){
+  closeAlign();$('promptModal').classList.remove('open');$('exportModal').classList.remove('open');
+  $('pmGo').onclick=$('pmSkip').onclick=null;
+  clearInterval(flickTimer);clearTimeout(window._sc);clearTimeout(window._hlt);holdSide=0;flickState=0;
+  S.W=S.H=0;S.regions=[];S.active=-1;diffCount=0;
+  baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
+  stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
+  for(const id of ['alignA','alignB']){$(id).width=$(id).height=1}
+}
 const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
 for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.target!==d||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();d.click()};
   d.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();d.classList.add('drag')});d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drag')});d.addEventListener('drop',e=>{d.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
-document.addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(!it)return;const f=it.getAsFile();if(!f)return;loadFile(f,!S.A?'A':!S.B?'B':openTarget)});
-async function loadFile(f,side){if(!f.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|tiff?)$/i.test(f.name)){notice(t('decodeFail',{name:f.name}));return}notice(t('loading'));
-  const url=URL.createObjectURL(f);try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});setImage(side,img,f.name)}catch(e){console.error(e);notice(t('decodeFail',{name:f.name}))}finally{URL.revokeObjectURL(url)}}
-function setImage(side,img,name,quiet){/* 没有固有尺寸的 SVG（无 width / height 与 viewBox）宽高为 0，退回默认画布而不是得到 1×1 的空白图 */const c=mk(img.naturalWidth||img.width||1024,img.naturalHeight||img.height||768);c.getContext('2d').drawImage(img,0,0,c.width,c.height);S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
-  d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}">✕</button>`;{const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);th.getContext('2d').drawImage(c,0,0,th.width,th.height);d.querySelector('img').src=th.toDataURL('image/png')}d.querySelector('.meta').textContent=`${name} · ${c.width}×${c.height}`;
-  d.querySelector('.rm').onclick=e=>{e.stopPropagation();S[side]=null;S.W=S.H=0;S.regions=[];S.active=-1;d.classList.remove('has');d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;clearInterval(flickTimer);$('result').classList.add('hidden')};
-  S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign()}
-function maybePromptAlign(){if(S.A.w!==S.B.w||S.A.h!==S.B.h){showPrompt(t('mismatchTitle'),t('mismatchMsg'),t('skip'),t('autoAlignGo'),async()=>{compare();try{const r=await autoAlign(S.A.c,S.B.c,{rot:true,scale:true});if(r){S.align=r;compare();notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}else{notice(t('alignFail'))}}catch(e){console.error(e);notice(t('alignFail'))}},()=>compare())}else compare()}
+document.addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(!it)return;const f=it.getAsFile();if(!f)return;e.preventDefault();loadFile(f,!S.A&&!pending.A?'A':!S.B&&!pending.B?'B':openTarget)});
+async function loadFile(f,side){
+  cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side];
+  if(!f.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|tiff?)$/i.test(f.name)){notice(t('decodeFail',{name:f.name}));return}
+  pending[side]=true;notice(t('loading'));const url=URL.createObjectURL(f);
+  try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});if(current())setImage(side,img,f.name)}
+  catch(e){if(current()){console.error(e);notice(t('decodeFail',{name:f.name}))}}
+  finally{if(current())pending[side]=false;URL.revokeObjectURL(url)}
+}
+function setImage(side,img,name,quiet){
+  const c=img instanceof HTMLCanvasElement?img:mk(img.naturalWidth||img.width||1024,img.naturalHeight||img.height||768);
+  if(c!==img)c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);th.getContext('2d').drawImage(c,0,0,th.width,th.height);
+  const thumb=th.toDataURL('image/png');if(thumb==='data:,')throw new Error('Could not render the image thumbnail');
+  clearComparison();S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
+  d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}">✕</button>`;
+  d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name} · ${c.width}×${c.height}`;
+  d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);S[side]=null;clearComparison();d.classList.remove('has');
+    d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;d.focus()};
+  S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign();
+}
+function alignNotice(r){notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}
+function maybePromptAlign(){
+  if(S.A.w===S.B.w&&S.A.h===S.B.h){compare();return}
+  showPrompt(t('mismatchTitle'),t('mismatchMsg'),t('skip'),t('autoAlignGo'),async()=>{
+    compare();const job=++alignJob,current=()=>job===alignJob;
+    try{const r=await autoAlign(S.A.c,S.B.c,{rot:true,scale:true,active:current});if(!current())return;
+      if(r){S.align=r;compare();alignNotice(r)}else notice(t('alignFail'));
+    }catch(e){if(current()){console.error(e);notice(t('alignFail'))}}
+  },()=>compare());
+}
 function showPrompt(title,msg,skip,go,onGo,onSkip){$('pmTitle').textContent=title;$('pmMsg').textContent=msg;$('pmSkip').textContent=skip;$('pmGo').textContent=go;$('promptModal').classList.add('open');$('pmSkip').onclick=()=>{$('promptModal').classList.remove('open');onSkip&&onSkip()};$('pmGo').onclick=()=>{$('promptModal').classList.remove('open');onGo()}}
 $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$('result').scrollIntoView({behavior:'smooth'})};
 // 交换两张图时同步求逆对齐参数，保持已对齐的效果。
@@ -249,8 +286,8 @@ $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$(
 // 无翻转或同时水平 + 垂直翻转（F = −I，与旋转可交换）时为 R(−θ)·F；只有一个方向翻转时 F·R(−θ) = R(θ)·F，旋转角保持不变。
 function invertAlign(al,a,b){const th=al.rot*Math.PI/180,c=Math.cos(th),s=Math.sin(th),k=1/al.scale,vx=a.w/2-b.w/2-al.dx,vy=a.h/2-b.h/2-al.dy,ux=k*(c*vx+s*vy)*(al.fh?-1:1),uy=k*(-s*vx+c*vy)*(al.fv?-1:1),one=!!al.fh!==!!al.fv;
   return {dx:b.w/2+ux-a.w/2,dy:b.h/2+uy-a.h/2,rot:one?al.rot:-al.rot,scale:k,fh:!!al.fh,fv:!!al.fv}}
-$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;const a=S.A,b=S.B,al=S.align;setImage('A',b.c,b.name,true);setImage('B',a.c,a.name,true);S.align=invertAlign(al,a,b);compare()};
-$('resetBtn').onclick=()=>{S.align=defAlign();S.passes=[];S.seeded=false;S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
+$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;cancelLoads();const a=S.A,b=S.B,al=S.align;setImage('A',b.c,b.name,true);setImage('B',a.c,a.name,true);S.align=invertAlign(al,a,b);compare()};
+$('resetBtn').onclick=()=>{cancelLoads();clearComparison();S.align=defAlign();S.passes=[];S.seeded=false;S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
 
 /* ===================== compositing ===================== */
 function buildBases(){const W=Math.max(S.A.w,S.B.w),H=Math.max(S.A.h,S.B.h);S.scale=Math.min(1,MAXDIM/Math.max(W,H));S.W=Math.round(W*S.scale);S.H=Math.round(H*S.scale);
@@ -397,18 +434,25 @@ function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').que
 
 /* ===================== alignment ===================== */
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0};
-$('alignBtn').onclick=()=>{if(!S.A||!S.B)return;alTmp={...S.align};$('alignErr').textContent='';AL.classList.add('open');setTimeout(initAlignView,0)};
-$('alignCancel').onclick=()=>AL.classList.remove('open');
-$('alignApply').onclick=()=>{S.align={...alTmp};AL.classList.remove('open');compare()};
-$('alignUndo').onclick=()=>{alTmp=defAlign();syncAlignInputs();drawAlign()};
+$('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.classList.add('open');initAlignView()};
+$('alignCancel').onclick=closeAlign;
+$('alignApply').onclick=()=>{S.align={...alTmp};closeAlign();compare()};
+$('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
 function initAlignView(){const v=$('alignView'),ca=$('alignA'),cb=$('alignB');ca.width=S.A.w;ca.height=S.A.h;ca.getContext('2d').drawImage(S.A.c,0,0);const W=Math.max(S.A.w,S.B.w),H=Math.max(S.A.h,S.B.h);cb.width=W;cb.height=H;alView.z=Math.min((v.clientWidth-20)/W,(v.clientHeight-20)/H);alView.x=(v.clientWidth-W*alView.z)/2;alView.y=(v.clientHeight-H*alView.z)/2;syncAlignInputs();drawAlign()}
 function drawAlign(){const ca=$('alignA'),cb=$('alignB');const tr=`translate(${alView.x}px,${alView.y}px) scale(${alView.z})`;ca.style.transform=tr;cb.style.transform=tr;ca.style.opacity=1;cb.style.opacity=$('alOpacity').value/100;const cx=cb.getContext('2d');cx.clearRect(0,0,cb.width,cb.height);drawAligned(cx,S.B.c,alTmp,1)}
 function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=alTmp.scale.toFixed(4);$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
-for(const [id,k] of [['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']])$(id).oninput=e=>{const v=parseFloat(e.target.value);if(isFinite(v)&&(k!=='scale'||v>0)){alTmp[k]=v;drawAlign()}};
-$('flipH').onclick=()=>{alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
-{const v=$('alignView');v.onpointerdown=e=>{v.setPointerCapture(e.pointerId);const sx=e.clientX,sy=e.clientY,odx=alTmp.dx,ody=alTmp.dy;v.onpointermove=ev=>{alTmp.dx=odx+(ev.clientX-sx)/alView.z;alTmp.dy=ody+(ev.clientY-sy)/alView.z;syncAlignInputs();drawAlign()};v.onpointerup=v.onpointercancel=()=>{v.onpointermove=null}};
+for(const [id,k] of [['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']])$(id).oninput=e=>{const v=parseFloat(e.target.value);if(isFinite(v)&&(k!=='scale'||v>0)){stopAuto();alTmp[k]=v;drawAlign()}};
+$('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
+{const v=$('alignView');v.onpointerdown=e=>{stopAuto();v.setPointerCapture(e.pointerId);const sx=e.clientX,sy=e.clientY,odx=alTmp.dx,ody=alTmp.dy;v.onpointermove=ev=>{alTmp.dx=odx+(ev.clientX-sx)/alView.z;alTmp.dy=ody+(ev.clientY-sy)/alView.z;syncAlignInputs();drawAlign()};v.onpointerup=v.onpointercancel=()=>{v.onpointermove=null}};
  v.addEventListener('wheel',e=>{e.preventDefault();const r=v.getBoundingClientRect();const cx=e.clientX-r.left,cy=e.clientY-r.top;const z=Math.max(.02,Math.min(10,alView.z*(e.deltaY<0?1.12:1/1.12)));const k=z/alView.z;alView.x=cx-(cx-alView.x)*k;alView.y=cy-(cy-alView.y)*k;alView.z=z;drawAlign()},{passive:false})}
-$('autoAlignBtn').onclick=async()=>{$('alignErr').textContent='';$('autoAlignBtn').disabled=true;await new Promise(r=>setTimeout(r,20));try{const r=await autoAlign(S.A.c,S.B.c,{rot:$('allowRot').checked,scale:$('allowScale').checked,fh:alTmp.fh,fv:alTmp.fv});if(!r){$('alignErr').textContent=t('alignFail')}else{alTmp={...r};syncAlignInputs();drawAlign();notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}}catch(e){console.error(e);$('alignErr').textContent=t('alignFail')}finally{$('autoAlignBtn').disabled=false}};
+$('autoAlignBtn').onclick=async()=>{
+  const job=++alignJob,current=()=>job===alignJob,A=S.A.c,B=S.B.c;
+  const allow={rot:$('allowRot').checked,scale:$('allowScale').checked,fh:alTmp.fh,fv:alTmp.fv,active:current};
+  $('alignErr').textContent='';$('autoAlignBtn').disabled=true;
+  try{await new Promise(r=>setTimeout(r,20));if(!current())return;const r=await autoAlign(A,B,allow);if(!current())return;
+    if(!r)$('alignErr').textContent=t('alignFail');else{alTmp={...r};syncAlignInputs();drawAlign();alignNotice(r)}
+  }catch(e){if(current()){console.error(e);$('alignErr').textContent=t('alignFail')}}finally{if(current())$('autoAlignBtn').disabled=false}
+};
 
 /* ---- pure-JS auto alignment: phase correlation (FFT) with coarse rotation/scale search ---- */
 function fft1d(re,im,inv){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){let tmp=re[i];re[i]=re[j];re[j]=tmp;tmp=im[i];im[i]=im[j];im[j]=tmp}}
@@ -429,7 +473,7 @@ function phaseCorr(ga,gb,N){let F=ga._c&&ga._fft;if(ga._c&&(!F||F.N!==N)){const 
   let dx=px+fx,dy=py+fy;if(dx>N/2)dx-=N;if(dy>N/2)dy-=N;const peak=hx+hy-best;/* 相关面全零（纯色 / 空白图片）时 0/0=NaN，会被 autoAlign 的阈值判断当成“对齐成功”，显式归零 */return {dx,dy,peak,psr:sum>0?peak/Math.sqrt(sum/(N*N)):0}}
 async function autoAlign(A,B,allow){
   /* 翻转无法从相位相关里估计出来：沿用调用方当前的翻转状态去搜索平移 / 旋转 / 缩放，并原样带回结果。否则在手动对齐里先翻转再点“自动对齐”，翻转会被悄悄清掉，镜像的图片永远对不上；OpenCV 的仿射估计同样不含镜像，带翻转时改用内置算法 */
-  const fh=!!allow.fh,fv=!!allow.fv;
+  const fh=!!allow.fh,fv=!!allow.fv,active=allow.active||(()=>true);if(!active())return null;
   if(!fh&&!fv&&window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B,allow);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
   const W=Math.max(A.width,B.width),H=Math.max(A.height,B.height);const tick=()=>new Promise(r=>setTimeout(r,0));
   const baseScale=allow.scale?Math.min(A.width/B.width,A.height/B.height):1;
@@ -438,16 +482,16 @@ async function autoAlign(A,B,allow){
   let N=128,pa=grayPatch(A,N,1,0,false,false,W,H),best=null,n=0;
   const scales=allow.scale?[0.85,0.9,0.95,1,1.05,1.1,1.15].map(s=>s*baseScale):[baseScale];if(allow.scale&&!scales.includes(1))scales.push(1);/* 尺寸不同往往只是裁剪 / 留白不同、内容并没有缩放：按尺寸比推出的候选里通常没有 1，补上“不缩放”，否则只能落在邻近的错误比例上，还会用多余的旋转去凑 */const rots=allow.rot?[-6,-4,-2,-1,0,1,2,4,6]:[0];
   best=evalAt(N,pa,baseScale,0);/* 只有明显优于“不旋转不缩放”时才采用其他候选，避免噪声导致虚假的缩放 */
-  for(const sc of scales)for(const rot of rots){if(sc===baseScale&&rot===0)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>best.psr*1.05)best=r;if(++n%10===0)await tick()}
+  for(const sc of scales)for(const rot of rots){if(sc===baseScale&&rot===0)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>best.psr*1.05)best=r;if(++n%10===0){await tick();if(!active())return null}}
   // 2) refine 256² around best
   N=256;pa=grayPatch(A,N,1,0,false,false,W,H);let ref=evalAt(N,pa,best.sc,best.rot);
   const scales2=allow.scale?[-0.03,-0.015,0,0.015,0.03].map(d=>best.sc*(1+d)):[best.sc];const rots2=allow.rot?[-1,-0.5,0,0.5,1].map(d=>best.rot+d):[0];
-  for(const sc of scales2)for(const rot of rots2){if(sc===best.sc&&rot===best.rot)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0)await tick()}
+  for(const sc of scales2)for(const rot of rots2){if(sc===best.sc&&rot===best.rot)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0){await tick();if(!active())return null}}
   if(!ref||ref.psr<4)return null;
   // 3) final translation at 512²
   N=512;pa=grayPatch(A,N,1,0,false,false,W,H);let fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
   /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显更优才替换 */
-  for(const dr of allow.rot?[-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick()}
+  for(const dr of allow.rot?[-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick();if(!active())return null}
   // Both patches are drawn with their top-left at the frame origin (same as drawAligned with dx=dy=0), so the
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
   // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
@@ -489,16 +533,17 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
   x.fillStyle='#345';x.fillRect(40,400,variant?380:300,22);x.fillStyle='#777';x.font='12px system-ui';x.fillText(variant?'Budget forecast +12% → re-approval':'Budget forecast +10% → re-approval',40,445);
   if(variant){x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor (second person, pressure systems)',40,560)}else{x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor',40,560)}
   x.strokeStyle='#bbb';x.strokeRect(40,480,420,60);x.fillStyle='#000';x.font='13px monospace';x.fillText(variant?'CHK 8f31c2a9 · build 1122':'CHK 7a9e01bd · build 1047',52,515);return c}
-$('exampleBtn').onclick=()=>{setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:'smooth'})};
+$('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:'smooth'})};
 window.addEventListener('afterprint',()=>{$('report').innerHTML=''});
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('hidden'))fit()});
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
 /* Esc 关闭弹窗（对齐提示等同于“跳过”） */
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('promptModal').classList.contains('open')){$('pmSkip').click();return}$('alignModal').classList.remove('open');$('exportModal').classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('promptModal').classList.contains('open')){$('pmSkip').click();return}if(AL.classList.contains('open'))closeAlign();$('exportModal').classList.remove('open')});
 /* 点击弹窗遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-for(const id of ['exportModal','alignModal'])$(id).addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+AL.addEventListener('mousedown',e=>{if(e.target===e.currentTarget)closeAlign()});
 $('promptModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)$('pmSkip').click()});
 applyTheme();applyLang();
 </script>
