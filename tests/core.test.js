@@ -1127,6 +1127,11 @@ test('共享公式：长标识符保持原样，非 ASCII 字母不会误认成�
   assert.equal(excel.shiftFormula(`${name}+K1+a1`, 1, 1), `${name}+K1+b2`);
 });
 
+test('共享公式：超出原工作表网格的名称不能被移进网格', () => {
+  assert.equal(excel.shiftFormula('XFE1+A1048577+XFE:XFF+1048577:1048578+B2', -1, -1),
+    'XFE1+A1048577+XFE:XFF+1048577:1048578+A1');
+});
+
 test('XLSX 单元格地址保留实际坐标并拒绝越界或非法地址', () => {
   const { cellAddress } = run(between(script('excel-compare.html'), 'function colIndex', '// OOXML 字符串'), 'cellAddress');
   assert.deepEqual({ ...cellAddress('xfd1048576') }, { row: 1048575, col: 16383 });
