@@ -221,6 +221,8 @@ Object.assign(I18N.en,{imageTooLarge:'{name} exceeds the browser’s supported i
 Object.assign(I18N.zh,{imageTooLarge:'{name} 超出图片尺寸上限。',compareFailed:'无法绘制图片对比结果。'});
 Object.assign(I18N.en,{workingExport:'Export at working resolution',pngTooLarge:'The full-size PNG is too large. Select working resolution and export again.'});
 Object.assign(I18N.zh,{workingExport:'以工作分辨率导出',pngTooLarge:'原始尺寸的 PNG 过大，请勾选工作分辨率后重试。'});
+I18N.en.alignOutOfRange='The aligned images span too large a frame. Reduce the shift or scale.';
+I18N.zh.alignOutOfRange='对齐后的画幅过大，请减小平移量或缩放比例。';
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -231,11 +233,22 @@ $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-th
 const notice=m=>{const n=$('notice');n.textContent=m;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),2600)};
 
 /* ===================== state ===================== */
-const S={A:null,B:null,align:null,mode:'highlight',fade:.5,flick:1400,hlMode:'context',hlThr:25,zoom:1,px:0,py:0,sliderPos:.5,boxes:true,darken:false,passes:[],regions:[],active:-1,W:0,H:0,scale:1};
+const S={A:null,B:null,align:null,mode:'highlight',fade:.5,flick:1400,hlMode:'context',hlThr:25,zoom:1,px:0,py:0,sliderPos:.5,boxes:true,darken:false,passes:[],regions:[],active:-1,W:0,H:0,scale:1,frame:null};
 const defAlign=()=>({dx:0,dy:0,rot:0,scale:1,fh:false,fv:false});S.align=defAlign();
 const MAXDIM=2600,MAX_SOURCE_PIXELS=32*1024*1024,MAX_CANVAS_DIM=16384;
 const fitsCanvas=(w,h,maxPixels)=>w>0&&h>0&&w<=MAX_CANVAS_DIM&&h<=MAX_CANVAS_DIM&&w*h<=maxPixels;
 function workingFrame(w,h){const scale=Math.min(1,MAXDIM/Math.max(w,h));return {w:Math.max(1,Math.round(w*scale)),h:Math.max(1,Math.round(h*scale)),scale}}
+// 以原图坐标为基准，对比画布必须包含两张图的并集，包括平移后的负坐标。
+function comparisonFrame(a,b,al){
+  const th=(al.rot%360)*Math.PI/180,c=Math.abs(Math.cos(th)),s=Math.abs(Math.sin(th));
+  const x=b.w/2+al.dx,y=b.h/2+al.dy,bw=(c*b.w+s*b.h)*al.scale/2,bh=(s*b.w+c*b.h)*al.scale/2;
+  // 消除直角旋转在整数边缘产生的浮点噪声。
+  const snap=n=>Math.abs(n-Math.round(n))<1e-8?Math.round(n):n;
+  const left=Math.floor(Math.min(0,snap(x-bw))),top=Math.floor(Math.min(0,snap(y-bh)));
+  const w=Math.ceil(Math.max(a.w,snap(x+bw)))-left,h=Math.ceil(Math.max(a.h,snap(y+bh)))-top;
+  if(!(al.scale>0)||!Number.isSafeInteger(w)||!Number.isSafeInteger(h)||w>64*MAX_CANVAS_DIM||h>64*MAX_CANVAS_DIM)throw new Error('alignOutOfRange');
+  return {x:left||0,y:top||0,w,h};
+}
 let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 
@@ -250,7 +263,7 @@ function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();
   $('pmGo').onclick=$('pmSkip').onclick=null;
   clearInterval(flickTimer);clearTimeout(window._sc);clearTimeout(window._hlt);holdSide=0;flickState=0;
-  S.W=S.H=0;S.regions=[];S.active=-1;diffCount=0;
+  S.W=S.H=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
   stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
   for(const id of ['alignA','alignB']){$(id).width=$(id).height=1}
@@ -304,14 +317,15 @@ $('resetBtn').onclick=()=>{cancelLoads();clearComparison();S.align=defAlign();S.
 
 /* ===================== compositing ===================== */
 function makeBases(w,h){
-  const sx=w/Math.max(S.A.w,S.B.w),sy=h/Math.max(S.A.h,S.B.h),a=mk(w,h),b=mk(w,h);
-  a.getContext('2d').drawImage(S.A.c,0,0,S.A.w*sx,S.A.h*sy);drawAligned(b.getContext('2d'),S.B.c,S.align,sx,sy);
+  const f=S.frame,sx=w/f.w,sy=h/f.h,a=mk(w,h),b=mk(w,h),bx=b.getContext('2d');
+  a.getContext('2d').drawImage(S.A.c,-f.x*sx,-f.y*sy,S.A.w*sx,S.A.h*sy);
+  bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy);
   return [a,b];
 }
-function buildBases(){const frame=workingFrame(Math.max(S.A.w,S.B.w),Math.max(S.A.h,S.B.h));S.W=frame.w;S.H=frame.h;S.scale=frame.scale;
+function buildBases(){S.frame=comparisonFrame(S.A,S.B,S.align);const frame=workingFrame(S.frame.w,S.frame.h);S.W=frame.w;S.H=frame.h;S.scale=frame.scale;
   [baseA,baseB]=makeBases(S.W,S.H);
   dataA=baseA.getContext('2d').getImageData(0,0,S.W,S.H);dataB=baseB.getContext('2d').getImageData(0,0,S.W,S.H);computeDiffMap()}
-function drawAligned(ctx,img,al,sx,sy=sx){ctx.save();ctx.scale(sx,sy);const w=img.width,h=img.height;ctx.translate(w/2+al.dx,h/2+al.dy);ctx.rotate(al.rot*Math.PI/180);ctx.scale(al.scale*(al.fh?-1:1),al.scale*(al.fv?-1:1));ctx.drawImage(img,-w/2,-h/2);ctx.restore()}
+function drawAligned(ctx,img,al,sx,sy=sx){ctx.save();ctx.scale(sx,sy);const w=img.width,h=img.height;ctx.translate(w/2+al.dx,h/2+al.dy);ctx.rotate((al.rot%360)*Math.PI/180);ctx.scale(al.scale*(al.fh?-1:1),al.scale*(al.fv?-1:1));ctx.drawImage(img,-w/2,-h/2);ctx.restore()}
 function diffPixels(a,b,map,sign,rgba){
   let changed=0;
   const delta=(black,opacity)=>Math.min(255,Math.round(Math.max(Math.abs(black),Math.abs(black+opacity))));
@@ -386,7 +400,7 @@ function compare(){if(!S.A||!S.B)return false;
   try{buildBases();$('result').classList.remove('hidden');if(!S.seeded){S.seeded=true;S.passes=[newPass('words-sentences')]}
     S.passes.forEach(p=>{if(p.linked)p.options=presetOptions(p.presetId)});scan();renderStage();fit();
     if(diffCount===0)notice(t('identicalTitle')+' — '+t('identicalMsg'));return true
-  }catch(e){console.error(e);clearComparison();notice(t('compareFailed'));return false}
+  }catch(e){console.error(e);clearComparison();notice(t(e.message==='alignOutOfRange'?'alignOutOfRange':'compareFailed'));return false}
 }
 /* ---- scan / change detection ---- */
 const PRESETS={'tiny-specks':e=>({diffThreshold:80,groupingRadius:0,minBlobArea:2,maxBlobAreaFraction:.01}),'words-sentences':e=>({diffThreshold:20,groupingRadius:Math.round(Math.max(2,Math.min(12,4*e))),minBlobArea:Math.round(Math.max(15,Math.min(300,30*e))),maxBlobAreaFraction:.15}),'graphics-large-blocks':e=>({diffThreshold:25,groupingRadius:Math.round(Math.max(5,Math.min(25,10*e))),minBlobArea:Math.round(Math.max(100,Math.min(2000,200*e))),maxBlobAreaFraction:.5})};
@@ -464,15 +478,24 @@ function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').que
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0};
 $('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.showModal();initAlignView()};
 $('alignCancel').onclick=closeAlign;
-$('alignApply').onclick=()=>{S.align={...alTmp};closeAlign();compare()};
+$('alignApply').onclick=()=>{try{comparisonFrame(S.A,S.B,alTmp)}catch(e){$('alignErr').textContent=t('alignOutOfRange');return}S.align={...alTmp};closeAlign();compare()};
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
 function initAlignView(){
-  const v=$('alignView'),ca=$('alignA'),cb=$('alignB'),W=Math.max(S.A.w,S.B.w),H=Math.max(S.A.h,S.B.h),f=workingFrame(W,H);
-  ca.width=cb.width=f.w;ca.height=cb.height=f.h;alView.sx=f.w/W;alView.sy=f.h/H;
-  ca.getContext('2d').drawImage(S.A.c,0,0,S.A.w*alView.sx,S.A.h*alView.sy);
-  alView.z=Math.max(.02,Math.min((v.clientWidth-20)/f.w,(v.clientHeight-20)/f.h));alView.x=(v.clientWidth-f.w*alView.z)/2;alView.y=(v.clientHeight-f.h*alView.z)/2;syncAlignInputs();drawAlign();
+  const v=$('alignView'),f=S.frame,w=workingFrame(f.w,f.h);alView.sx=w.w/f.w;alView.sy=w.h/f.h;
+  alView.z=Math.max(.02,Math.min((v.clientWidth-20)/w.w,(v.clientHeight-20)/w.h));
+  alView.x=(v.clientWidth-w.w*alView.z)/2-f.x*alView.sx*alView.z;alView.y=(v.clientHeight-w.h*alView.z)/2-f.y*alView.sy*alView.z;
+  syncAlignInputs();drawAlign();
 }
-function drawAlign(){const ca=$('alignA'),cb=$('alignB');const tr=`translate(${alView.x}px,${alView.y}px) scale(${alView.z})`;ca.style.transform=tr;cb.style.transform=tr;ca.style.opacity=1;cb.style.opacity=$('alOpacity').value/100;const cx=cb.getContext('2d');cx.clearRect(0,0,cb.width,cb.height);drawAligned(cx,S.B.c,alTmp,alView.sx,alView.sy)}
+function drawAlign(){
+  const v=$('alignView'),w=v.clientWidth,h=v.clientHeight,k=Math.min(2,window.devicePixelRatio||1),sx=alView.sx*alView.z,sy=alView.sy*alView.z;
+  for(const side of ['A','B']){const canvas=$('align'+side),pw=Math.round(w*k),ph=Math.round(h*k);
+    if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph;canvas.style.width=w+'px';canvas.style.height=h+'px'}
+    const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,pw,ph);
+    ctx.setTransform(k,0,0,k,alView.x*k,alView.y*k);
+    if(side==='A')ctx.drawImage(S.A.c,0,0,S.A.w*sx,S.A.h*sy);else drawAligned(ctx,S.B.c,alTmp,sx,sy);
+  }
+  $('alignB').style.opacity=$('alOpacity').value/100;
+}
 function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=alTmp.scale.toFixed(4);$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
 for(const [id,k] of [['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']])$(id).oninput=e=>{const v=parseFloat(e.target.value);if(isFinite(v)&&(k!=='scale'||v>0)){stopAuto();alTmp[k]=v;drawAlign()}};
 $('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
@@ -559,7 +582,7 @@ $('expDiffStyle').onclick=e=>{const b=e.target.closest('button');if(!b)return;ex
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 const MAX_EXPORT_PIXELS=16*1024*1024;
 function exportCanvas(native=false){
-  const w=native?Math.max(S.A.w,S.B.w):S.W,h=native?Math.max(S.A.h,S.B.h):S.H,split=S.mode==='split';
+  const w=native?S.frame.w:S.W,h=native?S.frame.h:S.H,split=S.mode==='split';
   if(!fitsCanvas(split?w*2+16:w,h,MAX_EXPORT_PIXELS))throw new Error('pngTooLarge');
   const [a,b]=w===S.W&&h===S.H?[baseA,baseB]:makeBases(w,h);
   if(split){const c=mk(w*2+16,h),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}

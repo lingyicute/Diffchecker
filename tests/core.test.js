@@ -1171,6 +1171,15 @@ test('图片工作画布：极窄的输入仍至少保留一个像素', () => {
   assert.equal(fitsCanvas(16384, 4096, 32 * 1024 * 1024), false);
 });
 
+test('图片对比画幅包含原图和变换后的四角，不剪掉负坐标或超出的内容', () => {
+  const { comparisonFrame } = run(between(script('image-compare.html'), 'const MAXDIM=', 'let baseA'), 'comparisonFrame');
+  const a = { w: 4, h: 3 }, b = { w: 8, h: 4 }, al = { dx: 0, dy: 0, rot: 0, scale: 1 };
+  assert.deepEqual({ ...comparisonFrame(a, b, al) }, { x: 0, y: 0, w: 8, h: 4 });
+  assert.deepEqual({ ...comparisonFrame(a, b, { ...al, dx: -3, dy: 2 }) }, { x: -3, y: 0, w: 8, h: 6 });
+  assert.deepEqual({ ...comparisonFrame(a, b, { ...al, rot: 90, fh: true }) }, { x: 0, y: -2, w: 6, h: 8 });
+  assert.throws(() => comparisonFrame(a, b, { ...al, dx: 1e10 }), /alignOutOfRange/);
+});
+
 test('image.autoAlign: 同时允许旋转和缩放时，终步仍评估仅缩放候选', async () => {
   const code = between(script('image-compare.html'), 'async function autoAlign', 'function alignWithOpenCV');
   const pre = 'const window={},setTimeout=f=>f();'
