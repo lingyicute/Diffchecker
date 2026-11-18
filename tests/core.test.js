@@ -989,3 +989,12 @@ test('Excel 日期系统：日期格式的 0、虚拟闰日与超过一天的纯
     assert.equal(customDateKind(format), kind, format);
   }
 });
+
+test('XLSX 部件路径：以当前部件目录为基准解析相对路径', () => {
+  const { resolvePart } = run(between(script('excel-compare.html'), 'function resolvePart', 'function parseXlsx'), 'resolvePart');
+  assert.equal(resolvePart('xl/', 'xl/sheet.xml'), 'xl/xl/sheet.xml');
+  assert.equal(resolvePart('custom/nested/', '../sheets/data.xml'), 'custom/sheets/data.xml');
+  assert.equal(resolvePart('xl/', '/worksheets/data.xml'), 'worksheets/data.xml');
+  assert.equal(resolvePart('xl/', '../../outside.xml'), '');
+  assert.equal(resolvePart('', 'https://example.invalid/sheet.xml'), '');
+});

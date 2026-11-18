@@ -264,29 +264,44 @@ function isoDateCell(raw){const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)
 const isZipSig=u=>u[0]===0x50&&u[1]===0x4B&&((u[2]===3&&u[3]===4)||(u[2]===5&&u[3]===6)||(u[2]===7&&u[3]===8));
 // OOXML 部件可能使用带前缀的命名空间（<x:sheet>、<x:row>…），getElementsByTagName 只按限定名匹配，会把这类文件读成空工作簿；统一按本地名匹配
 const els=(n,name)=>n.getElementsByTagNameNS('*',name);
-function parseXlsx(buf){const z=readZip(buf);
-  /* 按 OPC 关系定位各部件，而不是写死 xl/workbook.xml、xl/sharedStrings.xml 等路径：部分生成器使用别的文件名或目录 */
-  const resolve=(dir,tg)=>{tg=String(tg||'').replace(/\\/g,'/');const segs=(tg.startsWith('/')?tg.slice(1):dir&&tg.startsWith(dir)?tg:dir+tg).split('/'),out=[];for(const p of segs){if(!p||p==='.')continue;if(p==='..')out.pop();else out.push(p)}return out.join('/')};
-  const relsOf=path=>{const i=path.lastIndexOf('/')+1,dir=path.slice(0,i),x=z.text(dir+'_rels/'+path.slice(i)+'.rels'),m=[];if(x)for(const r of els(xml(x),'Relationship'))if(r.getAttribute('TargetMode')!=='External')m.push({id:r.getAttribute('Id'),type:r.getAttribute('Type')||'',target:resolve(dir,r.getAttribute('Target'))});return m};
-  const wbPath=(relsOf('').find(r=>/\/officeDocument$/.test(r.type))||{}).target||'xl/workbook.xml',wbDir=wbPath.slice(0,wbPath.lastIndexOf('/')+1);
-  const wbx=z.text(wbPath)||z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);const wbRels=relsOf(wbPath),relOf=type=>(wbRels.find(r=>r.type.endsWith('/'+type))||{}).target;
+function resolvePart(dir,target){
+  const tg=String(target||'').replace(/\\/g,'/');
+  if(!tg||/^[a-z][a-z\d+.-]*:|^\/\/|[?#]/i.test(tg))return '';
+  const out=[];for(const p of (tg.startsWith('/')?tg.slice(1):dir+tg).split('/')){
+    if(!p||p==='.')continue;if(p==='..'){if(!out.length)return '';out.pop()}else out.push(p);
+  }
+  return out.join('/');
+}
+function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'))};
+  const relsOf=path=>{const i=path.lastIndexOf('/')+1,dir=path.slice(0,i),x=z.text(dir+'_rels/'+path.slice(i)+'.rels'),m=[];
+    if(x!=null)for(const r of els(xml(x),'Relationship'))if(r.getAttribute('TargetMode')!=='External')m.push({id:r.getAttribute('Id'),type:r.getAttribute('Type')||'',target:resolvePart(dir,r.getAttribute('Target'))});return m};
+  const office=relsOf('').find(r=>r.type.endsWith('/officeDocument')),wbPath=office?office.target:'xl/workbook.xml',wbDir=wbPath.slice(0,wbPath.lastIndexOf('/')+1);
+  const wbx=z.text(wbPath);if(!wbx)bad();const wb=xml(wbx);if(wb.documentElement.localName!=='workbook')bad();
+  const wbRels=relsOf(wbPath),rels=new Map(wbRels.map(r=>[r.id,r]));
+  const relatedText=(type,fallback)=>{const rel=wbRels.find(r=>r.type.endsWith('/'+type)),text=z.text(rel?rel.target:wbDir+fallback);if(rel&&!text)bad();return text};
   const pr=els(wb,'workbookPr')[0],d1904=/^(1|true)$/i.test(pr?.getAttribute('date1904')||''),compat=!/^(0|false)$/i.test(pr?.getAttribute('dateCompatibility')||'');
-  const rels={};for(const r of wbRels)rels[r.id]=r.target;
-  const sst=[];const sx=z.text(relOf('sharedStrings')||wbDir+'sharedStrings.xml');if(sx){for(const si of els(xml(sx),'si')){let s='';for(const tn of els(si,'t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(xstr(s))}}
-  const dateStyles=new Map(),stx=z.text(relOf('styles')||wbDir+'styles.xml');
+  const sst=[];const sx=relatedText('sharedStrings','sharedStrings.xml');if(sx){for(const si of els(xml(sx),'si')){let s='';for(const tn of els(si,'t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(xstr(s))}}
+  const dateStyles=new Map(),stx=relatedText('styles','styles.xml');
   if(stx){const st=xml(stx),custom=new Map(),nfs=els(st,'numFmts')[0];
     // 只读 numFmts，忽略条件格式 dxf 里可能同号的 numFmt。
     for(const nf of nfs?els(nfs,'numFmt'):[])custom.set(+nf.getAttribute('numFmtId'),customDateKind(nf.getAttribute('formatCode')||''));
     const timeIds=new Set([18,19,20,21,32,33,45,47]),xfs=els(st,'cellXfs')[0];
     if(xfs)[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),kind=custom.get(id)??(id===46?'elapsed':timeIds.has(id)?'time':DATE_IDS.has(id)?'date':'');if(kind)dateStyles.set(i,kind)});
   }
-  const sheets=[];for(const sh of els(wb,'sheet')){/* r:id 的命名空间在 Transitional 与 Strict（purl.oclc.org）两种格式下不同，按本地名 + 命名空间后缀匹配 */const rid=([...sh.attributes].find(a=>a.localName==='id'&&/\/relationships$/.test(a.namespaceURI||''))||{}).value||sh.getAttribute('r:id');const target=rels[rid]||'';
-    sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
-  if(!sheets.length)throw new Error(t('badZip'));
-  const load=(sheet)=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sxml){sheet.grid={rows:[],cols:0};return sheet.grid}const doc=xml(sxml);const rows=[];const sharedF=Object.create(null);let cols=0;
+  const sheets=[];for(const sh of els(wb,'sheet')){
+    // Transitional 与 Strict 的 r:id 命名空间不同；非 worksheet 部件（如 chartsheet）不参与比较。
+    const rid=([...sh.attributes].find(a=>a.localName==='id'&&/\/relationships$/.test(a.namespaceURI||''))||{}).value||sh.getAttribute('r:id'),rel=rels.get(rid);
+    if(rel&&!rel.type.endsWith('/worksheet'))continue;
+    sheets.push({name:xstr(sh.getAttribute('name')||''),target:rel?.target||'',hidden:/hidden/i.test(sh.getAttribute('state')||'')});
+  }
+  if(!sheets.length)bad();
+  const load=sheet=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sheet.target||!sxml)bad();
+    const doc=xml(sxml),root=doc.documentElement,body=[...root.children].find(c=>c.localName==='sheetData');
+    if(root.localName!=='worksheet'||!body)bad();
+    const rows=[],sharedF=Object.create(null);let cols=0;
     /* 损坏或伪造的工作表可能声明远超 XLSX 规格上限（1048576 行 × 16384 列）的行 / 列号：
        照单全收会把 rows 数组撑到那个长度、随后补空行的循环直接耗尽内存，一律钳制在上限以内 */
-    let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=Number.isInteger(rn)&&rn>0?rn-1:lastRi+1;/* 超出规格上限（或非整数行号）的行直接丢弃：钳到末行会让多个伪造行互相覆盖，小数下标则会变成数组的普通属性而丢数据 */if(ri>1048575)continue;lastRi=ri;const cells=[];let ci=-1;
+    let lastRi=-1;for(const r of body.children){if(r.localName!=='row')continue;const rn=+r.getAttribute('r'),ri=Number.isInteger(rn)&&rn>0?rn-1:lastRi+1;/* 超出规格上限（或非整数行号）的行直接丢弃：钳到末行会让多个伪造行互相覆盖，小数下标则会变成数组的普通属性而丢数据 */if(ri>1048575)continue;lastRi=ri;const cells=[];let ci=-1;
       for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;if(ci<0||ci>16383)continue;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
         for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF[si]={f:ch.textContent,r:ri,c:ci}}else if(sh&&sharedF[si]){const mf=sharedF[si];f='='+shiftFormula(mf.f,ri-mf.r,ci-mf.c)}}else if(ch.localName==='is')raw=xstr([...els(ch,'t')].filter(x=>x.parentNode.localName!=='rPh').map(x=>x.textContent).join(''))/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
         if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='str')v=xstr(raw??'');else if(tt==='inlineStr'||tt==='e')v=raw??'';else if(tt==='d')v=isoDateCell(raw);else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(dateStyles.get(s)==='elapsed'?serialToElapsed(n):serialToDate(n,d1904,dateStyles.get(s)==='time',compat)):String(+n.toPrecision(15))):raw}else v='';
