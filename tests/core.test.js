@@ -492,11 +492,11 @@ test('excel.pairBlock: 改动块很大时按位置配对也要求相似度，完
   assert.deepEqual([...seenA], idx); assert.deepEqual([...seenB], idx);
 });
 
-test('excel.inflate: 头部声明的解压后大小被伪造得极大时不会按它分配内存，仍能正确解压', () => {
-  const zlib = require('node:zlib');
-  const raw = Buffer.from('hello hello hello '.repeat(5000));
-  const z = zlib.deflateRawSync(raw);
-  for (const claimed of [0xFFFFFFFF, 1, 0]) assert.equal(Buffer.compare(Buffer.from(inflate(new Uint8Array(z), claimed)), raw), 0);
+test('excel.inflate: 在输出前校验声明长度，解压结果必须准确匹配', () => {
+  const zlib = require('node:zlib'), raw = Buffer.from('hello '.repeat(5000));
+  const z = new Uint8Array(zlib.deflateRawSync(raw));
+  assert.deepEqual(Buffer.from(inflate(z, raw.length)), raw);
+  for (const size of [0xffffffff, 1, 0, raw.length + 1]) assert.throws(() => inflate(z, size), /badZip/);
 });
 
 test('inlineDiff: 自定义忽略规则与忽略空白在行内差异中不再被标为删改，且仍可无损还原', () => {
@@ -997,4 +997,12 @@ test('XLSX 部件路径：以当前部件目录为基准解析相对路径', () 
   assert.equal(resolvePart('xl/', '/worksheets/data.xml'), 'worksheets/data.xml');
   assert.equal(resolvePart('xl/', '../../outside.xml'), '');
   assert.equal(resolvePart('', 'https://example.invalid/sheet.xml'), '');
+});
+
+test('readZip: 本地条目名、长度必须与中央目录相符', async () => {
+  const buf = Buffer.from(await zipLib.zipStore([{ name: 'data', data: new TextEncoder().encode('tea') }]).arrayBuffer());
+  for (const offset of [22, 30]) {
+    const changed = Buffer.from(buf); changed[offset] ^= 1;
+    assert.throws(() => zipLib.readZip(Uint8Array.from(changed).buffer).text('data'), /badZip/);
+  }
 });

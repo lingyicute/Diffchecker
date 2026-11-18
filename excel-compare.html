@@ -165,6 +165,8 @@ I18N.en.compareTooLarge='This comparison is too large for the browser. Compare s
 I18N.zh.compareTooLarge='比较范围过大，请缩小数据范围或分工作表比较。';
 I18N.en.compareFailed='Could not compare these sheets.';
 I18N.zh.compareFailed='无法完成表格比较。';
+I18N.en.zipPartTooLarge='A workbook part exceeds the 64 MiB uncompressed limit.';
+I18N.zh.zipPartTooLarge='工作簿的单个部件解压后超过 64 MiB 上限。';
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -176,11 +178,15 @@ const notice=m=>{const n=$('notice');n.textContent=m;n.classList.add('show');cle
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ===================== inflate (RFC1951) & ZIP reader ===================== */
-function inflate(src,expected){let pos=0,bb=0,bc=0;/* 压缩头里的 usize 可能是伪造的；DEFLATE 的压缩比不超过约 1032:1，据此封顶初始缓冲区，避免被分配出巨大的内存 */let out=new Uint8Array(Math.min(expected||Math.max(1024,src.length*4),src.length*1032+1024)),op=0;
-  const grow=n=>{if(op+n>out.length){const o=new Uint8Array(Math.max(out.length*2,op+n));o.set(out);out=o}};
+function inflate(src,expected){let pos=0,bb=0,bc=0,op=0;const bad=()=>{throw new Error(t('badZip'))};
+  const max=Math.min(MAX_XLSX_PART,src.length*1032+1024),limit=expected??max;
+  if(!Number.isSafeInteger(limit)||limit<0||limit>max)bad();
+  // 头部长度不能用于直接分配大缓冲区；输出还必须始终在声明大小和部件预算内。
+  let out=new Uint8Array(Math.min(limit,Math.max(1024,Math.min(65536,src.length*4))));
+  const grow=n=>{const next=op+n;if(next>limit)bad();if(next>out.length){const o=new Uint8Array(Math.min(limit,Math.max(out.length*2,next)));o.set(out);out=o}};
   const bit=()=>{if(bc===0){if(pos>=src.length)throw new Error(t('badZip'));bb=src[pos++];bc=8}const b=bb&1;bb>>>=1;bc--;return b};
   const bits=n=>{while(bc<n){if(pos>=src.length)throw new Error(t('badZip'));bb|=src[pos++]<<bc;bc+=8}const v=bb&((1<<n)-1);bb>>>=n;bc-=n;return v};
-  const tree=l=>{const count=new Uint16Array(16),symbol=new Uint16Array(l.length),offs=new Uint16Array(16);for(const x of l)count[x]++;count[0]=0;for(let i=1;i<16;i++)offs[i]=offs[i-1]+count[i-1];for(let i=0;i<l.length;i++)if(l[i])symbol[offs[l[i]]++]=i;return{count,symbol}};
+  const tree=l=>{const count=new Uint16Array(16),symbol=new Uint16Array(l.length),offs=new Uint16Array(16);for(const x of l)count[x]++;count[0]=0;for(let i=1,left=1;i<16;i++){left=left*2-count[i];if(left<0)bad();offs[i]=offs[i-1]+count[i-1]}for(let i=0;i<l.length;i++)if(l[i])symbol[offs[l[i]]++]=i;return{count,symbol}};
   const sym=tr=>{let sum=0,cur=0,len=0;do{cur=2*cur+bit();len++;if(len>15)throw new Error(t('badZip'));sum+=tr.count[len];cur-=tr.count[len]}while(cur>=0);return tr.symbol[sum+cur]};
   const LB=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258],LE=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0],DB=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577],DE=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13],CLO=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
   const fl=new Uint8Array(288);for(let i=0;i<144;i++)fl[i]=8;for(let i=144;i<256;i++)fl[i]=9;for(let i=256;i<280;i++)fl[i]=7;for(let i=280;i<288;i++)fl[i]=8;const fd=new Uint8Array(30).fill(5);const FL=tree(fl),FD=tree(fd);
@@ -188,11 +194,12 @@ function inflate(src,expected){let pos=0,bb=0,bc=0;/* 压缩头里的 usize 可�
   let final;do{final=bits(1);const type=bits(2);
     if(type===0){bb=0;bc=0;const len=src[pos]|(src[pos+1]<<8),nlen=src[pos+2]|(src[pos+3]<<8);if(pos+4+len>src.length||(len^nlen)!==0xFFFF)throw new Error(t('badZip'));pos+=4;grow(len);out.set(src.subarray(pos,pos+len),op);op+=len;pos+=len}
     else if(type===1)inflateBlock(FL,FD);
-    else if(type===2){const hlit=bits(5)+257,hdist=bits(5)+1,hclen=bits(4)+4;const cl=new Uint8Array(19);for(let i=0;i<hclen;i++)cl[CLO[i]]=bits(3);const ct=tree(cl);const lens=new Uint8Array(hlit+hdist);
+    else if(type===2){const hlit=bits(5)+257,hdist=bits(5)+1,hclen=bits(4)+4;if(hlit>286)bad();const cl=new Uint8Array(19);for(let i=0;i<hclen;i++)cl[CLO[i]]=bits(3);const ct=tree(cl);const lens=new Uint8Array(hlit+hdist);
       for(let i=0;i<hlit+hdist;){const s=sym(ct);if(s<16)lens[i++]=s;else{let p=0,r;if(s===16){if(!i)throw new Error(t('badZip'));p=lens[i-1];r=3+bits(2)}else if(s===17)r=3+bits(3);else r=11+bits(7);if(i+r>hlit+hdist)throw new Error(t('badZip'));while(r--)lens[i++]=p}}
-      inflateBlock(tree(lens.subarray(0,hlit)),tree(lens.subarray(hlit)))}
+      if(!lens[256])bad();inflateBlock(tree(lens.subarray(0,hlit)),tree(lens.subarray(hlit)))}
     else throw new Error(t('badZip'))}while(!final);
-  return out.subarray(0,op)}
+  if(pos!==src.length||(expected!=null&&op!==expected))bad();return out.subarray(0,op)}
+const MAX_XLSX_PART=64*1024*1024;
 function readZip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf),bad=()=>{throw new Error(t('badZip'))};let eocd=-1,dirEnd=0,dirStart=0,count=0;
   // EOCD 的注释最多 65535 字节；注释里也可能含 PK\x05\x06，必须核对注释长度和中央目录位置，不能只凭签名认定结束记录
   for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--){if(dv.getUint32(i,true)!==0x06054b50||i+22+dv.getUint16(i+20,true)!==u8.length)continue;
@@ -201,15 +208,20 @@ function readZip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf),bad=()=>
     eocd=i;dirStart=start;dirEnd=end;count=n;break}
   if(eocd<0)bad();let p=dirStart;const files=Object.create(null),lower=Object.create(null),dec=new TextDecoder();
   for(let i=0;i<count;i++){if(p+46>dirEnd||dv.getUint32(p,true)!==0x02014b50)bad();
-    const method=dv.getUint16(p+10,true),crc=dv.getUint32(p+16,true),csize=dv.getUint32(p+20,true),usize=dv.getUint32(p+24,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+    const flags=dv.getUint16(p+8,true),method=dv.getUint16(p+10,true),crc=dv.getUint32(p+16,true),csize=dv.getUint32(p+20,true),usize=dv.getUint32(p+24,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
     if(p+46+nl+el+cl>dirEnd||lo+30>dirStart)bad();const name=dec.decode(u8.subarray(p+46,p+46+nl));
-    files[name]={method,crc,csize,usize,lo};lower[name.toLowerCase()]=name;p+=46+nl+el+cl}
+    const lc=name.toLowerCase();if(!name||lower[lc]!==undefined)bad();
+    files[name]={flags,method,crc,csize,usize,lo,nl,np:p+46};lower[lc]=name;p+=46+nl+el+cl}
   if(p!==dirEnd)bad();
   /* OPC 部件名不区分大小写；文件名映射不能继承 Object.prototype（如 constructor / toString）。解压后核对长度与 CRC，避免损坏的工作簿被静默当成正常数据。 */
   return {get(name){const key=String(name),actual=files[key]?key:lower[key.toLowerCase()];if(actual===undefined)return null;const f=files[actual];
-    if(dv.getUint32(f.lo,true)!==0x04034b50||dv.getUint16(f.lo+8,true)!==f.method)bad();
-    const nl=dv.getUint16(f.lo+26,true),el=dv.getUint16(f.lo+28,true),start=f.lo+30+nl+el;
-    if(start>dirStart||f.csize>dirStart-start)bad();const data=u8.subarray(start,start+f.csize);
+    if(f.usize>MAX_XLSX_PART)throw new Error(t('zipPartTooLarge'));
+    const lo=f.lo;
+    if(dv.getUint32(lo,true)!==0x04034b50||dv.getUint16(lo+8,true)!==f.method||dv.getUint16(lo+6,true)!==f.flags||f.flags&65)bad();
+    if(!(f.flags&8)&&(dv.getUint32(lo+14,true)!==f.crc||dv.getUint32(lo+18,true)!==f.csize||dv.getUint32(lo+22,true)!==f.usize))bad();
+    const nl=dv.getUint16(lo+26,true),el=dv.getUint16(lo+28,true),start=lo+30+nl+el;
+    if(nl!==f.nl||start>dirStart||f.csize>dirStart-start)bad();for(let i=0;i<nl;i++)if(u8[lo+30+i]!==u8[f.np+i])bad();
+    const data=u8.subarray(start,start+f.csize);
     const out=f.method===0?data:f.method===8?inflate(data,f.usize):(()=>{throw new Error('unsupported compression '+f.method)})();
     if(out.length!==f.usize||crc32(out)!==f.crc)bad();return out},
     text(name){const d=this.get(name);return d?dec.decode(d):null},names:Object.keys(files)}}
