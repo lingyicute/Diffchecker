@@ -191,12 +191,15 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   <h3 data-i18n="export">Export</h3>
   <label data-i18n="format">Format</label>
   <div class="choices" id="fmtChoices"><button class="choice" data-fmt="png" aria-pressed="true"><b>PNG</b><small data-i18n="fmtPng">Current comparison view at full resolution.</small></button><button class="choice" data-fmt="pdf" aria-pressed="false"><b>PDF</b><small data-i18n="fmtPdf">Report via your browser's PDF printer.</small></button></div>
+  <div id="pngOptions"><label class="chk"><input type="checkbox" id="expWorking"> <span data-i18n="workingExport">Export at working resolution</span></label></div>
+  <div id="pdfOptions" class="hidden">
   <label data-i18n="reportContent">Report content</label>
   <label class="chk"><input type="checkbox" id="expSrc" checked> <span data-i18n="srcImages">Source images</span> — <small data-i18n="srcImagesD">Add the original and changed images to the report.</small></label>
   <label class="chk"><input type="checkbox" id="expList" checked> <span id="expListLbl">Change list</span> — <small data-i18n="chgListD">Add original and changed crops, with an optional difference preview, for each detected region.</small></label>
   <label data-i18n="diffStyle">Difference style</label>
   <div class="seg" id="expDiffStyle"><button data-s="subtract" aria-pressed="true" data-i18n="m.subtract">Subtract</button><button data-s="none" aria-pressed="false" data-i18n="none">None</button></div>
   <p class="tip" data-i18n="alwaysIncluded">The comparison result and summary are always included.</p>
+  </div>
   <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div>
 </div></div>
 <div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
@@ -214,6 +217,8 @@ Object.assign(I18N.en,{noMatchingRegions:'Pixels differ, but no regions match th
 Object.assign(I18N.zh,{noMatchingRegions:'图片像素有差异，但没有符合当前检测设置的区域。',truncatedRegions:'仅显示部分差异区域。请缩小检测范围或提高门槛。'});
 Object.assign(I18N.en,{imageTooLarge:'{name} exceeds the browser’s supported image size.',compareFailed:'Could not render these images for comparison.'});
 Object.assign(I18N.zh,{imageTooLarge:'{name} 超出图片尺寸上限。',compareFailed:'无法绘制图片对比结果。'});
+Object.assign(I18N.en,{workingExport:'Export at working resolution',pngTooLarge:'The full-size PNG is too large. Select working resolution and export again.'});
+Object.assign(I18N.zh,{workingExport:'以工作分辨率导出',pngTooLarge:'原始尺寸的 PNG 过大，请勾选工作分辨率后重试。'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -329,13 +334,20 @@ function paintBaseMode(ctx,mode,a,b){const W=a.width,H=a.height;ctx.clearRect(0,
     if(x<W)ctx.drawImage(b,x,0,W-x,H,x,0,W-x,H);
   }else ctx.drawImage(flickShow()===0?a:b,0,0);
 }
-function compositeCanvas(mode){const W=S.W,H=S.H,c=mk(W,H),ctx=c.getContext('2d');
-  if(mode==='fade'||mode==='slider'||mode==='flicker')paintBaseMode(ctx,mode,baseA,baseB);
-  else if(mode==='subtract'){const out=ctx.createImageData(W,H);diffPixels(dataA.data,dataB.data,null,null,out.data);ctx.putImageData(out,0,0)}
-  else if(mode==='highlight'){const out=ctx.createImageData(W,H),o=out.data,a=dataA.data,b=dataB.data,thr=S.hlThr,ctxMode=S.hlMode==='context';
-    for(let i=0,p=0;i<diffMap.length;i++,p+=4){if(diffMap[i]>thr){if(signMap[i]>0){o[p]=235;o[p+1]=50;o[p+2]=35}else{o[p]=30;o[p+1]=180;o[p+2]=90}o[p+3]=255}else if(ctxMode){const fa=a[p+3]/255;const g=(a[p]*.299+a[p+1]*.587+a[p+2]*.114)*fa+255*(1-fa);const v=Math.round(255-(255-g)*.45);o[p]=o[p+1]=o[p+2]=v;o[p+3]=255}else{o[p]=o[p+1]=o[p+2]=255;o[p+3]=255}}
-    ctx.putImageData(out,0,0)}
-  return c}
+function compositeCanvas(mode,sourceA=baseA,sourceB=baseB){const W=sourceA.width,H=sourceA.height,c=mk(W,H),ctx=c.getContext('2d');
+  if(mode==='fade'||mode==='slider'||mode==='flicker'){paintBaseMode(ctx,mode,sourceA,sourceB);return c}
+  const cached=sourceA===baseA&&sourceB===baseB;
+  const a=cached?dataA.data:sourceA.getContext('2d').getImageData(0,0,W,H).data,b=cached?dataB.data:sourceB.getContext('2d').getImageData(0,0,W,H).data;
+  const out=ctx.createImageData(W,H),o=out.data;
+  if(mode==='subtract')diffPixels(a,b,null,null,o);
+  else if(mode==='highlight'){
+    const d=cached?diffMap:new Uint8Array(W*H),sign=cached?signMap:new Int8Array(W*H),thr=S.hlThr,context=S.hlMode==='context';
+    if(!cached)diffPixels(a,b,d,sign);
+    for(let i=0,p=0;i<d.length;i++,p+=4){if(d[i]>thr){if(sign[i]>0){o[p]=235;o[p+1]=50;o[p+2]=35}else{o[p]=30;o[p+1]=180;o[p+2]=90}}
+      else{const fa=a[p+3]/255,g=(a[p]*.299+a[p+1]*.587+a[p+2]*.114)*fa+255*(1-fa);o[p]=o[p+1]=o[p+2]=context?Math.round(255-(255-g)*.45):255}o[p+3]=255}
+  }
+  ctx.putImageData(out,0,0);return c;
+}
 function flickShow(){return holdSide||flickState?(holdSide===1?0:holdSide===2?1:flickState):0}
 /* ===================== view / stage ===================== */
 const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null;
@@ -540,12 +552,24 @@ let expFmt='png',expDiff='subtract';
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(S.A?.name,'original')+'-vs-'+stem(S.B?.name,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'image-comparison';
 $('exportBtn').onclick=()=>$('exportModal').classList.add('open');$('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
-$('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;expFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
+$('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;expFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)));$('pngOptions').classList.toggle('hidden',expFmt!=='png');$('pdfOptions').classList.toggle('hidden',expFmt!=='pdf')};
 $('expDiffStyle').onclick=e=>{const b=e.target.closest('button');if(!b)return;expDiff=b.dataset.s;$('expDiffStyle').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
-function exportCanvas(){if(S.mode==='split'){const c=mk(S.W*2+16,S.H),cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,c.width,c.height);cx.drawImage(baseA,0,0);cx.drawImage(baseB,S.W+16,0);return c}const c=compositeCanvas(S.mode);if(overlay)c.getContext('2d').drawImage(overlay,0,0);return c}
-$('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(!S.W)return;const c=exportCanvas();
-  if(expFmt==='png'){c.toBlob(b=>b?download(b,baseName()+'.png'):notice(t('exportFailed')),'image/png');return}
+const MAX_EXPORT_PIXELS=16*1024*1024;
+function exportCanvas(native=false){
+  const w=native?Math.max(S.A.w,S.B.w):S.W,h=native?Math.max(S.A.h,S.B.h):S.H,split=S.mode==='split';
+  if(!fitsCanvas(split?w*2+16:w,h,MAX_EXPORT_PIXELS))throw new Error('pngTooLarge');
+  const [a,b]=w===S.W&&h===S.H?[baseA,baseB]:makeBases(w,h);
+  if(split){const c=mk(w*2+16,h),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
+  const c=compositeCanvas(S.mode,a,b);if(overlay)c.getContext('2d').drawImage(overlay,0,0,w,h);return c;
+}
+$('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(!S.W)return;
+  if(expFmt==='png'){
+    try{const filename=baseName()+'.png',c=exportCanvas(!$('expWorking').checked),blob=await new Promise(r=>c.toBlob(r,'image/png'));
+      if(!blob)throw new Error('PNG encoding failed');download(blob,filename);
+    }catch(e){console.error(e);notice(t(e.message==='pngTooLarge'?'pngTooLarge':'exportFailed'))}return
+  }
+  const c=exportCanvas();
   const rep=$('report');const esc=s=>String(s).replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x]));
   let h=`<h1>${t('rptTitle')}</h1><table><tr><th>${t('rptOrig')}</th><td>${esc(S.A.name)} (${S.A.w}×${S.A.h})</td></tr><tr><th>${t('rptChg')}</th><td>${esc(S.B.name)} (${S.B.w}×${S.B.h})</td></tr><tr><th>${t('rptMode')}</th><td>${esc(t('m.'+S.mode))}</td></tr><tr><th>${t('rptSummary')}</th><td>${t(S.regions.length===1?'summary1':'summary',{p:(100*diffCount/(S.W*S.H)).toFixed(2),n:S.regions.length})}</td></tr><tr><th>${t('rptAlign')}</th><td>dx ${S.align.dx.toFixed(1)}, dy ${S.align.dy.toFixed(1)}, rot ${S.align.rot.toFixed(2)}°, scale ${S.align.scale.toFixed(4)}</td></tr></table><h2>${t('rptCmp')}</h2><img src="${c.toDataURL('image/png')}">`;
   if($('expSrc').checked)h+=`<h2>${t('srcImages')}</h2><div class="srcs"><div><img src="${baseA.toDataURL('image/png')}"><small>${t('fOriginal')}</small></div><div><img src="${baseB.toDataURL('image/png')}"><small>${t('fChanged')}</small></div></div>`;
