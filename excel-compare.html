@@ -71,7 +71,7 @@ tr.focus td,th.focus{box-shadow:inset 0 -2px 0 var(--accent)}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
 .identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
 .identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
-.panel{position:fixed;top:0;right:0;height:100%;width:320px;background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);visibility:hidden;transition:transform .2s,visibility .2s;z-index:50;display:flex;flex-direction:column}
+.panel{position:fixed;top:0;right:0;height:100%;width:min(320px,100vw);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);visibility:hidden;transition:transform .2s,visibility .2s;z-index:50;display:flex;flex-direction:column}
 .panel.open{transform:none;visibility:visible}
 .panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600}
 .panel-body{overflow:auto;padding:8px 16px 24px}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
@@ -118,7 +118,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
     <button class="btn primary" id="findBtn" data-i18n="find">Find difference</button>
     <button class="btn" id="exampleBtn" data-i18n="tryExample">Try example</button>
     <button class="btn" id="swapBtn" data-i18n="swap">Swap</button>
-    <button class="btn" id="toolsBtn">⚙ <span data-i18n="tools">Tools</span></button>
+    <button class="btn" id="toolsBtn" aria-controls="panel" aria-expanded="false">⚙ <span data-i18n="tools">Tools</span></button>
     <div class="seg" id="modeSeg"><button data-mode="table" aria-pressed="true" data-i18n-title="tipTable" title="Match up rows and columns using the header row, best for structured tables" data-i18n="table">Table</button><button data-mode="rows" aria-pressed="false" data-i18n-title="tipRows" title="Compare row by row in order, works with any layout" data-i18n="rows">Rows</button></div>
     <div class="seg" id="valSeg"><button data-val="standard" aria-pressed="true" data-i18n="standard">Standard</button><button data-val="formulas" aria-pressed="false" data-i18n="formulas">Formulas</button></div>
   </div>
@@ -655,7 +655,8 @@ function goChange(dir){const n=+$('gridWrap').dataset.changes||0;if(!n)return;fo
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.mode=b.dataset.mode;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
 $('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
-$('toolsBtn').onclick=()=>$('panel').classList.toggle('open');$('panelClose').onclick=()=>$('panel').classList.remove('open');
+function setPanel(open){$('panel').classList.toggle('open',open);$('toolsBtn').setAttribute('aria-expanded',String(open));$(open?'panelClose':'toolsBtn').focus()}
+$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);
 document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{const k=sw.dataset.opt;opts[k]=!opts[k];saveOpts();syncUI();if(!RES)return;if(k==='hideRows'){expanded=new Set();render()}else if(k==='hideCols'||k==='showOld')render();else run()});
 function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));$('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)))}
 
@@ -711,7 +712,7 @@ function exampleWb(v){const H=['Order ID','Site','Severity','Assigned within (h)
 $('exampleBtn').onclick=()=>{cancelLoads();setWorkbook('A',exampleWb(0),'work-orders-v1.xlsx');setWorkbook('B',exampleWb(1),'work-orders-v2.xlsx');run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 /* Esc 关闭侧栏与弹窗 */
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open)$('panel').classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open&&$('panel').classList.contains('open')){e.preventDefault();setPanel(false)}});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
 $('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 applyTheme();syncUI();applyLang();
