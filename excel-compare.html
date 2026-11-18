@@ -350,6 +350,11 @@ function resolvePart(dir,target){
   }
   return out.join('/');
 }
+// 只缓存最近使用的两个工作表；浏览许多表时不保留所有已展开的网格。
+function cachedSheetLoader(read){const cache=new Map();return sheet=>{
+  const grid=cache.get(sheet)??read(sheet);cache.delete(sheet);cache.set(sheet,grid);
+  if(cache.size>2)cache.delete(cache.keys().next().value);return grid;
+}}
 function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'))};
   const relsOf=path=>{const i=path.lastIndexOf('/')+1,dir=path.slice(0,i),x=z.text(dir+'_rels/'+path.slice(i)+'.rels'),m=[];
     if(x!=null)for(const r of els(xml(x),'Relationship'))if(r.getAttribute('TargetMode')!=='External')m.push({id:r.getAttribute('Id'),type:r.getAttribute('Type')||'',target:resolvePart(dir,r.getAttribute('Target'))});return m};
@@ -374,10 +379,10 @@ function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'
     sheets.push({name:xstr(sh.getAttribute('name')||''),target:rel?.target||'',hidden:/hidden/i.test(sh.getAttribute('state')||'')});
   }
   if(!sheets.length)bad();
-  const load=sheet=>{if(sheet.grid)return sheet.grid;const sxml=z.text(sheet.target);if(!sheet.target||!sxml)bad();
+  const load=cachedSheetLoader(sheet=>{const sxml=z.text(sheet.target);if(!sheet.target||!sxml)bad();
     const doc=xml(sxml),root=doc.documentElement,body=[...root.children].find(c=>c.localName==='sheetData');
     if(root.localName!=='worksheet'||!body)bad();
-    return sheet.grid=parseSheetRows(body,sst,dateStyles,d1904,compat,richText)};
+    return parseSheetRows(body,sst,dateStyles,d1904,compat,richText)});
   return {sheets,load,type:'xlsx'}}
 const MAX_IMPORTED_CELLS=1000000;
 function parseSheetRows(body,sst,dateStyles,d1904,compat,richText,limit=MAX_IMPORTED_CELLS){

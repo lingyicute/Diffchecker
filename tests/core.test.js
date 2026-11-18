@@ -1067,6 +1067,19 @@ test('XLSX 部件路径：以当前部件目录为基准解析相对路径', () 
   assert.equal(resolvePart('', 'https://example.invalid/sheet.xml'), '');
 });
 
+test('XLSX 工作表缓存：最近使用的网格可复用，较早的网格释放', () => {
+  const { cachedSheetLoader } = run(between(script('excel-compare.html'), 'function cachedSheetLoader', 'function parseXlsx'), 'cachedSheetLoader');
+  let count = 0;
+  const load = cachedSheetLoader(name => { if (name === 'bad') throw new Error('malformed'); return { name, count: ++count }; });
+  const a = load('a'), b = load('b');
+  assert.equal(load('a'), a);
+  assert.throws(() => load('bad'), /malformed/);
+  load('c');
+  assert.equal(load('a'), a);
+  assert.notEqual(load('b'), b);
+  assert.equal(count, 4);
+});
+
 test('readZip: 本地条目名、长度必须与中央目录相符', async () => {
   const buf = Buffer.from(await zipLib.zipStore([{ name: 'data', data: new TextEncoder().encode('tea') }]).arrayBuffer());
   for (const offset of [22, 30]) {
