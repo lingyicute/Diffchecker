@@ -1029,3 +1029,12 @@ test('共享公式：移动相对引用但保留结构化列名和工作表范�
   assert.equal(shift('S1:S3!C4+[Book.xlsx]S1!d2', 1, 1), 'S1:S3!D5+[Book.xlsx]S1!e3');
   assert.equal(shift('A1+A1.local+Table1[A1]', 1, 0), 'A2+A1.local+Table1[A1]');
 });
+
+test('XLSX 字符串导出保留回车、控制字符及有效代理对', () => {
+  for (const [f, end] of [['text-compare.html', 'function colName'], ['excel-compare.html', 'function makeXlsx']]) {
+    const { xe } = run(between(script(f), 'const xe=', end), 'xe');
+    const s = 'first\r\nsecond\0\x1b 😀\ud800\ufffe_x000D_';
+    assert.equal(excel.xstr(xe(s)), s);
+    assert.doesNotMatch(xe(s), /[\x00\r\x1b\ufffe]/);
+  }
+});
