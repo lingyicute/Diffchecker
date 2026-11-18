@@ -437,7 +437,7 @@ function countText(v){let lines=1,words=0,run=false;const n=v.length;for(let i=0
   if(c===10||c===13){if(c===13&&v.charCodeAt(i+1)===10)i++;if(i<n-1)lines++;run=false}else if(isWs(c))run=false;else if(isCjk(c)){words++;run=false}else if(!run){run=true;words++}}
   return {lines,words,chars:n}}
 function updateMeta(side){for(const [s,id,ta] of [['A','metaA',txtA],['B','metaB',txtB]])if(!side||side===s){const v=ta.value,c=(n,k)=>`${n} ${t(n===1?k+'1':k)}`;/* 数量为 1 时英文用单数（1 line · 1 word），与差异统计的写法一致 */if(!v){$(id).textContent='';continue}const {lines,words,chars}=countText(v);$(id).textContent=`${c(lines,'lines')} · ${c(words,'words')} · ${c(chars,'characters')}`}}
-function run(keep){const d=computeDiff(txtA.value,txtB.value,opts);lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:'smooth',block:'start'})}
+function run(keep){clearTimeout(rt);rt=0;const input={left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B},d=computeDiff(input.left,input.right,opts);d.input=input;lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:'smooth',block:'start'})}
 const CTX=3;// 隐藏未修改行时，每个折叠块首尾各保留的行数（页面、PNG 导出共用）
 function render(){
   const d=lastDiff;if(!d)return;const scroll=$('diffScroll');
@@ -496,21 +496,25 @@ function focusRow(wrap,i){const row=wrap.querySelector('table')?.rows[i];if(!row
 function goChange(dir){const n=+$('diffScroll').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('findBtn').onclick=()=>run();
-let rt;const mt={A:0,B:0};/* 统计改为停顿 150ms 后再做：超大文本下每敲一个键都把全文扫一遍会卡住输入；两侧各用一个计时器，快速切换输入框时另一侧的统计不会被取消 */
-const realtimeRun=side=>{clearTimeout(mt[side]);mt[side]=setTimeout(()=>updateMeta(side),150);if(opts.realtime){clearTimeout(rt);rt=setTimeout(run,250)}};
+let rt=0;const mt={A:0,B:0},loadVersion={A:0,B:0};/* 统计改为停顿 150ms 后再做：超大文本下每敲一个键都把全文扫一遍会卡住输入；两侧各用一个计时器，快速切换输入框时另一侧的统计不会被取消 */
+function clearResult(){clearTimeout(rt);rt=0;lastDiff=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').classList.remove('open');$('diffScroll').replaceChildren()}
+const cancelLoads=()=>{loadVersion.A++;loadVersion.B++};
+const realtimeRun=side=>{loadVersion[side]++;clearTimeout(mt[side]);mt[side]=setTimeout(()=>updateMeta(side),150);if(opts.realtime){clearTimeout(rt);rt=setTimeout(()=>run(true),250)}else clearResult()};
 txtA.addEventListener('input',()=>realtimeRun('A'));txtB.addEventListener('input',()=>realtimeRun('B'));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();run()}});
-$('swapBtn').onclick=()=>{const v=txtA.value;txtA.value=txtB.value;txtB.value=v;fileNames={A:fileNames.B,B:fileNames.A};updateMeta();if(lastDiff)run(true)};
-$('clearAllBtn').onclick=()=>{clearTimeout(rt);txtA.value='';txtB.value='';fileNames={A:'',B:''};updateMeta();lastDiff=null;$('result').classList.add('hidden')};
-document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const s=b.dataset.clear;(s==='A'?txtA:txtB).value='';fileNames[s]='';updateMeta(s);if(lastDiff||opts.realtime)run(true)});
+$('swapBtn').onclick=()=>{cancelLoads();const v=txtA.value;txtA.value=txtB.value;txtB.value=v;fileNames={A:fileNames.B,B:fileNames.A};updateMeta();if(lastDiff||opts.realtime)run(true)};
+$('clearAllBtn').onclick=()=>{cancelLoads();txtA.value='';txtB.value='';fileNames={A:'',B:''};updateMeta();clearResult()};
+document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const s=b.dataset.clear;loadVersion[s]++;(s==='A'?txtA:txtB).value='';fileNames[s]='';updateMeta(s);if(lastDiff||opts.realtime)run(true)});
 document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const ta=b.dataset.copy==='A'?txtA:txtB;let ok=true;try{await navigator.clipboard.writeText(ta.value)}catch(e){ta.select();try{ok=document.execCommand('copy')}catch(e2){ok=false}}notice(t(ok?'copied':'copyFailed'))});/* 两种方式都失败时不能谎报“已复制” */
 /* file open & drag/drop */
 let openTarget='A';
 document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
-function loadFile(f,side){const r=new FileReader();r.onerror=()=>notice(t('readFailed',{name:f.name}));r.onload=()=>{const text=decodeBuf(r.result);
+function loadFile(f,side){const saved=/\.diffchecker$/i.test(f.name);if(saved)cancelLoads();else loadVersion[side]++;
+  const start={...loadVersion},current=()=>loadVersion[side]===start[side]&&(!saved||(loadVersion.A===start.A&&loadVersion.B===start.B));
+  const r=new FileReader();r.onerror=()=>{if(current())notice(t('readFailed',{name:f.name}))};r.onload=()=>{if(!current())return;const text=decodeBuf(r.result);
   {const z=text.indexOf('\u0000');if(z>=0&&z<8192){notice(t('binaryFile',{name:f.name}));return}}// 含 NUL 字节：几乎一定是二进制文件，按文本对比只会得到乱码
-  if(/\.diffchecker$/i.test(f.name)){let j=null;try{j=JSON.parse(text)}catch(e){}
+  if(saved){let j=null;try{j=JSON.parse(text)}catch(e){}
     /* 先整体校验再载入：type 与两侧文本缺一不可，否则随便一个 JSON 文件都会把两侧输入清空，还提示“已恢复保存的对比结果” */if(!j||typeof j!=='object'||j.type!=='text'||typeof j.left!=='string'||typeof j.right!=='string'){notice(t('wrongFile'));return}
     txtA.value=j.left;txtB.value=j.right;fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}
   (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta(side);notice(t('loaded',{name:f.name}));if(lastDiff||opts.realtime)run(true)};r.readAsArrayBuffer(f)}
@@ -522,32 +526,32 @@ $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.ty
 $('levelSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.level=b.dataset.level;saveOpts();syncUI();render()};
 /* tools panel */
 $('toolsBtn').onclick=()=>$('panel').classList.toggle('open');$('panelClose').onclick=()=>$('panel').classList.remove('open');
-document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{opts[sw.dataset.opt]=!opts[sw.dataset.opt];saveOpts();syncUI();const k=sw.dataset.opt;if(k==='hideUnchanged'||k==='noWrap'){if(lastDiff)render()}else if(k==='realtime'){if(opts.realtime)run(true)}else if(lastDiff||opts.realtime)run(true)});
+document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{opts[sw.dataset.opt]=!opts[sw.dataset.opt];saveOpts();syncUI();const k=sw.dataset.opt;if(k==='hideUnchanged'||k==='noWrap'){if(lastDiff)render()}else if(k==='realtime'){if(opts.realtime||rt)run(true)}else if(lastDiff||opts.realtime)run(true)});
 document.querySelectorAll('select[data-sel]').forEach(s=>s.onchange=()=>{opts[s.dataset.sel]=s.value;saveOpts();if(lastDiff)render()});
 function ruleRow(v){const div=document.createElement('div');div.className='rule';div.innerHTML=`<input type="text" value="${esc(v||'')}" placeholder="${esc(t('rulePh'))}"><button class="btn sm ghost" title="${esc(t('remove'))}">✕</button>`;div.querySelector('button').onclick=()=>{div.remove()};return div}
 $('addRule').onclick=()=>$('rules').appendChild(ruleRow(''));
-$('applyRules').onclick=()=>{opts.rules=[...$('rules').querySelectorAll('input')].map(i=>i.value).filter(Boolean);saveOpts();if(lastDiff)run(true);$('panel').classList.remove('open')};
+$('applyRules').onclick=()=>{opts.rules=[...$('rules').querySelectorAll('input')].map(i=>i.value).filter(Boolean);saveOpts();if(lastDiff||opts.realtime)run(true);$('panel').classList.remove('open')};
 function syncUI(withRules){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));document.querySelectorAll('select[data-sel]').forEach(s=>s.value=opts[s.dataset.sel]||'');
   $('typeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.type===opts.type)));$('levelSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.level===opts.level)));
   txtA.classList.toggle('wrap',!opts.noWrap);txtB.classList.toggle('wrap',!opts.noWrap);if(withRules){const R=$('rules');R.innerHTML='';(opts.rules||[]).forEach(r=>R.appendChild(ruleRow(r)))}}
 
 /* ===================== export ===================== */
 let exportFmt='pdf',exportLayout='split';
-$('exportBtn').onclick=()=>{exportLayout=opts.type;$('exportLayout').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===exportLayout)));$('exportModal').classList.add('open')};
+$('exportBtn').onclick=()=>{if(rt)run(true);exportLayout=opts.type;$('exportLayout').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===exportLayout)));$('exportModal').classList.add('open')};
 $('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;exportLayout=b.dataset.l;$('exportLayout').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 /* 以浅色主题打印；部分浏览器（如 Safari、移动端）的 window.print() 不阻塞，必须等 afterprint 之后再恢复主题与布局，否则打印出来的仍是深色 / 原布局 */
 function printLight(done){const root=document.documentElement;let ended=false;const fin=()=>{if(ended)return;ended=true;window.removeEventListener('afterprint',fin);root.dataset.theme=theme;/* 恢复为用户当前选择的主题（打印期间也可能被切换） */if(done)done()};
   root.dataset.theme='light';window.addEventListener('afterprint',fin);try{window.print()}catch(e){fin();throw e}}
-$('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(!lastDiff)return;/* 只有 PDF（打印当前页面）需要把页面临时切到所选布局：PNG 自己按 exportLayout 绘制，Excel / .diffchecker 与布局无关，不必把整张表来回重渲染两遍 */const prevType=opts.type,swap=exportFmt==='pdf'&&prevType!==exportLayout;if(swap){opts.type=exportLayout;render()}
+$('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(rt)run(true);if(!lastDiff)return;/* 只有 PDF（打印当前页面）需要把页面临时切到所选布局：PNG 自己按 exportLayout 绘制，Excel / .diffchecker 与布局无关，不必把整张表来回重渲染两遍 */const prevType=opts.type,swap=exportFmt==='pdf'&&prevType!==exportLayout;if(swap){opts.type=exportLayout;render()}
   let restore=()=>{if(swap&&opts.type===exportLayout){opts.type=prevType;render()}};
   try{if(exportFmt==='pdf'){const r=restore;restore=null;printLight(r)}else if(exportFmt==='png')await exportPng();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile(prevType)}catch(e){console.error(e);notice(t(e&&e.tooTall?'exportTooTall':'exportFailed'))}
   finally{if(restore)restore()}};
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(fileNames.A,'original')+'-vs-'+stem(fileNames.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
-function exportDiffFile(type=opts.type){const j={type:'text',version:1,left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B,options:{...opts,type},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
+function exportDiffFile(type=opts.type){const j={type:'text',version:1,...lastDiff.input,options:{...opts,type},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
 /* rows for tabular exports (pairs of left/right lines) */
 function pairedRows(collapse){const d=lastDiff,out=[];d.blocks.forEach((b,bi)=>{if(b.type==='eq'){const head=bi===0?0:CTX,tail=bi===d.blocks.length-1?0:CTX,hidden=b.rows.length-head-tail;
     if(collapse&&opts.hideUnchanged&&hidden>1&&!expanded.has(bi)){for(const r of b.rows.slice(0,head))out.push({l:r.l,r:r.r,changed:false});out.push({collapsed:hidden});for(const r of b.rows.slice(b.rows.length-tail))out.push({l:r.l,r:r.r,changed:false})}
@@ -569,7 +573,7 @@ async function exportPng(){
     if(unified){if(r.l!=null){drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);y+=LH}if(r.changed&&r.r!=null){drawLine(PAD,d.B[r.r],r.r,'ins',segs,'r',colW);y+=LH}}
     else{if(r.l!=null)drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);if(r.r!=null)drawLine(PAD+colW,d.B[r.r],r.r,r.changed?'ins':'',segs,'r',colW);y+=LH}}
   ctx.strokeStyle=dark?'#353a3f':'#e6e8eb';ctx.beginPath();ctx.moveTo(W/2,PAD+24);ctx.lineTo(W/2,H-PAD);if(!unified)ctx.stroke();
-  const blob=await new Promise(r=>cv.toBlob(r,'image/png'));if(!blob)throw new Error('toBlob failed');download(blob,baseName()+'.png');
+  const name=baseName()+'.png',blob=await new Promise(r=>cv.toBlob(r,'image/png'));if(!blob)throw new Error('toBlob failed');download(blob,name);
 }
 /* ---- minimal XLSX writer (zip STORE, inline strings) ---- */
 const CRC_T=(()=>{const T=new Int32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c}return T})();
@@ -638,7 +642,7 @@ Draft, Awaiting Approval, Scheduled, In Progress, Verification, and Closed are t
 A Scheduled order returns to Awaiting Approval when its forecast increases by more than 10%.
 Verification requires a second person for any work touching life-safety systems.`;
 const EX_B=EX_A.replace('AFOP-REV-1.8','AFOP-REV-1.9').replace('ATLAS-BUILD-1047','ATLAS-BUILD-1122').replace('2026-05-12','2026-06-09').replace('three operating regions','four operating regions').replace('the regional manager owns','the regional operations manager owns').replace('one of 18 controlled','one of 20 controlled').replace('rated High or Critical','rated Major or Critical').replace('within 8 business hours','within 6 business hours').replace('rule VR-12','rule VR-14').replace('queued for 24 hours','queued for 18 hours').replace('limited to 20 MB','limited to 25 MB').replace('more than 10%','more than 12%').replace('Technical writers and trainers maintain task guidance in plain language, while tradespeople record field evidence from mobile and desktop clients.\n','Technical writers and trainers maintain task guidance in plain language, while tradespeople record field evidence from mobile and desktop clients.\nContractors receive scoped access through the partner portal and never see cost approvals outside their own orders.\n').replace('Verification requires a second person for any work touching life-safety systems.','Verification requires a second person for any work touching life-safety or pressure systems.\nClosed orders are archived after 90 days and remain searchable for audit.');
-$('exampleBtn').onclick=()=>{txtA.value=EX_A;txtB.value=EX_B;fileNames={A:'atlas-field-operations-spec-v1.txt',B:'atlas-field-operations-spec-v2.txt'};updateMeta();run()};
+$('exampleBtn').onclick=()=>{cancelLoads();txtA.value=EX_A;txtB.value=EX_B;fileNames={A:'atlas-field-operations-spec-v1.txt',B:'atlas-field-operations-spec-v2.txt'};updateMeta();run()};
 
 /* init */
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));// 拖入文件时不让浏览器直接打开它而丢掉当前内容
