@@ -907,3 +907,17 @@ test('文本行内差异：先在整行应用规则，再按粒度比较且还�
   const w = text.makeNorm({ hideWs: true });
   assert.equal(text.inlineDiff('a b', 'ab', 'char', w).filter(s => s.t === 1).map(s => s.a).join(''), ' ');
 });
+
+test('decodeBuf: BOM 优先，奇数字节或无偏向的 NUL 不作为 UTF-16 猜测', () => {
+  for (const f of ['text-compare.html', 'excel-compare.html']) {
+    const code = between(script(f), 'function decodeBuf', f.startsWith('text') ? '\ntry{mergeOpts' : '\nasync function loadFile');
+    const ctx = { TextDecoder };
+    vm.createContext(ctx);
+    vm.runInContext(code + ';this.decodeBuf=decodeBuf', ctx);
+    const dec = b => ctx.decodeBuf(Uint8Array.from(b).buffer);
+    assert.equal(dec([0xef, 0xbb, 0xbf, 0x00, 0x00, 0x61, 0x00, 0x62, 0x00]), '\0\0a\0b\0');
+    assert.equal(dec([0x61, 0x00, 0x62, 0x00, 0x63]), 'a\0b\0c');
+    assert.equal(dec([0x00, 0x61, 0x62, 0x00]), '\0ab\0');
+    assert.equal(dec([0xff, 0xfe, 0x61, 0x00]), 'a');
+  }
+});

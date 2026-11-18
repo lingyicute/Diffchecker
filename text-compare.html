@@ -420,11 +420,18 @@ const $=id=>document.getElementById(id);
 const opts={realtime:false,hideUnchanged:false,noWrap:false,hideWs:false,lower:false,sort:false,trim:false,joinLines:false,igQuotes:false,igDashes:false,rules:[],syntax:'',preset:'highlights',type:'split',level:'smart'};
 const OPT_ENUM={preset:['highlights','redline','accessible'],type:['split','unified'],level:['smart','word','char'],syntax:['','auto','json','js','py','xml','css','sql']};
 function mergeOpts(src){if(!src||typeof src!=='object')return;for(const k of Object.keys(opts)){if(!Object.prototype.hasOwnProperty.call(src,k))continue;const v=src[k];if(k==='rules'){if(Array.isArray(v))opts.rules=v.filter(x=>typeof x==='string')}else if(OPT_ENUM[k]){if(OPT_ENUM[k].includes(v))opts[k]=v}else if(typeof v===typeof opts[k])opts[k]=v}}
-function decodeBuf(buf){const u=new Uint8Array(buf);if(u[0]===0xFF&&u[1]===0xFE)return new TextDecoder('utf-16le').decode(u);if(u[0]===0xFE&&u[1]===0xFF)return new TextDecoder('utf-16be').decode(u);
-  // 无 BOM 的 UTF-16：按 NUL 在奇 / 偶位的占比识别后按 UTF-16 解码。必须在尝试 UTF-8 之前判断：只有纯 ASCII 的 UTF-16 恰好也是合法 UTF-8，
-  // 含 é、中文等字符时 UTF-8 解码会失败，落到 GB18030 / windows-1252 后读成字符间夹 \0 的乱码（文本页还会因此误报为二进制文件）
-  {let n=0,le=0,be=0;const lim=Math.min(u.length,1024);for(let i=0;i+1<lim;i+=2){n++;if(u[i+1]===0)le++;if(u[i]===0)be++}if(n&&le/n>.3)return new TextDecoder('utf-16le').decode(u);if(n&&be/n>.3)return new TextDecoder('utf-16be').decode(u)}
-  try{return new TextDecoder('utf-8',{fatal:true}).decode(u)}catch(e){try{return new TextDecoder('gb18030',{fatal:true}).decode(u)}catch(e2){try{return new TextDecoder('windows-1252').decode(u)}catch(e3){return new TextDecoder().decode(u)}}}}
+function decodeBuf(buf){const u=new Uint8Array(buf);
+  if(u[0]===0xEF&&u[1]===0xBB&&u[2]===0xBF)return new TextDecoder('utf-8').decode(u);
+  if(u[0]===0xFF&&u[1]===0xFE)return new TextDecoder('utf-16le').decode(u);
+  if(u[0]===0xFE&&u[1]===0xFF)return new TextDecoder('utf-16be').decode(u);
+  // 猜测 UTF-16 时要求字节成对、NUL 明显偏向一侧，并验证代理对；不要让猜测盖过明确的 BOM。
+  if(u.length%2===0){let n=0,le=0,be=0;const lim=Math.min(u.length,1024);for(let i=0;i+1<lim;i+=2){n++;if(u[i+1]===0)le++;if(u[i]===0)be++}
+    const enc=n&&le/n>.3&&le>2*be?'utf-16le':n&&be/n>.3&&be>2*le?'utf-16be':'';
+    if(enc){try{const text=new TextDecoder(enc,{fatal:true}).decode(u);if(!text.includes('\0'))return text}catch(e){}}
+  }
+  for(const enc of ['utf-8','gb18030']){try{return new TextDecoder(enc,{fatal:true}).decode(u)}catch(e){}}
+  try{return new TextDecoder('windows-1252').decode(u)}catch(e){return new TextDecoder().decode(u)}
+}
 try{mergeOpts(JSON.parse(lsGet('text-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('text-opts',JSON.stringify(opts));
 let lastDiff=null,expanded=new Set(),focusIdx=-1,fileNames={A:'',B:''};
@@ -513,7 +520,7 @@ $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget
 function loadFile(f,side){const saved=/\.diffchecker$/i.test(f.name);if(saved)cancelLoads();else loadVersion[side]++;
   const start={...loadVersion},current=()=>loadVersion[side]===start[side]&&(!saved||(loadVersion.A===start.A&&loadVersion.B===start.B));
   const r=new FileReader();r.onerror=()=>{if(current())notice(t('readFailed',{name:f.name}))};r.onload=()=>{if(!current())return;const text=decodeBuf(r.result);
-  {const z=text.indexOf('\u0000');if(z>=0&&z<8192){notice(t('binaryFile',{name:f.name}));return}}// 含 NUL 字节：几乎一定是二进制文件，按文本对比只会得到乱码
+  if(text.includes('\0')){notice(t('binaryFile',{name:f.name}));return}
   if(saved){let j=null;try{j=JSON.parse(text)}catch(e){}
     /* 先整体校验再载入：type 与两侧文本缺一不可，否则随便一个 JSON 文件都会把两侧输入清空，还提示“已恢复保存的对比结果” */if(!j||typeof j!=='object'||j.type!=='text'||typeof j.left!=='string'||typeof j.right!=='string'){notice(t('wrongFile'));return}
     txtA.value=j.left;txtB.value=j.right;fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}
