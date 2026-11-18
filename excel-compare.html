@@ -239,13 +239,24 @@ function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCo
 const xstr=s=>s.indexOf('_x')<0?s:s.replace(/_x([0-9A-Fa-f]{4})_/g,(m,h)=>String.fromCharCode(parseInt(h,16)));
 // 共享公式（<f t="shared" si="…"/>）：只有主单元格带公式文本，其余单元格要按位移平移相对引用（$ 锁定的行 / 列不动，字符串与带引号的工作表名里的内容不动）
 function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
-  /* 除了 A1 形式的单元格引用，还要平移整列（A:A）与整行（1:1）引用：`ROW(1:1)` 向下填充、`SUM(A:A)` 向右填充都是常见写法，不平移会让每个单元格显示同一个公式 */
-  return f.replace(/("(?:[^"]|"")*")|('(?:[^']|'')*')|(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\w(!])|(\$?)([A-Z]{1,3}):(\$?)([A-Z]{1,3})(?![\w(!])|(\$?)(\d+):(\$?)(\d+)(?![\w(!])/g,(m,s1,s2,ca,col,ra,row,xa,xc,xb,xd,ya,yr,yb,yd,off,str)=>{
-    if(s1||s2||(off>0&&/[\w.]/.test(str[off-1])))return m;
-    if(xc!=null){const c1=xa?colIndex(xc):colIndex(xc)+dc,c2=xb?colIndex(xd):colIndex(xd)+dc;if(c1<0||c1>16383||c2<0||c2>16383)return m;return xa+(xa?xc:colName(c1))+':'+xb+(xb?xd:colName(c2))}
-    if(yr!=null){const r1=ya?+yr:+yr+dr,r2=yb?+yd:+yd+dr;if(r1<1||r1>1048576||r2<1||r2>1048576)return m;return ya+r1+':'+yb+r2}
-    const ci=ca?colIndex(col):colIndex(col)+dc,ri=ra?+row:+row+dr;if(ci<0||ci>16383||ri<1||ri>1048576)return m;/* 与整行 / 整列引用一致：平移后越过最后一行（1048576）的引用保持原样，不生成 A1048581 这类不存在的引用 */
-    return (ca||'')+(ca?col:colName(ci))+(ra||'')+ri})}
+  // 跳过字符串、工作表限定符与结构化引用。后者的列名可以恰好形如 A1，也可以嵌套括号。
+  const tokens=/("(?:[^"]|"")*"|'(?:[^']|'')*'|[\p{L}\p{N}_.]+(?::[\p{L}\p{N}_.]+)?!)|(\[)|(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\p{L}\p{N}_.(!])|(\$?)([A-Z]{1,3}):(\$?)([A-Z]{1,3})(?![\p{L}\p{N}_.(!])|(\$?)(\d+):(\$?)(\d+)(?![\p{L}\p{N}_.(!])/giu;
+  const moveCol=(name,delta)=>{const i=colIndex(name.toUpperCase())+delta;return i>=0&&i<=16383?(delta?(name===name.toLowerCase()?colName(i).toLowerCase():colName(i)):name):null};
+  let m,pos=0,out='';
+  while((m=tokens.exec(f))){
+    const [raw,locked,br,ca,col,ra,row,xa,xc,xb,xd,ya,yr,yb,yd]=m;
+    if(br){let depth=1,i=tokens.lastIndex;for(;i<f.length&&depth;i++){
+        if(f[i]==="'"&&/[\[\]'#@]/.test(f[i+1]||''))i++;else if(f[i]==='[')depth++;else if(f[i]===']')depth--;
+      }tokens.lastIndex=i;continue}
+    if(locked||(m.index>0&&/[\p{L}\p{N}_.]/u.test(f[m.index-1])))continue;
+    let next=raw;
+    if(xc!=null){const a=moveCol(xc,xa?0:dc),b=moveCol(xd,xb?0:dc);if(a&&b)next=xa+a+':'+xb+b}
+    else if(yr!=null){const a=+yr+(ya?0:dr),b=+yd+(yb?0:dr);if(a>=1&&a<=1048576&&b>=1&&b<=1048576)next=ya+a+':'+yb+b}
+    else{const c=moveCol(col,ca?0:dc),r=+row+(ra?0:dr);if(c&&r>=1&&r<=1048576)next=ca+c+ra+r}
+    if(next!==raw){out+=f.slice(pos,m.index)+next;pos=tokens.lastIndex}
+  }
+  return out+f.slice(pos);
+}
 function serialToDate(v,d1904,timeOnly=v>=0&&v<1&&!d1904,compat=true){
   const seconds=Math.round(v*86400);if(!Number.isSafeInteger(seconds))return String(v);
   const day=Math.floor(seconds/86400),sec=seconds-day*86400,p=n=>String(n).padStart(2,'0');

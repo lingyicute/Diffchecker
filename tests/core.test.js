@@ -1022,3 +1022,10 @@ test('CSV 导出：前导空白的公式样式文本被保留为文本，数值�
   assert.equal(csvField('-.5e+2'), '-.5e+2');
   assert.equal(csvField('Tea; Coffee | Water'), '"Tea; Coffee | Water"');
 });
+
+test('共享公式：移动相对引用但保留结构化列名和工作表范围', () => {
+  const shift = excel.shiftFormula;
+  assert.equal(shift('SUM(Table1[[#This Row],[A1]])+a1', 2, 1), 'SUM(Table1[[#This Row],[A1]])+b3');
+  assert.equal(shift('S1:S3!C4+[Book.xlsx]S1!d2', 1, 1), 'S1:S3!D5+[Book.xlsx]S1!e3');
+  assert.equal(shift('A1+A1.local+Table1[A1]', 1, 0), 'A2+A1.local+Table1[A1]');
+});
