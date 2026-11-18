@@ -526,7 +526,7 @@ function loadFile(f,side){const saved=/\.diffchecker$/i.test(f.name);if(saved)ca
   const r=new FileReader();r.onerror=()=>{if(current())notice(t('readFailed',{name:f.name}))};r.onload=()=>{if(!current())return;const text=decodeBuf(r.result);
   if(text.includes('\0')){notice(t('binaryFile',{name:f.name}));return}
   if(saved){let j=null;try{j=JSON.parse(text)}catch(e){}
-    /* 先整体校验再载入：type 与两侧文本缺一不可，否则随便一个 JSON 文件都会把两侧输入清空，还提示“已恢复保存的对比结果” */if(!j||typeof j!=='object'||j.type!=='text'||typeof j.left!=='string'||typeof j.right!=='string'){notice(t('wrongFile'));return}
+    /* 先整体校验再载入：type 与两侧文本缺一不可，否则随便一个 JSON 文件都会把两侧输入清空，还提示“已恢复保存的对比结果” */if(!j||typeof j!=='object'||j.type!=='text'||(j.version!=null&&j.version!==1)||typeof j.left!=='string'||typeof j.right!=='string'){notice(t('wrongFile'));return}
     txtA.value=j.left;txtB.value=j.right;fileNames={A:typeof j.leftName==='string'?j.leftName:'',B:typeof j.rightName==='string'?j.rightName:''};mergeOpts(j.options);saveOpts();syncUI(true);updateMeta();run();notice(t('restored'));return}
   (side==='A'?txtA:txtB).value=text;fileNames[side]=f.name;updateMeta(side);notice(t('loaded',{name:f.name}));if(lastDiff||opts.realtime)run(true)};r.readAsArrayBuffer(f)}
 // 只接管“文件”拖放：把选中的文字拖进文本框时要保留浏览器默认的插入行为（无条件 preventDefault 会让文字拖放失效）
