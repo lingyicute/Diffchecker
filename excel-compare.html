@@ -161,6 +161,10 @@ Object.assign(I18N.en,{rowsRemoved1:'row removed',rowsAdded1:'row added',rowsCha
 Object.assign(I18N.zh,{rowsRemoved1:'行删除',rowsAdded1:'行新增',rowsChanged1:'行修改',cellsChanged1:'个单元格修改',colsAdded1:'列新增',colsRemoved1:'列删除',colsMoved1:'列移动',hiddenSheet:'已隐藏',tipTable:'按表头对齐行和列，适合结构化的表格',tipRows:'按顺序逐行比较，适用于任意布局',wrongFile:'此 .diffchecker 文件不是由 Excel 对比工具生成的',legacyXls:'不支持旧版 .xls 文件，请先另存为 .xlsx 或 .csv。',badZip:'不是有效的 .xlsx 文件',xlSheet:'对比结果',exportFailed:'导出失败，请重试。',colsMoved:'列移动',encrypted:'此工作簿已加密或设有打开密码，请先在 Excel 中取消密码后重试。'});
 I18N.en.binaryTable='This is not a text spreadsheet (it contains NUL characters).';
 I18N.zh.binaryTable='文件含有 NUL 字符，无法按文本表格读取。';
+I18N.en.compareTooLarge='This comparison is too large for the browser. Compare smaller ranges or sheets.';
+I18N.zh.compareTooLarge='比较范围过大，请缩小数据范围或分工作表比较。';
+I18N.en.compareFailed='Could not compare these sheets.';
+I18N.zh.compareFailed='无法完成表格比较。';
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -348,6 +352,7 @@ function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns order
     ps.forEach((i,k)=>{if(!keepK.has(k)){usedB.delete(pairs.get(i));pairs.delete(i)}})}
   let bp=0;const insSorted=insIdx.slice(),posB=new Map(insIdx.map((v,p)=>[v,p]));for(const i of delIdx){if(pairs.has(i)){const j=pairs.get(i);while(bp<insSorted.length&&posB.get(insSorted[bp])<posB.get(j)){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}out.push({type:'chg',ai:i,bi:j});if(bp<insSorted.length&&insSorted[bp]===j)bp++}else out.push({type:'del',ai:i})}
   while(bp<insSorted.length){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}return out}
+const MAX_COMPARE_CELLS=500000;
 function compare(gA,gB,hA,hB){
   const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows);let columns=[];let dataA,dataB,startA,startB;
   if(opts.mode==='table'){/* 表头行号超出数据范围时按“没有表头”处理：否则 rows.slice(hA+1) 会丢掉两侧所有行，两个内容不同的表会被误判为完全相同 */hA=hA>=0&&hA<rowsA.length?hA:-1;hB=hB>=0&&hB<rowsB.length?hB:-1;const headA=(rowsA[hA]||[]),headB=(rowsB[hB]||[]);const nA=usedCols(rowsA,Math.max(hA,0)),nB=usedCols(rowsB,Math.max(hB,0));const nameOf=(h,i)=>normalize(String(cellText(h[i])))||i; // 数字键仅供无名列使用
@@ -357,8 +362,7 @@ function compare(gA,gB,hA,hB){
       const seqA=[...mapAB.keys()],seqB=seqA.map(i=>mapAB.get(i));const lisIdx=(()=>{const n=seqB.length,tails=[],prev=new Array(n).fill(-1),tailIdx=[];for(let i=0;i<n;i++){let lo=0,hi=tails.length;while(lo<hi){const m=(lo+hi)>>1;if(tails[m]<seqB[i])lo=m+1;else hi=m}tails[lo]=seqB[i];tailIdx[lo]=i;prev[i]=lo?tailIdx[lo-1]:-1}const r=new Set();let k=tailIdx[tails.length-1];while(k!=null&&k>=0){r.add(k);k=prev[k]}return r})();
       const movedA=new Set(seqA.filter((_,k)=>!lisIdx.has(k)));
       // build union: walk A columns; insert B-only columns after their predecessor
-      const bOnly=[];for(let j=0;j<nB;j++)if(!usedB.has(j))bOnly.push(j);const bPred=j=>{for(let k=j-1;k>=0;k--)if(usedB.has(k))return k;return -1};
-      const byPred=new Map();for(const j of bOnly){const p=bPred(j);if(!byPred.has(p))byPred.set(p,[]);byPred.get(p).push(j)}
+      const byPred=new Map();let pred=-1;for(let j=0;j<nB;j++){if(usedB.has(j))pred=j;else{if(!byPred.has(pred))byPred.set(pred,[]);byPred.get(pred).push(j)}}
       (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
       for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)&&!opts.sortCols?'mov':'eq'/* 对列排序后列的先后不再有意义，不标记“已移动” */});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
     }else{/* 按位置匹配时，“对列排序”要先把两侧的列各自按表头排好再逐个对应：否则只是把已经按原位置配好的列换个显示顺序，仅列顺序不同的两张表仍会被逐列报成修改 */const ord=(h,m)=>{const o=Array.from({length:m},(_,i)=>i);if(opts.sortCols){const key=o.map(i=>normalize(String(cellText(h[i])||'')));o.sort((x,y)=>key[x].localeCompare(key[y])||x-y)}return o},oA=ord(headA,nA),oB=ord(headB,nB);
@@ -366,6 +370,8 @@ function compare(gA,gB,hA,hB){
     if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
   }else{const cA=usedCols(rowsA),cB=usedCols(rowsB),n=Math.max(cA,cB);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<cA?i:-1,ib:i<cB?i:-1,st:i>=cA?'ins':i>=cB?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
+  // 两个稀疏网格合并后仍会按行 × 列展开；在分配中间数组或渲染前限制实际展开量。
+  if((dataA.length+dataB.length)*(columns.length+2)>MAX_COMPARE_CELLS||columns.length>16384)throw new Error('compareTooLarge');
   const proj=(row,side)=>columns.map(c=>{const idx=side==='A'?c.ia:c.ib;return idx<0?'':String(cellText(row[idx]))});
   const shared=columns.map((c,k)=>c.ia>=0&&c.ib>=0?k:-1).filter(k=>k>=0);
   let idxA=dataA.map((_,i)=>i),idxB=dataB.map((_,i)=>i);
@@ -398,7 +404,7 @@ document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.
 for(const s of ['A','B']){const d=$('drop'+s);d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};d.onclick=()=>{openTarget=s;$('fileInput').value='';$('fileInput').click()};const card=$('card'+s);card.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();d.classList.add('drag')});card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))d.classList.remove('drag')});card.addEventListener('drop',e=>{d.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,s)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>clearSide(b.dataset.clear));
-function clearSide(s){WB[s]=null;NAMES[s]='';$('name'+s).textContent='';$('det'+s).classList.add('hidden');$('prev'+s).classList.add('hidden');$('drop'+s).classList.remove('hidden');$('err'+s).textContent='';RES=null;$('result').classList.add('hidden')}
+function clearSide(s){WB[s]=null;NAMES[s]='';$('name'+s).textContent='';$('det'+s).classList.add('hidden');$('prev'+s).classList.add('hidden');$('drop'+s).classList.remove('hidden');$('err'+s).textContent='';clearResult()}
 const readBuf=f=>f.arrayBuffer?f.arrayBuffer():new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=j;fr.readAsArrayBuffer(f)});function decodeBuf(buf){const u=new Uint8Array(buf);
   if(u[0]===0xEF&&u[1]===0xBB&&u[2]===0xBF)return new TextDecoder('utf-8').decode(u);
   if(u[0]===0xFF&&u[1]===0xFE)return new TextDecoder('utf-16le').decode(u);
@@ -432,8 +438,12 @@ function renderDetails(side){const wb=WB[side],sel=SEL[side],det=$('det'+side);c
   if(fq)det.querySelector(fq).focus();det.querySelector('[data-sheet]').onchange=e=>{const prev=sel.sheet;let ok=true;sel.sheet=+e.target.value;$('err'+side).textContent='';/* 选中的工作表损坏读不出来时退回原来的表并给出提示，而不是停在一张一比较就报错的表上 */try{autoHeader(side)}catch(err){console.error(err);ok=false;$('err'+side).textContent=t('parseError',{name:wb.sheets[sel.sheet].name,msg:err.message});sel.sheet=prev}renderDetails(side);if(ok&&RES)run()};det.querySelector('[data-header]').onchange=e=>{sel.header=Math.max(0,Math.floor(+e.target.value||1)-1);sel.auto=false;renderDetails(side);if(RES)run()};
   const pv=$('prev'+side);pv.classList.remove('hidden');const rows=body.slice(0,30);let h='<table><tr><th></th>';for(let c=0;c<Math.min(cols,40);c++)h+=`<th>${colName(c)}</th>`;h+='</tr>';rows.forEach((r,i)=>{h+=`<tr class="${i===sel.header&&opts.mode==='table'?'hdr':''}"><th>${i+1}</th>`;for(let c=0;c<Math.min(cols,40);c++)h+=`<td title="${esc(r[c]?.f||'')}">${esc(cellText(r[c]))}</td>`;h+='</tr>'});pv.innerHTML=h+'</table>'}
 $('swapBtn').onclick=()=>{if(!WB.A||!WB.B)return;[WB.A,WB.B]=[WB.B,WB.A];[NAMES.A,NAMES.B]=[NAMES.B,NAMES.A];[SEL.A,SEL.B]=[SEL.B,SEL.A];for(const s of ['A','B']){$('name'+s).textContent=NAMES[s];renderDetails(s)}if(RES)run()};
-$('findBtn').onclick=()=>{if(!WB.A||!WB.B)return notice(t('needTwo'));run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
-function run(){if(!WB.A||!WB.B)return;const gA=WB.A.load(WB.A.sheets[SEL.A.sheet]),gB=WB.B.load(WB.B.sheets[SEL.B.sheet]);RES=compare(gA,gB,SEL.A.header,SEL.B.header);expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render()}
+$('findBtn').onclick=()=>{if(!WB.A||!WB.B)return notice(t('needTwo'));if(run())$('result').scrollIntoView({behavior:'smooth',block:'start'})};
+function clearResult(){RES=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').classList.remove('open');$('gridWrap').replaceChildren()}
+function run(){if(!WB.A||!WB.B)return false;
+  try{const gA=WB.A.load(WB.A.sheets[SEL.A.sheet]),gB=WB.B.load(WB.B.sheets[SEL.B.sheet]);RES=compare(gA,gB,SEL.A.header,SEL.B.header);expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();return true}
+  catch(e){clearResult();if(e.message!=='compareTooLarge')console.error(e);notice(t(e.message==='compareTooLarge'?'compareTooLarge':'compareFailed'));return false}}
+
 
 /* ===================== rendering ===================== */
 function renderCell(c){if(c.st==='chg'&&c.segs){const old=c.segs.filter(s=>s.t!==INS).map(s=>s.t===EQ?esc(s.a):`<mark class="d">${esc(s.a)}</mark>`).join(''),nw=c.segs.filter(s=>s.t!==DEL).map(s=>s.t===EQ?esc(s.b):`<mark class="i">${esc(s.b)}</mark>`).join('');return opts.showOld?`<span class="old">${old}</span><span class="arrow">→</span>${nw}`:nw}

@@ -949,3 +949,13 @@ test('excel.compare: 仅含空白的尾部行列只在开启忽略空白时裁�
     assert.equal(excel.compare(a, b, 0, 0).identical, true);
   } finally { Object.assign(excel.opts, saved); }
 });
+
+test('excel.compare: 在展开稀疏行列之前限制比较规模', () => {
+  const saved = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { mode: 'rows', sortRows: false });
+    const row = []; row[16383] = { v: 'value', f: null };
+    const cells = Array.from({ length: 40 }, () => row);
+    assert.throws(() => excel.compare({ rows: cells }, { rows: [] }, 0, 0), /compareTooLarge/);
+  } finally { Object.assign(excel.opts, saved); }
+});
