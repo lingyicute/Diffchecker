@@ -59,7 +59,7 @@ table.grid th{position:sticky;top:0;background:var(--bg2);font-weight:600;z-inde
 table.grid th.num,table.grid td.num{width:var(--nw,46px);min-width:var(--nw,46px);text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;user-select:none;font-size:11px}
 table.grid th.num{z-index:3}
 td.num.a,th.num.a{left:0}td.num.b,th.num.b{left:var(--nw,46px);border-right:2px solid var(--border2)}
-th.col-ins{background:var(--ins-block);color:var(--ins-fg)}th.col-del{background:var(--del-block);color:var(--del-fg);text-decoration:line-through}th.col-mov{background:var(--mov-block)}
+table.grid th.col-ins{background:var(--ins-block);color:var(--ins-fg)}table.grid th.col-del{background:var(--del-block);color:var(--del-fg);text-decoration:line-through}table.grid th.col-mov{background:var(--mov-block)}table.grid th.col-chg{background:var(--chg-block)}
 tr.del td{background:var(--del-block)}tr.ins td{background:var(--ins-block)}tr.del td.num{color:var(--del-fg)}tr.ins td.num{color:var(--ins-fg)}
 td.chg{background:var(--chg-block)}td.cdel{background:var(--del-block)}td.cins{background:var(--ins-block)}
 td.colx{background:repeating-linear-gradient(135deg,rgba(100,110,120,.08) 0 6px,transparent 6px 12px)}
@@ -67,7 +67,7 @@ mark.d{background:var(--del-hl);color:var(--del-fg);border-radius:2px;text-decor
 .old{opacity:.8}.arrow{color:var(--fg3);padding:0 4px}
 tr.collapsed:focus-visible td{color:var(--accent2);box-shadow:inset 0 0 0 2px #159b58}
 tr.collapsed td{background:var(--bg2);color:var(--fg2);text-align:center;font-family:system-ui,sans-serif;font-size:12px;cursor:pointer;padding:4px}
-tr.focus td{box-shadow:inset 0 -2px 0 var(--accent)}
+tr.focus td,th.focus{box-shadow:inset 0 -2px 0 var(--accent)}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
 .identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
 .identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
@@ -169,6 +169,8 @@ I18N.en.compareTooLarge='This comparison is too large for the browser. Compare s
 I18N.zh.compareTooLarge='比较范围过大，请缩小数据范围或分工作表比较。';
 I18N.en.compareFailed='Could not compare these sheets.';
 I18N.zh.compareFailed='无法完成表格比较。';
+I18N.en.headerChanged='Changed column header';
+I18N.zh.headerChanged='表头已修改';
 I18N.en.zipPartTooLarge='A workbook part exceeds the 64 MiB uncompressed limit.';
 I18N.zh.zipPartTooLarge='工作簿的单个部件解压后超过 64 MiB 上限。';
 I18N.en.badCsvQuotes='A quoted field is not closed or has unexpected text after the closing quote.';
@@ -523,7 +525,7 @@ function compare(gA,gB,hA,hB){
       (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
       for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)&&!opts.sortCols?'mov':'eq'/* 对列排序后列的先后不再有意义，不标记“已移动” */});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
     }else{/* 按位置匹配时，“对列排序”要先把两侧的列各自按表头排好再逐个对应：否则只是把已经按原位置配好的列换个显示顺序，仅列顺序不同的两张表仍会被逐列报成修改 */const ord=(h,m)=>{const o=Array.from({length:m},(_,i)=>i);if(opts.sortCols){const key=o.map(i=>normalize(String(cellText(h[i])||'')));o.sort((x,y)=>key[x].localeCompare(key[y])||x-y)}return o},oA=ord(headA,nA),oB=ord(headB,nB);
-      const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ia=i<nA?oA[i]:-1,ib=i<nB?oB[i]:-1,ha=ia>=0?String(cellText(headA[ia])||''):'',hb=ib>=0?String(cellText(headB[ib])||''):'',hc=ia>=0&&ib>=0&&normalize(ha)!==normalize(hb);columns.push({name:(hc&&ha&&hb?`${ha} → ${hb}`:(hb||ha))||colName(ia>=0?ia:ib),ia,ib,st:ia<0?'ins':ib<0?'del':'eq',hdrChg:hc})}}
+      const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ia=i<nA?oA[i]:-1,ib=i<nB?oB[i]:-1,ha=ia>=0?String(cellText(headA[ia])||''):'',hb=ib>=0?String(cellText(headB[ib])||''):'',hc=ia>=0&&ib>=0&&normalize(ha)!==normalize(hb);columns.push({name:hc?(ha&&hb?`${ha} → ${hb}`:`${JSON.stringify(ha)} → ${JSON.stringify(hb)}`):(hb||ha||colName(ia>=0?ia:ib)),ia,ib,st:ia<0?'ins':ib<0?'del':'eq',hdrChg:hc})}}
     if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
   }else{const cA=usedCols(rowsA),cB=usedCols(rowsB),n=Math.max(cA,cB);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<cA?i:-1,ib:i<cB?i:-1,st:i>=cA?'ins':i>=cB?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
@@ -635,8 +637,12 @@ function render(){const R=RES,wrap=$('gridWrap');const s=R.stats,L=(n,k)=>t(n===
   if(R.identical){wrap.dataset.changes=0;wrap.innerHTML=`<div class="identical"><div class="ic">✓</div><h3>${esc(t('identicalTitle'))}</h3><p>${esc(t('identicalMsg'))}</p></div>`;return}
   const allCols=R.columns.map((c,k)=>({...c,k})),fltCols=allCols.filter(c=>!opts.hideCols||c.st!=='eq'||R.colChanged.has(c.k)),cols=fltCols.length?fltCols:allCols;
   /* 行号列默认 46px，只放得下 4 位数：行号上万时按位数加宽（#B 列的吸附位置随之右移），否则行号会折成两行，把每一行都撑高 */const nd=String(R.rows.reduce((m,r)=>Math.max(m,r.na||0,r.nb||0),0)).length;
-  let h=`<table class="grid"${nd>4?` style="--nw:calc(${nd}ch + 19px)"`:''}><thead><tr><th class="num a">#A</th><th class="num b">#B</th>${cols.map(c=>`<th class="col-${c.st}" title="${c.st==='eq'?'':t(c.st==='ins'?'inserted':c.st==='del'?'deleted':'moved')}">${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`).join('')}</tr></thead><tbody>`;
-  let changeNo=0,i=0;const rows=R.rows,CTX=2;
+  let changeNo=0;
+  const th=c=>{const st=c.hdrChg?'chg':c.st,key={ins:'inserted',del:'deleted',mov:'moved',chg:'headerChanged'}[st];
+    return `<th scope="col" class="col-${st}"${key?` id="focus-${changeNo++}" title="${esc(t(key))}"`:''}>${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`;
+  };
+  let h=`<table class="grid"${nd>4?` style="--nw:calc(${nd}ch + 19px)"`:''}><thead><tr><th class="num a" scope="col">#A</th><th class="num b" scope="col">#B</th>${cols.map(th).join('')}</tr></thead><tbody>`;
+  let i=0;const rows=R.rows,CTX=2;
   while(i<rows.length){const r=rows[i];
     if(r.type==='eq'&&!r.hasColData&&opts.hideRows){let j=i;while(j<rows.length&&rows[j].type==='eq'&&!rows[j].hasColData)j++;const run=j-i;const head=i===0?0:CTX,tail=j===rows.length?0:CTX;if(run-head-tail>1&&!expanded.has(i)){for(let k=i;k<i+head;k++)h+=rowHtml(rows[k],cols);h+=`<tr class="collapsed" data-i="${i}" tabindex="0" role="button"><td colspan="${cols.length+2}">⋯ ${esc(t('unchangedRows',{n:run-head-tail}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;for(let k=j-tail;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}for(let k=i;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}
     const id=r.type!=='eq'||r.hasColData?`focus-${changeNo++}`:'';h+=rowHtml(r,cols,id);i++}
@@ -645,7 +651,7 @@ function render(){const R=RES,wrap=$('gridWrap');const s=R.stats,L=(n,k)=>t(n===
    有很多折叠块时每展开一个都得重新 Tab 过来。重绘后折叠条原来的位置正好是展开出来的第一行，把焦点放到这一行，Tab 就从这里继续 */
 function focusRow(wrap,i){const row=wrap.querySelector('table')?.rows[i];if(!row)return;row.tabIndex=-1;try{row.focus({preventScroll:true})}catch(e){row.focus()}}
 function rowHtml(r,cols,id){return `<tr class="${r.type}" ${id?`id="${id}"`:''}><td class="num a">${r.na??''}</td><td class="num b">${r.nb??''}</td>${cols.map(c=>{const cell=r.cells[c.k];const cls=r.type==='eq'||r.type==='chg'?(cell.st==='chg'?'chg':cell.st==='cdel'?'cdel':cell.st==='cins'?'cins':(c.st==='ins'||c.st==='del')&&!cell.a&&!cell.b?'colx':''):'';return `<td class="${cls}">${renderCell(cell)}</td>`}).join('')}</tr>`}
-function goChange(dir){const n=+$('gridWrap').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;document.querySelectorAll('tr.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
+function goChange(dir){const n=+$('gridWrap').dataset.changes||0;if(!n)return;focusIdx=focusIdx<0&&dir<0?n-1:((focusIdx+dir)%n+n)%n;$('gridWrap').querySelectorAll('.focus').forEach(e=>e.classList.remove('focus'));const el=$('focus-'+focusIdx);if(el){el.classList.add('focus');el.scrollIntoView({behavior:'smooth',block:'center'})}}
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.mode=b.dataset.mode;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
 $('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};

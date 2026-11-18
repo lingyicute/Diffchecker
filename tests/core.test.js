@@ -537,6 +537,20 @@ test('excel.compare: 列顺序变动、按位置匹配时表头修改、以及�
   assert.ok(disj.rows.every(r => r.type !== 'eq'));
 });
 
+test('Excel 按位置匹配：空表头改动在比较标签中写出两侧的值', () => {
+  const grid = name => ({ rows: [[{ v: name }], [{ v: 'item' }]], cols: 1 });
+  Object.assign(excel.opts, { mode: 'table', matchHeaders: false, sortRows: false, sortCols: false });
+  try {
+    for (const [a, b, label] of [['Price', '', '"Price" → ""'], ['', 'Price', '"" → "Price"']]) {
+      const r = excel.compare(grid(a), grid(b), 0, 0);
+      assert.equal(r.stats.cells, 1);
+      assert.equal(r.columns[0].name, label);
+      assert.ok(r.columns[0].hdrChg);
+      assert.equal(r.rows[0].type, 'eq');
+    }
+  } finally { excel.opts.matchHeaders = true; }
+});
+
 test('excel.normalize: 支持带时间的日月年/月日年日期，且过滤越界的伪日期与伪时间', () => {
   Object.assign(excel.opts, { normDates: true, ignoreWs: false, ignoreCase: false });
   assert.equal(excel.normalize('03/15/2024 8:05'), '2024-03-15 08:05:00');
@@ -899,7 +913,8 @@ test('excel.compare: 新增或删除列含数据时，对应行不能被隐藏�
       vm.runInContext(`const RES=result,opts=options,focusIdx=-1,expanded=new Set(),t=k=>k,esc=String,$=id=>nodes[id];${between(script('excel-compare.html'), 'function renderCell', 'function goChange')}render()`, ctx);
       assert.match(nodes.gridWrap.innerHTML, /also new/);
       assert.doesNotMatch(nodes.gridWrap.innerHTML, /class="collapsed"/);
-      assert.equal(nodes.gridWrap.dataset.changes, 2);
+      assert.match(nodes.gridWrap.innerHTML, /<th[^>]+id="focus-0"/);
+      assert.equal(nodes.gridWrap.dataset.changes, 3); // 列标题与两行数据均可定位。
     }
   } finally { Object.assign(excel.opts, saved); }
 });
