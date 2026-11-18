@@ -276,6 +276,19 @@ test('decodeBuf: UTF-8 优先，其次严格的 GB18030，其余（如 Latin-1 /
   }
 });
 
+test('decodeBuf: 无 BOM 的 UTF-16 含 é、中文等非 ASCII 字符时同样能识别，不会读成夹 NUL 的乱码', () => {
+  for (const f of ['text-compare.html', 'excel-compare.html']) {
+    const code = between(script(f), 'function decodeBuf', f === 'text-compare.html' ? '\ntry{mergeOpts' : '\nasync function loadFile');
+    const ctx = { TextDecoder }; vm.createContext(ctx); vm.runInContext(code + ';this.decodeBuf=decodeBuf', ctx);
+    const dec = b => ctx.decodeBuf(Uint8Array.from(b).buffer);
+    for (const s of ['name,城市\ncafé,北京\nnaïve,上海', 'hello\nworld']) {
+      assert.equal(dec(Buffer.from(s, 'utf16le')), s, f);
+      assert.equal(dec(Buffer.from(s, 'utf16le').swap16()), s, f);
+    }
+    assert.equal(dec([0x61]), 'a', f);
+  }
+});
+
 test('excel.normalize: 日期统一成 ISO；x/y/yyyy 在第二位大于 12 时按 月/日/年，其余按 日/月/年', () => {
   assert.equal(excel.normalize('2024/3/5'), '2024-03-05');
   assert.equal(excel.normalize('03/15/2024'), '2024-03-15');
