@@ -119,11 +119,11 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
     <button class="btn" id="exampleBtn" data-i18n="tryExample">Try example</button>
     <button class="btn" id="swapBtn" data-i18n="swap">Swap</button>
     <button class="btn" id="toolsBtn">⚙ <span data-i18n="tools">Tools</span></button>
+    <div class="seg" id="modeSeg"><button data-mode="table" aria-pressed="true" data-i18n-title="tipTable" title="Match up rows and columns using the header row, best for structured tables" data-i18n="table">Table</button><button data-mode="rows" aria-pressed="false" data-i18n-title="tipRows" title="Compare row by row in order, works with any layout" data-i18n="rows">Rows</button></div>
+    <div class="seg" id="valSeg"><button data-val="standard" aria-pressed="true" data-i18n="standard">Standard</button><button data-val="formulas" aria-pressed="false" data-i18n="formulas">Formulas</button></div>
   </div>
   <section id="result" class="hidden">
     <div class="toolbar">
-      <div class="seg" id="modeSeg"><button data-mode="table" aria-pressed="true" data-i18n-title="tipTable" title="Match up rows and columns using the header row, best for structured tables" data-i18n="table">Table</button><button data-mode="rows" aria-pressed="false" data-i18n-title="tipRows" title="Compare row by row in order, works with any layout" data-i18n="rows">Rows</button></div>
-      <div class="seg" id="valSeg"><button data-val="standard" aria-pressed="true" data-i18n="standard">Standard</button><button data-val="formulas" aria-pressed="false" data-i18n="formulas">Formulas</button></div>
       <button class="btn sm" id="prevBtn">↑ <span data-i18n="prev">Previous</span></button><button class="btn sm" id="nextBtn">↓ <span data-i18n="next">Next</span></button>
       <button class="btn sm" id="exportBtn" data-i18n="export">Export</button>
       <div class="stats" id="stats"></div>
