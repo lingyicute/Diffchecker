@@ -350,7 +350,16 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
     for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r'),addr=ref==null?null:cellAddress(ref);
       if(ref!=null&&(!addr||addr.row!==ri))bad();ci=addr?.col??ci+1;if(ci>=16384||seenCols.has(ci))bad();seenCols.add(ci);
       const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null,shared=null;
-      for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF.set(si,{f:ch.textContent,r:ri,c:ci})}else if(sh)shared=si}else if(ch.localName==='is')raw=richText(ch)/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
+      for(const ch of c.children){
+        if(ch.localName==='v')raw=ch.textContent;
+        else if(ch.localName==='f'){
+          let si=null;if(ch.getAttribute('t')==='shared'){
+            const id=ch.getAttribute('si');if(!/^\d+$/.test(id??'')||+id>0xFFFFFFFF)bad();si=+id;
+          }
+          if(ch.textContent){f='='+ch.textContent;if(si!=null){if(sharedF.has(si))bad();sharedF.set(si,{f:ch.textContent,r:ri,c:ci})}}
+          else if(si!=null)shared=si;
+        }else if(ch.localName==='is')raw=richText(ch); // 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音
+      }
       if(raw==null&&!f&&shared==null)continue;
       // 公式可能没有缓存值；null 不能被数值转换成共享字符串下标 0，也不能当成 FALSE。
       if(raw==null)v='';

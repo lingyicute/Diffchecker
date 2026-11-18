@@ -1176,3 +1176,13 @@ test('XLSX 工作表：缺省公式缓存为空；非法共享字符串索引和
     assert.throws(() => readRows([row('1', cell('A1', value, type))], ['label']), /badZip/);
   }
 });
+
+
+test('共享公式：组号按数值匹配，同一组内必须有唯一的主公式', () => {
+  const { node, row, readRows } = worksheet;
+  const f = (r, si, text) => node('c', { r }, [node('f', { t: 'shared', si }, [], text)]);
+  const { rows } = readRows([row('1', f('A1', '01', '')), row('2', f('A2', '1', 'B2'))]);
+  assert.equal(rows[0][0].f, '=B1');
+  assert.throws(() => readRows([row('1', f('A1', '01', 'B1'), f('B1', '1', 'C1'))]), /badZip/);
+  assert.throws(() => readRows([row('1', f('A1', undefined, 'B1'))]), /badZip/);
+});
