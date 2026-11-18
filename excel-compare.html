@@ -422,11 +422,34 @@ async function loadFile(f,side){const saved=/\.diffchecker$/i.test(f.name);if(sa
   $('err'+side).textContent='';try{let wb;const buf=await readBuf(f);if(!current())return;const mg=new Uint8Array(buf,0,Math.min(4,buf.byteLength)),isZip=isZipSig(mg),isOle=mg[0]===0xD0&&mg[1]===0xCF&&mg[2]===0x11&&mg[3]===0xE0;
     if(isOle&&/\.(xlsx|xlsm|xltx|xltm)$/i.test(f.name))throw new Error(t('encrypted'));/* 加密的 .xlsx 外层是 OLE 容器，不是旧版 .xls */
     if(isOle||(/\.xls$/i.test(f.name)&&!isZip))throw new Error(t('legacyXls'));if(isZip||/\.(xlsx|xlsm|xltx|xltm)$/i.test(f.name)||f.type.includes('spreadsheetml')||f.type.includes('zip')){wb=parseXlsx(buf)}
-    else if(saved){let j=null;try{j=JSON.parse(decodeBuf(buf))}catch(e){}const okGrid=g=>!!g&&typeof g==='object'&&Array.isArray(g.rows)&&g.rows.every(Array.isArray);if(!j||typeof j!=='object'||j.type!=='excel'||!okGrid(j.left)||!okGrid(j.right))throw new Error(t('wrongFile'));// 先整体校验再载入，避免只载入一侧、或在 TypeError 里泄漏内部报错
-    mergeOpts(j.options);saveOpts();syncUI();/* 先应用保存的选项再载入两侧：预览里的表头高亮（仅“按表头”模式）和值 / 公式的显示都取决于选项，放在后面预览会沿用恢复之前的旧选项 */setWorkbook('A',fromJsonGrid(j.left),String(j.leftName||''));setWorkbook('B',fromJsonGrid(j.right),String(j.rightName||''));for(const [sd,g] of [['A',j.left],['B',j.right]])if(Number.isInteger(g.header)&&g.header>=0){SEL[sd].header=g.header;SEL[sd].auto=false;renderDetails(sd)}notice(t('restored'));run();return}
+    else if(saved){let j;try{j=JSON.parse(decodeBuf(buf))}catch(e){throw new Error(t('wrongFile'))}
+      if(j?.type!=='excel'||(j.version!=null&&j.version!==1))throw new Error(t('wrongFile'));
+      const left=fromJsonGrid(j.left),right=fromJsonGrid(j.right); // 两侧都验证通过才替换当前会话。
+      mergeOpts(j.options);saveOpts();syncUI();
+      setWorkbook('A',left,typeof j.leftName==='string'?j.leftName:'');setWorkbook('B',right,typeof j.rightName==='string'?j.rightName:'');
+      for(const [sd,g] of [['A',j.left],['B',j.right]])if(g.header!=null){SEL[sd].header=g.header;SEL[sd].auto=false;renderDetails(sd)}
+      notice(t('restored'));run();return}
     else{const text=decodeBuf(buf);if(text.includes('\0'))throw new Error(t('binaryTable'));wb=parseCsv(text,/\.tsv$/i.test(f.name)?'\t':undefined)}
     setWorkbook(side,wb,f.name);if(!RES||run())notice(t('loaded',{name:f.name}))}catch(e){if(!current())return;console.error(e);$('err'+side).textContent=t('parseError',{name:f.name,msg:e.message})}}
-const fromJsonGrid=g=>({type:'json',sheets:[{name:g.name||'Sheet1',grid:{rows:g.rows.map(r=>r.map(v=>v&&typeof v==='object'?{v:v.v==null?'':String(v.v),f:typeof v.f==='string'?v.f:null,d:false}:{v:v==null?'':String(v),f:null,d:false})),cols:g.rows.reduce((n,r)=>Math.max(n,r.length),0)/* 列数以实际数据为准：文件里声明的 cols 可能被伪造得极大，再次导出时会按它给每一行补空单元格而耗尽内存 */}}],load:s=>s.grid});
+function validateSavedRows(rows,error){
+  if(!Array.isArray(rows)||rows.length>MAX_COMPARE_CELLS)throw new Error(error);let slots=rows.length;
+  for(const r of rows){if(!Array.isArray(r)||r.length>16384||(slots+=r.length)>MAX_COMPARE_CELLS)throw new Error(error)}
+}
+function fromJsonGrid(g){
+  const fail=()=>{throw new Error(t('wrongFile'))},plain=x=>x==null||['string','number','boolean'].includes(typeof x);
+  if(!g||typeof g!=='object'||(g.name!=null&&typeof g.name!=='string')||(g.header!=null&&(!Number.isSafeInteger(g.header)||g.header<0)))fail();
+  validateSavedRows(g.rows,t('wrongFile'));
+  let cols=0;const rows=g.rows.map(r=>{cols=Math.max(cols,r.length);return r.map(x=>{
+    if(plain(x))return {v:String(x??''),f:null,d:false};
+    if(Array.isArray(x)||!Object.hasOwn(x,'v')||!plain(x.v)||(x.f!=null&&typeof x.f!=='string'))fail();
+    return {v:String(x.v??''),f:x.f??null,d:false};
+  })});
+  return {type:'json',sheets:[{name:g.name||'Sheet1',grid:{rows,cols}}],load:s=>s.grid};
+}
+function toSavedGrid(sheet,grid,header){
+  validateSavedRows(grid.rows,'saved grid exceeds cell budget');
+  return {name:sheet.name,header,cols:grid.cols,rows:grid.rows.map(r=>r.map(c=>!c?'':c.f?{v:c.v,f:c.f}:c.v))};
+}
 function setWorkbook(side,wb,name){const other=side==='A'?'B':'A',visible=wb.sheets.findIndex(s=>!s.hidden),mine=WB[other]?wb.sheets.findIndex(s=>s.name===WB[other].sheets[SEL[other].sheet].name):-1,sheet=mine>=0?mine:visible<0?0:visible;
   // 先试读要选中的工作表：它损坏时在改动任何状态之前就抛错，该侧保留原有的工作簿；否则会留下名字已换、详情仍是旧表、一比较或切换语言就报错的半载入状态
   wb.load(wb.sheets[sheet]);WB[side]=wb;NAMES[side]=name;$('name'+side).textContent=name;$('err'+side).textContent='';$('drop'+side).classList.add('hidden');SEL[side]={sheet,header:0,auto:true};autoHeader(side);renderDetails(side);
@@ -485,7 +508,7 @@ function printLight(){const root=document.documentElement;let ended=false;const 
 $('exportGo').onclick=()=>{$('exportModal').classList.remove('open');if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')printLight();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t('exportFailed'))}};
 function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':c.st==='mov'?' (⇄)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?(opts.showOld?`${c.a} → ${c.b}`:c.b):c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
 function exportCsv(){const {head,body}=tableRows();const q=v=>{v=String(v);/* 防止 CSV 公式注入：以 = + - @ 开头的非数字文本加单引号前缀 */if(/^[=+\-@\t\r]/.test(v)&&!/^[+-]?\d+(\.\d+)?(e[+-]?\d+)?$/i.test(v))v="'"+v;return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};download(new Blob(['\ufeff'+[head,...body].map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}),baseName()+'.csv')}
-function exportDiffFile(){const toGrid=(s)=>{const g=WB[s].load(WB[s].sheets[SEL[s].sheet]);return {name:WB[s].sheets[SEL[s].sheet].name,header:SEL[s].header,cols:g.cols,rows:trimRows(g.rows).map(r=>Array.from({length:g.cols},(_,i)=>r[i]?(r[i].f?{v:r[i].v,f:r[i].f}:r[i].v):''))}};download(new Blob([JSON.stringify({type:'excel',version:1,left:toGrid('A'),right:toGrid('B'),leftName:NAMES.A,rightName:NAMES.B,options:{...opts},createdAt:new Date().toISOString()})],{type:'application/json'}),baseName()+'.diffchecker')}
+function exportDiffFile(){const toGrid=side=>{const w=WB[side],s=SEL[side],sheet=w.sheets[s.sheet];return toSavedGrid(sheet,w.load(sheet),s.header)};download(new Blob([JSON.stringify({type:'excel',version:1,left:toGrid('A'),right:toGrid('B'),leftName:NAMES.A,rightName:NAMES.B,options:{...opts},createdAt:new Date().toISOString()})],{type:'application/json'}),baseName()+'.diffchecker')}
 /* minimal xlsx writer (STORE zip, inline strings; styles 0 normal 1 bold 2 red 3 green 4 yellow) */
 const CRC_T=(()=>{const T=new Int32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c}return T})();
 function crc32(u8){let c=-1;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^-1)>>>0}

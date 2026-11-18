@@ -959,3 +959,19 @@ test('excel.compare: 在展开稀疏行列之前限制比较规模', () => {
     assert.throws(() => excel.compare({ rows: cells }, { rows: [] }, 0, 0), /compareTooLarge/);
   } finally { Object.assign(excel.opts, saved); }
 });
+
+test('表格会话：保留实际行宽与公式，拒绝结构无效的单元格', () => {
+  const code = between(script('excel-compare.html'), 'function validateSavedRows', 'function setWorkbook');
+  const { fromJsonGrid, toSavedGrid } = run(code, 'fromJsonGrid,toSavedGrid', 'const t=k=>k,MAX_COMPARE_CELLS=500000;');
+  const cell = []; cell[2] = { v: '3', f: '=1+2' };
+  const rows = [[{ v: ' ' }], cell, []];
+  const saved = JSON.parse(JSON.stringify(toSavedGrid({ name: 'Data' }, { cols: 16384, rows }, 1)));
+  assert.deepEqual(saved.rows.map(r => r.length), [1, 3, 0]);
+  const b = fromJsonGrid(saved), grid = b.load(b.sheets[0]);
+  assert.equal(grid.cols, 3);
+  assert.equal(grid.rows[0][0].v, ' ');
+  assert.equal(grid.rows[1][2].f, '=1+2');
+  for (const bad of [{ rows: [[[]]] }, { rows: [[{ v: {} }]] }, { rows: [['ok']], header: -1 }]) {
+    assert.throws(() => fromJsonGrid(bad), /wrongFile/);
+  }
+});
