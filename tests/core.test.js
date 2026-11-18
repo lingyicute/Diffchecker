@@ -1058,3 +1058,20 @@ test('图片像素差异同时比较颜色和透明度，忽略全透明像素�
   assert.deepEqual([...map], [255, 0, 5]);
   assert.deepEqual([...rgba], [255, 255, 255, 255, 0, 0, 0, 255, 0, 5, 0, 255]);
 });
+
+test('图片区域检测：环形区域不重复统计内部区域，并始终执行最大面积过滤', () => {
+  const W = 21, H = 21, mask = new Uint8Array(W * H);
+  for (let j = 2; j <= 18; j++) for (let i = 2; i <= 18; i++) if (i === 2 || i === 18 || j === 2 || j === 18) mask[j * W + i] = 1;
+  mask[10 * W + 10] = 1;
+  const rect = { x0: 0, y0: 0, x1: W, y1: H };
+  for (const radius of [0, 2]) {
+    const all = [], limited = [];
+    img.detect(mask, W, H, { minBlobArea: 1, maxBlobAreaFraction: 1 }, rect, radius, all);
+    assert.deepEqual(all.map(r => r.px), [64, 1]);
+    img.detect(mask, W, H, { minBlobArea: 1, maxBlobAreaFraction: 0.25 }, rect, radius, limited);
+    assert.deepEqual(limited.map(r => r.px), [1]);
+  }
+  const partial = [];
+  assert.equal(img.detect(mask, W, H, { minBlobArea: 1, maxBlobAreaFraction: 1 }, rect, 0, partial, 1), false);
+  assert.equal(partial.length, 1);
+});

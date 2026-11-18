@@ -210,6 +210,8 @@ const I18N={en:{'nav.text':'Text','nav.images':'Images','nav.excel':'Excel',offl
 zh:{'nav.text':'文本','nav.images':'图片','nav.excel':'Excel',offline:'离线运行 · 无需联网',dark:'深色',light:'浅色','hero.title':'图片对比','hero.d1':'找出两张图片之间的差异！','hero.d2':'添加两张图片，差异会显示在下方。',original:'原始图片',changed:'修改后的图片',dropHere:'把图片拖到这里',browse:'或点击选择文件 · 也可按 Ctrl+V 粘贴',find:'查找差异',tryExample:'试试示例',swap:'左右互换',reset:'重置','m.split':'并排','m.fade':'淡入淡出','m.flicker':'闪烁','m.slider':'滑块','m.highlight':'高亮','m.subtract':'差值',opacity:'不透明度',slower:'更慢',faster:'更快',fOriginal:'原图',fChanged:'修改后',hlStyle:'高亮样式',hlContext:'保留背景',hlChanges:'仅显示差异',threshold:'阈值',align:'对齐图片',zoom:'缩放',fit:'适应窗口',export:'导出',changeList:'差异列表',tools:'工具',drawBoxes:'绘制边框',darken:'压暗背景',scanSettings:'检测设置',addScan:'添加检测',removeScan:'移除检测',scan:'检测 {n}',preset:'预设',custom:'自定义',tinySpecks:'细小杂点',wordsSentences:'文字 / 句子',graphics:'图形 / 大块区域',diffThreshold:'差异阈值',grouping:'合并半径',minBlob:'最小区域面积',maxRegion:'最大区域占比',change:'差异 {n}',focus:'定位',noChanges:'未检测到差异。',tooDifferent:'两张图片的差异过大，无法逐项列出。',autoAlign:'自动对齐',manual:'手动对齐',allowed:'允许的变换方式',rotate:'旋转',scale:'比例',autoAlignBtn:'自动对齐',flipH:'水平翻转',flipV:'垂直翻转',undoAlign:'撤销对齐',cancel:'取消',apply:'应用',dragTip:'在预览中拖动修改后的图片即可移动，滚轮可缩放预览。',alignFail:'自动对齐失败，请尝试手动调整。',alignOk:'已对齐：平移 {dx}, {dy} 像素 · 旋转 {rot}° · 缩放 {sc}（置信度 {c}）',mismatchTitle:'是否自动对齐图片？',mismatchMsg:'两张图片的分辨率似乎不同，直接比较可能无法对齐。',skip:'跳过',autoAlignGo:'自动对齐',format:'格式',fmtPng:'导出当前对比视图（原始分辨率）。',fmtPdf:'通过浏览器的“打印为 PDF”功能生成报告。',reportContent:'报告内容',srcImages:'源图片',srcImagesD:'在报告中附上原始图片和修改后的图片。',chgList:'差异列表（{n}）',chgListD:'为每个检测到的区域附上原图与修改后的裁剪图，并可选附带差值预览。',diffStyle:'差异样式',none:'无',alwaysIncluded:'报告中始终包含对比结果和摘要。',identicalTitle:'两张图片看起来完全相同',identicalMsg:'两张图片之间没有可见差异',needTwo:'请先添加两张图片。',loading:'正在加载图片…',footer:'零依赖单页应用 · 所有处理均在浏览器本地完成 · 由 lingyicute 倾情呈现',summary:'{p}% 的像素不同 · {n} 个区域',opencv:'已检测到 OpenCV，使用 ORB 特征点对齐'}};
 Object.assign(I18N.en,{summary1:'{p}% of pixels differ · {n} region',decodeFail:'Could not decode {name}',hudScale:' (working scale {s})',hudDiff:'{p}% px differ',toggleScan:'Enable / disable this scan',remove:'Remove',holdATip:'Show original. Shortcut: 1',holdBTip:'Show changes. Shortcut: 2',sbTip:'Collapse sidebar',sbTipOpen:'Expand sidebar',exportFailed:'Export failed. Please try again.',rptTitle:'Image comparison',rptOrig:'Original',rptChg:'Changed',rptMode:'Mode',rptSummary:'Summary',rptAlign:'Alignment',rptCmp:'Comparison'});
 Object.assign(I18N.zh,{summary1:'{p}% 的像素不同 · {n} 个区域',decodeFail:'无法解码 {name}',hudScale:'（工作缩放 {s}）',hudDiff:'{p}% 的像素不同',toggleScan:'启用 / 停用此检测',remove:'移除',holdATip:'显示原图。快捷键：1',holdBTip:'显示修改后的图片。快捷键：2',sbTip:'收起侧边栏',sbTipOpen:'展开侧边栏',exportFailed:'导出失败，请重试。',rptTitle:'图片对比报告',rptOrig:'原始图片',rptChg:'修改后的图片',rptMode:'模式',rptSummary:'摘要',rptAlign:'对齐参数',rptCmp:'对比结果'});
+Object.assign(I18N.en,{noMatchingRegions:'Pixels differ, but no regions match these scan settings.',truncatedRegions:'Only a subset of regions is shown. Narrow the scan settings to see fewer regions.'});
+Object.assign(I18N.zh,{noMatchingRegions:'图片像素有差异，但没有符合当前检测设置的区域。',truncatedRegions:'仅显示部分差异区域。请缩小检测范围或提高门槛。'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
@@ -329,37 +331,65 @@ let passSeq=0;const newPass=id=>({id:++passSeq,presetId:id,linked:true,options:p
 function dilate(mask,W,H,r){if(r<=0)return mask;const tmp=new Uint8Array(W*H),out=new Uint8Array(W*H);
   for(let y=0;y<H;y++){const row=y*W;let cnt=0;for(let x=-r;x<W;x++){const add=x+r;if(add<W&&mask[row+add])cnt++;const rem=x-r-1;if(rem>=0&&mask[row+rem])cnt--;if(x>=0)tmp[row+x]=cnt>0?1:0}}
   for(let x=0;x<W;x++){let cnt=0;for(let y=-r;y<H;y++){const add=y+r;if(add<H&&tmp[add*W+x])cnt++;const rem=y-r-1;if(rem>=0&&tmp[rem*W+x])cnt--;if(y>=0)out[y*W+x]=cnt>0?1:0}}return out}
-const SCR={n:0,seen:null,stack:null};
-function components(mask,W,H,x0,y0,x1,y1){// 8-connected labelling within rect; returns boxes with area
-  if(SCR.n!==W*H){SCR.n=W*H;SCR.seen=new Uint8Array(W*H);SCR.stack=new Int32Array(W*H)}const seen=SCR.seen,stack=SCR.stack,boxes=[];for(let y=y0;y<y1;y++)seen.fill(0,y*W+x0,y*W+x1);
-  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=y*W+x;if(!mask[i]||seen[i])continue;let sp=0;stack[sp++]=i;seen[i]=1;let minx=x,maxx=x,miny=y,maxy=y,area=0;
-    while(sp){const j=stack[--sp];const jx=j%W,jy=(j-jx)/W;area++;if(jx<minx)minx=jx;if(jx>maxx)maxx=jx;if(jy<miny)miny=jy;if(jy>maxy)maxy=jy;
-      for(let dy=-1;dy<=1;dy++){const ny=jy+dy;if(ny<y0||ny>=y1)continue;for(let dx=-1;dx<=1;dx++){const nx=jx+dx;if(nx<x0||nx>=x1)continue;const k=ny*W+nx;if(mask[k]&&!seen[k]){seen[k]=1;stack[sp++]=k}}}}
-    boxes.push({x:minx,y:miny,w:maxx-minx+1,h:maxy-miny+1,area})}return boxes}
-function detect(thrMask,W,H,o,rect,radius,out){const d=dilate(radius?subMask(thrMask,W,H,rect):thrMask,W,H,radius);const boxes=components(d,W,H,rect.x0,rect.y0,rect.x1,rect.y1);const maxA=o.maxBlobAreaFraction*W*H;
-  for(const b of boxes){if(b.area<o.minBlobArea)continue;if(b.w*b.h>maxA&&radius>0){detect(thrMask,W,H,o,{x0:b.x,y0:b.y,x1:b.x+b.w,y1:b.y+b.h},Math.floor(radius/2),out);continue}
-    // tighten box to real diff pixels & count
-    let minx=b.x+b.w,maxx=b.x-1,miny=b.y+b.h,maxy=b.y-1,cnt=0;for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++){if(thrMask[y*W+x]){cnt++;if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y}}if(cnt<Math.min(o.minBlobArea,b.area)||maxx<minx)continue;
-    out.push({x:minx,y:miny,w:maxx-minx+1,h:maxy-miny+1,px:cnt})}}
-function subMask(mask,W,H,r){const m=new Uint8Array(W*H);for(let y=r.y0;y<r.y1;y++)for(let x=r.x0;x<r.x1;x++)m[y*W+x]=mask[y*W+x];return m}
+function components(mask,raw,W,H,minArea,visit){
+  const seen=new Uint8Array(W*H),queue=new Int32Array(W*H);
+  for(let i=0;i<mask.length;i++){if(!mask[i]||seen[i])continue;
+    let end=1,minX=W,minY=H,maxX=-1,maxY=-1,px=0;queue[0]=i;seen[i]=1;
+    for(let p=0;p<end;p++){const j=queue[p],x=j%W,y=(j-x)/W;
+      if(raw[j]){px++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
+      for(let ny=Math.max(0,y-1);ny<=Math.min(H-1,y+1);ny++)for(let nx=Math.max(0,x-1);nx<=Math.min(W-1,x+1);nx++){
+        const k=ny*W+nx;if(mask[k]&&!seen[k]){seen[k]=1;queue[end++]=k}
+      }
+    }
+    if(px>=minArea&&visit({x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1,px},queue,end)===false)return false;
+  }
+  return true;
+}
+function detect(thrMask,W,H,o,rect,radius,out,limit=Infinity){
+  const maxArea=o.maxBlobAreaFraction*W*H;
+  function visitMask(raw,w,h,ox,oy,rad){
+    return components(dilate(raw,w,h,rad),raw,w,h,o.minBlobArea,(b,queue,end)=>{
+      if(b.w*b.h>maxArea){
+        if(!rad)return; // 已不能再拆分，仍须执行最大面积过滤。
+        // 只缩小当前连通块；外接框里的其他连通块不属于它。
+        const part=new Uint8Array(b.w*b.h);
+        for(let k=0;k<end;k++){const i=queue[k];if(raw[i]){const x=i%w,y=(i-x)/w;part[(y-b.y)*b.w+x-b.x]=1}}
+        return visitMask(part,b.w,b.h,ox+b.x,oy+b.y,Math.floor(rad/2));
+      }
+      out.push({...b,x:ox+b.x,y:oy+b.y});return out.length<limit;
+    });
+  }
+  const w=rect.x1-rect.x0,h=rect.y1-rect.y0;if(!w||!h)return true;
+  let raw=thrMask;if(w!==W||h!==H){raw=new Uint8Array(w*h);for(let y=0;y<h;y++){
+    const offset=(rect.y0+y)*W+rect.x0;raw.set(thrMask.subarray(offset,offset+w),y*w);
+  }}
+  return visitMask(raw,w,h,rect.x0,rect.y0,radius);
+}
 /* IoU 只有在矩形相交时才可能达到阈值。按 32px 网格索引已保留区域，只检查同网格或相邻网格里的候选，
    避免大量互不相交的小区域（噪点、逐像素检测）产生 O(n²) 次无效比较；遍历顺序与原来的全量去重一致。 */
 function dedupeRegions(all){const keep=[],grid=new Map(),CELL=32,cells=(r,fn)=>{const x0=Math.floor(r.x/CELL),x1=Math.floor((r.x+r.w-1)/CELL),y0=Math.floor(r.y/CELL),y1=Math.floor((r.y+r.h-1)/CELL);for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)fn(x+','+y)};
   for(const r of all){const near=new Set();cells(r,key=>{const bucket=grid.get(key);if(bucket)for(const k of bucket)near.add(k)});let dup=false;for(const k of near){const ix=Math.max(0,Math.min(r.x+r.w,k.x+k.w)-Math.max(r.x,k.x)),iy=Math.max(0,Math.min(r.y+r.h,k.y+k.h)-Math.max(r.y,k.y));const inter=ix*iy;if(inter&&inter/(r.w*r.h+k.w*k.h-inter)>=.4){dup=true;break}}if(!dup){keep.push(r);cells(r,key=>{const bucket=grid.get(key);if(bucket)bucket.push(r);else grid.set(key,[r])})}}return keep}
-function scan(keepPasses){const W=S.W,H=S.H;let all=[];for(const p of S.passes){if(!p.enabled)continue;const o=p.options;const m=new Uint8Array(W*H);for(let i=0;i<m.length;i++)m[i]=diffMap[i]>o.diffThreshold?1:0;const out=[];detect(m,W,H,o,{x0:0,y0:0,x1:W,y1:H},o.groupingRadius,out);out.forEach(r=>r.pass=p.id);all.push(...out)}
+const MAX_SCAN_REGIONS=8000,MAX_PASSES=8;
+function scan(keepPasses){const W=S.W,H=S.H;if(!W||!H)return;const all=[];let truncated=false;
+  for(const p of S.passes){if(!p.enabled)continue;const o=p.options,m=new Uint8Array(W*H),out=[];
+    for(let i=0;i<m.length;i++)m[i]=diffMap[i]>o.diffThreshold?1:0;
+    if(!detect(m,W,H,o,{x0:0,y0:0,x1:W,y1:H},o.groupingRadius,out,MAX_SCAN_REGIONS))truncated=true;
+    for(const r of out){r.pass=p.id;all.push(r)}
+  }
   const keep=dedupeRegions(all);
-  keep.sort((a,b)=>(b.w*b.h)-(a.w*a.h)||a.y-b.y||a.x-b.x);S.regions=keep.slice(0,500);S.tooMany=keep.length>500||(diffCount/(W*H)>.9);S.active=-1;if(keepPasses!==true)renderPasses();renderList();drawOverlay()}
-function renderPasses(){const el=$('passes');/* 重绘会把所有检测卡片换掉：先记下焦点在第几张卡片的哪个控件上，绘完还回去。否则用键盘切换预设或启停检测时，每操作一次焦点就丢一次 */const ae=document.activeElement,fi=el.contains(ae)?[...el.children].indexOf(ae.closest('.pass')):-1,fq=fi<0?'':ae.matches('select')?'select':ae.matches('[data-en]')?'[data-en]':'';el.innerHTML='';S.passes.forEach((p,i)=>{const d=document.createElement('div');d.className='pass';const o=p.options;
+  keep.sort((a,b)=>(b.w*b.h)-(a.w*a.h)||a.y-b.y||a.x-b.x);S.regions=keep.slice(0,500);S.truncated=truncated||keep.length>500;S.active=-1;if(keepPasses!==true)renderPasses();renderList();drawOverlay()}
+function renderPasses(){const el=$('passes');$('addPass').disabled=S.passes.length>=MAX_PASSES;/* 重绘会把所有检测卡片换掉：先记下焦点在第几张卡片的哪个控件上，绘完还回去。否则用键盘切换预设或启停检测时，每操作一次焦点就丢一次 */const ae=document.activeElement,fi=el.contains(ae)?[...el.children].indexOf(ae.closest('.pass')):-1,fq=fi<0?'':ae.matches('select')?'select':ae.matches('[data-en]')?'[data-en]':'';el.innerHTML='';S.passes.forEach((p,i)=>{const d=document.createElement('div');d.className='pass';const o=p.options;
     d.innerHTML=`<div class="ph"><span>${t('scan',{n:i+1})}</span><span><button class="btn sm ghost" data-en title="${t('toggleScan')}">${p.enabled?'●':'○'}</button><button class="btn sm ghost" data-rm title="${t('removeScan')}">✕</button></span></div>
     <div class="row"><span>${t('preset')}</span><select data-k="preset"><option value="__custom__" ${p.linked?'':'selected'}>${t('custom')}</option>${Object.keys(PRESETS).map(k=>`<option value="${k}" ${p.linked&&p.presetId===k?'selected':''}>${t({'tiny-specks':'tinySpecks','words-sentences':'wordsSentences','graphics-large-blocks':'graphics'}[k])}</option>`).join('')}</select></div>
     ${[['diffThreshold',0,255,1,t('diffThreshold')],['groupingRadius',0,30,1,t('grouping')],['minBlobArea',1,2000,1,t('minBlob')],['maxBlobAreaFraction',1,100,1,t('maxRegion')]].map(([k,mn,mx,st,lbl])=>`<div class="row"><span title="${k}">${lbl}</span><input type="range" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${k==='maxBlobAreaFraction'?Math.round(o[k]*100):o[k]}"><span class="val">${k==='maxBlobAreaFraction'?Math.round(o[k]*100)+'%':o[k]}</span></div>`).join('')}`;
     d.querySelector('[data-rm]').onclick=()=>{S.passes.splice(i,1);scan()};d.querySelector('[data-en]').onclick=()=>{p.enabled=!p.enabled;scan()};
     d.querySelector('select').onchange=e=>{if(e.target.value==='__custom__'){p.linked=false}else{p.linked=true;p.presetId=e.target.value;p.options=presetOptions(p.presetId)}scan()};
     d.querySelectorAll('input[type=range]').forEach(r=>{r.oninput=()=>{const k=r.dataset.k;p.options[k]=k==='maxBlobAreaFraction'?r.value/100:+r.value;p.linked=false;r.nextElementSibling.textContent=k==='maxBlobAreaFraction'?r.value+'%':r.value;d.querySelector('select').value='__custom__';clearTimeout(window._sc);window._sc=setTimeout(()=>scan(true),120)}});el.appendChild(d)});if(fq&&el.children[fi])el.children[fi].querySelector(fq).focus()}
-$('addPass').onclick=()=>{S.passes.push(newPass(S.passes.length%2?'graphics-large-blocks':'tiny-specks'));scan()};
+$('addPass').onclick=()=>{if(S.passes.length>=MAX_PASSES)return;S.passes.push(newPass(S.passes.length%2?'graphics-large-blocks':'tiny-specks'));scan()};
 function cropCanvas(src,r,maxW=112,maxH=84){const s=Math.min(maxW/r.w,maxH/r.h,4);const c=mk(Math.max(1,r.w*s),Math.max(1,r.h*s));const cx=c.getContext('2d');cx.imageSmoothingEnabled=s<1;cx.drawImage(src,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c}
 function renderList(){const el=$('chgList');el.innerHTML='';$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
-  if(S.tooMany&&!S.regions.length){el.innerHTML=`<div class="tip">${t('tooDifferent')}</div>`;return}if(!S.regions.length){el.innerHTML=`<div class="tip">${t('noChanges')}</div>`;return}
+  if(!S.regions.length){el.innerHTML=`<div class="tip">${t(diffCount?'noMatchingRegions':'noChanges')}</div>`;return}
+  if(S.truncated)el.innerHTML=`<div class="tip">${t('truncatedRegions')}</div>`;
   S.regions.forEach((r,i)=>{const d=document.createElement('div');d.className='chg-item'+(i===S.active?' active':'');d.title=t('focus');d.innerHTML=`<div class="info"><b>${t('change',{n:i+1})}</b><span>${r.w}×${r.h} @ ${r.x},${r.y} · ${r.px}px</span></div>`;d.prepend(cropCanvas(baseB,r));d.prepend(cropCanvas(baseA,r));
     d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};
     d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d)})}
