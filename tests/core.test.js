@@ -289,6 +289,12 @@ test('decodeBuf: 无 BOM 的 UTF-16 含 é、中文等非 ASCII 字符时同样�
   }
 });
 
+test('excel.shiftFormula: 平移后越过最后一行（1048576）的单元格引用保持原样，与整行 / 整列引用的处理一致', () => {
+  assert.equal(excel.shiftFormula('A1048576+B2', 5, 0), 'A1048576+B7');
+  assert.equal(excel.shiftFormula('A$1048576+A1048571', 5, 1), 'B$1048576+B1048576');
+  assert.equal(excel.shiftFormula('SUM(1048576:1048576)', 1, 0), 'SUM(1048576:1048576)');
+});
+
 test('excel.normalize: 日期统一成 ISO；x/y/yyyy 在第二位大于 12 时按 月/日/年，其余按 日/月/年', () => {
   assert.equal(excel.normalize('2024/3/5'), '2024-03-05');
   assert.equal(excel.normalize('03/15/2024'), '2024-03-15');
