@@ -349,7 +349,13 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
       if(ref!=null&&(!addr||addr.row!==ri))bad();ci=addr?.col??ci+1;if(ci>=16384||seenCols.has(ci))bad();seenCols.add(ci);
       const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null,shared=null;
       for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF.set(si,{f:ch.textContent,r:ri,c:ci})}else if(sh)shared=si}else if(ch.localName==='is')raw=richText(ch)/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
-      if(raw==null&&!f&&shared==null)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='str')v=xstr(raw??'');else if(tt==='inlineStr'||tt==='e')v=raw??'';else if(tt==='d')v=isoDateCell(raw);else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(dateStyles.get(s)==='elapsed'?serialToElapsed(n):serialToDate(n,d1904,dateStyles.get(s)==='time',compat)):String(+n.toPrecision(15))):raw}else v='';
+      if(raw==null&&!f&&shared==null)continue;
+      // 公式可能没有缓存值；null 不能被数值转换成共享字符串下标 0，也不能当成 FALSE。
+      if(raw==null)v='';
+      else if(tt==='s'){const idx=+raw;if(!/^\d+$/.test(raw.trim())||idx>=sst.length)bad();v=sst[idx]}
+      else if(tt==='b'){const b=raw.trim().toLowerCase();if(!/^(0|1|false|true)$/.test(b))bad();v=b==='1'||b==='true'?'TRUE':'FALSE'}
+      else if(tt==='str')v=xstr(raw);else if(tt==='inlineStr'||tt==='e')v=raw;else if(tt==='d')v=isoDateCell(raw);
+      else if(raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(dateStyles.get(s)==='elapsed'?serialToElapsed(n):serialToDate(n,d1904,dateStyles.get(s)==='time',compat)):String(+n.toPrecision(15))):raw}else v='';
       cells[ci]={v,f,d:dateStyles.has(s)||tt==='d'};if(shared!=null)pending.push({shared,cell:cells[ci],ri,ci});if(ci+1>cols)cols=ci+1}
     if(cells.length){rows[ri]=cells}}
   for(const {shared,cell,ri,ci} of pending){const master=sharedF.get(shared);if(!master)bad();cell.f='='+shiftFormula(master.f,ri-master.r,ci-master.c)}

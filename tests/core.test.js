@@ -1159,3 +1159,15 @@ test('XLSX 工作表拒绝重复的空行和空单元格坐标，保留合法的
   assert.equal(rows[2][1].v, '7');
   assert.equal(rows[2][2].v, '8');
 });
+
+
+test('XLSX 工作表：缺省公式缓存为空；非法共享字符串索引和布尔值不能伪装成正常值', () => {
+  const { node, row, cell, readRows } = worksheet;
+  const formula = (r, t) => node('c', { r, t }, [node('f', {}, [], 'B2')]);
+  const { rows } = readRows([row('1', formula('A1', 's'), formula('B1', 'b'), cell('C1', ' 0 ', 's'), cell('D1', 'false', 'b'))], ['label']);
+  assert.deepEqual(Array.from(rows[0], c => c.v), ['', '', 'label', 'FALSE']);
+  assert.equal(rows[0][0].f, '=B2');
+  for (const [value, type] of [['', 's'], ['1', 's'], ['1e0', 's'], ['other', 'b']]) {
+    assert.throws(() => readRows([row('1', cell('A1', value, type))], ['label']), /badZip/);
+  }
+});
