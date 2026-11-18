@@ -108,10 +108,10 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   <section class="inputs">
     <div class="card" id="cardA"><div class="card-head"><span class="title" data-i18n="original">Original spreadsheet</span><span id="nameA" style="color:var(--fg2)"></span><button class="btn sm" data-open="A" data-i18n="openFile">Open file</button><button class="btn sm ghost" data-clear="A" data-i18n="clear">Clear</button></div>
       <div class="drop" id="dropA" tabindex="0" role="button"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
-      <div class="details hidden" id="detA"></div><div class="preview hidden" id="prevA"></div><div class="err" id="errA"></div></div>
+      <div class="details hidden" id="detA"></div><div class="preview hidden" id="prevA"></div><div class="err" role="status" id="errA"></div></div>
     <div class="card" id="cardB"><div class="card-head"><span class="title" data-i18n="changed">Changed spreadsheet</span><span id="nameB" style="color:var(--fg2)"></span><button class="btn sm" data-open="B" data-i18n="openFile">Open file</button><button class="btn sm ghost" data-clear="B" data-i18n="clear">Clear</button></div>
       <div class="drop" id="dropB" tabindex="0" role="button"><div class="big" data-i18n="dropHere">Drop Excel here</div><div class="hint" data-i18n="browse">or click to browse files (.xlsx, .xlsm, .csv, .tsv)</div></div>
-      <div class="details hidden" id="detB"></div><div class="preview hidden" id="prevB"></div><div class="err" id="errB"></div></div>
+      <div class="details hidden" id="detB"></div><div class="preview hidden" id="prevB"></div><div class="err" role="status" id="errB"></div></div>
   </section>
   <input type="file" id="fileInput" class="hidden" accept=".xls,.xlsx,.xlsm,.xltx,.xltm,.csv,.tsv,.txt,.diffchecker,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
   <div class="actions">
