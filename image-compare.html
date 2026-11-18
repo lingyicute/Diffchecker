@@ -80,7 +80,9 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 50px}
 .chg-item canvas{width:56px;height:42px;object-fit:contain;background:var(--checker);border-radius:4px;border:1px solid var(--border)}
 .chg-item .info{flex:1;font-size:12px}.chg-item .info b{display:block}.chg-item .info span{color:var(--fg2);font-family:var(--mono);font-size:11px}
 .tip{color:var(--fg2);font-size:12px;padding:8px 0}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:100}.modal-bg.open{display:flex}
+.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
+.modal-bg::backdrop{background:rgba(0,0,0,.4)}
+.modal-bg[open]{display:flex}
 .modal{background:var(--bg);border-radius:14px;width:460px;max-width:94vw;max-height:92vh;overflow:auto;box-shadow:var(--shadow);padding:20px 22px}
 .modal.wide{width:900px}
 .modal h3{margin:0 0 12px;font-size:17px}.modal p{color:var(--fg2);margin:0 0 10px}
@@ -161,8 +163,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
 </main>
 <footer>Diffchecker · <span data-i18n="footer">rewritten as a dependency-free single page — all processing happens locally in your browser</span></footer>
 
-<div class="modal-bg" id="alignModal"><div class="modal wide" role="dialog" aria-modal="true">
-  <h3 data-i18n="align">Align Images</h3>
+<dialog class="modal-bg" id="alignModal" aria-labelledby="alignModalTitle"><div class="modal wide">
+  <h3 id="alignModalTitle" data-i18n="align">Align Images</h3>
   <div class="align-grid">
     <div class="align-view" id="alignView"><canvas id="alignA"></canvas><canvas id="alignB"></canvas></div>
     <div class="align-ctl">
@@ -183,12 +185,12 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
     </div>
   </div>
   <div class="modal-actions"><button class="btn" id="alignUndo" data-i18n="undoAlign">Undo Alignment</button><span class="spacer"></span><button class="btn" id="alignCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="alignApply" data-i18n="apply">Apply</button></div>
-</div></div>
+</div></dialog>
 
-<div class="modal-bg" id="promptModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="pmTitle"><h3 id="pmTitle"></h3><p id="pmMsg"></p><div class="modal-actions"><button class="btn" id="pmSkip"></button><button class="btn primary" id="pmGo"></button></div></div></div>
+<dialog class="modal-bg" id="promptModal" aria-labelledby="pmTitle"><div class="modal"><h3 id="pmTitle"></h3><p id="pmMsg"></p><div class="modal-actions"><button class="btn" id="pmSkip"></button><button class="btn primary" id="pmGo"></button></div></div></dialog>
 
-<div class="modal-bg" id="exportModal"><div class="modal" role="dialog" aria-modal="true">
-  <h3 data-i18n="export">Export</h3>
+<dialog class="modal-bg" id="exportModal" aria-labelledby="exportModalTitle"><div class="modal">
+  <h3 id="exportModalTitle" data-i18n="export">Export</h3>
   <label data-i18n="format">Format</label>
   <div class="choices" id="fmtChoices"><button class="choice" data-fmt="png" aria-pressed="true"><b>PNG</b><small data-i18n="fmtPng">Current comparison view at full resolution.</small></button><button class="choice" data-fmt="pdf" aria-pressed="false"><b>PDF</b><small data-i18n="fmtPdf">Report via your browser's PDF printer.</small></button></div>
   <div id="pngOptions"><label class="chk"><input type="checkbox" id="expWorking"> <span data-i18n="workingExport">Export at working resolution</span></label></div>
@@ -201,7 +203,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   <p class="tip" data-i18n="alwaysIncluded">The comparison result and summary are always included.</p>
   </div>
   <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div>
-</div></div>
+</div></dialog>
 <div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
 <div id="report"></div>
 
@@ -222,7 +224,7 @@ Object.assign(I18N.zh,{workingExport:'以工作分辨率导出',pngTooLarge:'原
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});document.querySelectorAll('.modal[role="dialog"]').forEach(m=>{const h=m.querySelector('h3');if(h&&h.textContent)m.setAttribute('aria-label',h.textContent)});if(S.W){applyTransform();redrawFlicker()}renderPasses();renderList()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});if(S.W){applyTransform();redrawFlicker()}renderPasses();renderList()}
 function applyTheme(){document.documentElement.dataset.theme=theme;$('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 $('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-theme',theme);applyTheme()};
@@ -243,9 +245,9 @@ const loadVersion={A:0,B:0},pending={A:false,B:false};
 function cancelLoad(side){loadVersion[side]++;pending[side]=false}
 function cancelLoads(){cancelLoad('A');cancelLoad('B')}
 function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false}
-function closeAlign(){stopAuto();$('alignModal').classList.remove('open')}
+function closeAlign(){stopAuto();$('alignModal').close()}
 function clearComparison(){
-  closeAlign();$('promptModal').classList.remove('open');$('exportModal').classList.remove('open');
+  closeAlign();$('promptModal').close();$('exportModal').close();
   $('pmGo').onclick=$('pmSkip').onclick=null;
   clearInterval(flickTimer);clearTimeout(window._sc);clearTimeout(window._hlt);holdSide=0;flickState=0;
   S.W=S.H=0;S.regions=[];S.active=-1;diffCount=0;
@@ -290,7 +292,7 @@ function maybePromptAlign(){
     }catch(e){if(current()){console.error(e);notice(t('alignFail'))}}
   },()=>compare());
 }
-function showPrompt(title,msg,skip,go,onGo,onSkip){$('pmTitle').textContent=title;$('pmMsg').textContent=msg;$('pmSkip').textContent=skip;$('pmGo').textContent=go;$('promptModal').classList.add('open');$('pmSkip').onclick=()=>{$('promptModal').classList.remove('open');onSkip&&onSkip()};$('pmGo').onclick=()=>{$('promptModal').classList.remove('open');onGo()}}
+function showPrompt(title,msg,skip,go,onGo,onSkip){$('pmTitle').textContent=title;$('pmMsg').textContent=msg;$('pmSkip').textContent=skip;$('pmGo').textContent=go;$('promptModal').showModal();$('pmSkip').onclick=()=>{$('promptModal').close();onSkip&&onSkip()};$('pmGo').onclick=()=>{$('promptModal').close();onGo()}}
 $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$('result').scrollIntoView({behavior:'smooth'})};
 // 交换两张图时同步求逆对齐参数，保持已对齐的效果。
 // drawAligned 的线性部分是 L = s·R(θ)·F（F 为翻转对角阵），L⁻¹ = (1/s)·F·R(−θ)：
@@ -460,7 +462,7 @@ function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').que
 
 /* ===================== alignment ===================== */
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0};
-$('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.classList.add('open');initAlignView()};
+$('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.showModal();initAlignView()};
 $('alignCancel').onclick=closeAlign;
 $('alignApply').onclick=()=>{S.align={...alTmp};closeAlign();compare()};
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
@@ -551,7 +553,7 @@ function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(
 let expFmt='png',expDiff='subtract';
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(S.A?.name,'original')+'-vs-'+stem(S.B?.name,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'image-comparison';
-$('exportBtn').onclick=()=>$('exportModal').classList.add('open');$('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
+$('exportBtn').onclick=()=>$('exportModal').showModal();$('exportCancel').onclick=()=>$('exportModal').close();
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;expFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)));$('pngOptions').classList.toggle('hidden',expFmt!=='png');$('pdfOptions').classList.toggle('hidden',expFmt!=='pdf')};
 $('expDiffStyle').onclick=e=>{const b=e.target.closest('button');if(!b)return;expDiff=b.dataset.s;$('expDiffStyle').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
@@ -588,7 +590,7 @@ function decodeReportImage(img){if(img.decode)return img.decode();if(img.complet
   return new Promise((r,j)=>{img.addEventListener('load',r,{once:true});img.addEventListener('error',j,{once:true})})}
 let exporting=false,printing=false;
 $('exportGo').onclick=async()=>{
-  $('exportModal').classList.remove('open');if(!S.W||exporting||printing)return;
+  $('exportModal').close();if(!S.W||exporting||printing)return;
   exporting=true;const rep=$('report');
   try{if(expFmt==='png'){
       const filename=baseName()+'.png',c=exportCanvas(!$('expWorking').checked),blob=await new Promise(r=>c.toBlob(r,'image/png'));
@@ -614,10 +616,10 @@ window.addEventListener('afterprint',()=>{printing=false;$('report').replaceChil
 window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('hidden'))fit()});
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
-/* Esc 关闭弹窗（对齐提示等同于“跳过”） */
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('promptModal').classList.contains('open')){$('pmSkip').click();return}if(AL.classList.contains('open'))closeAlign();$('exportModal').classList.remove('open')});
-/* 点击弹窗遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+// 原生对话框处理焦点与 Esc；对齐取消和跳过提示仍走各自的业务逻辑。
+AL.addEventListener('cancel',e=>{e.preventDefault();closeAlign()});
+$('promptModal').addEventListener('cancel',e=>{e.preventDefault();$('pmSkip').click()});
+$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 AL.addEventListener('mousedown',e=>{if(e.target===e.currentTarget)closeAlign()});
 $('promptModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)$('pmSkip').click()});
 applyTheme();applyLang();

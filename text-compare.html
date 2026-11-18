@@ -112,9 +112,10 @@ tr.focus td.code{box-shadow:inset 3px 0 0 var(--accent)}
 .rules{display:flex;flex-direction:column;gap:6px}
 .rule{display:flex;gap:6px;align-items:center}
 .rule input{flex:1;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--bg)}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:100}
-.modal-bg.open{display:flex}
-.modal{background:var(--bg);border-radius:14px;width:440px;max-width:94vw;box-shadow:var(--shadow);padding:20px 22px}
+.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
+.modal-bg::backdrop{background:rgba(0,0,0,.35)}
+.modal-bg[open]{display:flex}
+.modal{background:var(--bg);border-radius:14px;width:440px;max-width:94vw;max-height:92vh;overflow:auto;box-shadow:var(--shadow);padding:20px 22px}
 .modal h3{margin:0 0 12px;font-size:17px}
 .modal label{display:block;font-size:12px;color:var(--fg2);margin:12px 0 6px}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -198,8 +199,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   </div>
 </aside>
 
-<div class="modal-bg" id="exportModal"><div class="modal" role="dialog" aria-modal="true">
-  <h3 data-i18n="export">Export</h3>
+<dialog class="modal-bg" id="exportModal" aria-labelledby="exportModalTitle"><div class="modal">
+  <h3 id="exportModalTitle" data-i18n="export">Export</h3>
   <label data-i18n="format">Format</label>
   <div class="choices" id="fmtChoices">
     <button class="choice" data-fmt="pdf" aria-pressed="true"><b>PDF</b><small data-i18n="fmtPdf">Print-ready report via your browser's PDF printer.</small></button>
@@ -210,7 +211,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
   <label data-i18n="layout">Layout</label>
   <div class="seg" id="exportLayout"><button data-l="split" aria-pressed="true" data-i18n="split">Split</button><button data-l="unified" aria-pressed="false" data-i18n="unified">Unified</button></div>
   <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div>
-</div></div>
+</div></dialog>
 <div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
 
 <script>
@@ -225,7 +226,7 @@ I18N.en.exportXlsxLimit='Excel cannot store this many rows or columns, or a cell
 I18N.zh.exportXlsxLimit='结果超出 Excel 规格的行数、列数或单元格 32767 字符上限。请改用其他格式。';
 let lang=lsGet('offline-lang');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n)});document.getElementById('langBtn').textContent=lang==='en'?'中文':'English';document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.getElementById('rules').querySelectorAll('input').forEach(i=>i.placeholder=t('rulePh'));document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);e.setAttribute('aria-label',e.placeholder)});document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.getElementById('rules').querySelectorAll('button').forEach(b=>b.title=t('remove'));document.title=t('hero.title')+' — Diffchecker';updateMeta();document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});document.querySelectorAll('.modal[role="dialog"]').forEach(m=>{const h=m.querySelector('h3');if(h&&h.textContent)m.setAttribute('aria-label',h.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}if(lastDiff)render()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n)});document.getElementById('langBtn').textContent=lang==='en'?'中文':'English';document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.getElementById('rules').querySelectorAll('input').forEach(i=>i.placeholder=t('rulePh'));document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);e.setAttribute('aria-label',e.placeholder)});document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.getElementById('rules').querySelectorAll('button').forEach(b=>b.title=t('remove'));document.title=t('hero.title')+' — Diffchecker';updateMeta();document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}if(lastDiff)render()}
 let theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
 function applyTheme(){document.documentElement.dataset.theme=theme;document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 document.getElementById('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
@@ -506,7 +507,7 @@ function goChange(dir){const n=+$('diffScroll').dataset.changes||0;if(!n)return;
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('findBtn').onclick=()=>run();
 let rt=0;const mt={A:0,B:0},loadVersion={A:0,B:0};/* 统计改为停顿 150ms 后再做：超大文本下每敲一个键都把全文扫一遍会卡住输入；两侧各用一个计时器，快速切换输入框时另一侧的统计不会被取消 */
-function clearResult(){clearTimeout(rt);rt=0;lastDiff=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').classList.remove('open');$('diffScroll').replaceChildren()}
+function clearResult(){clearTimeout(rt);rt=0;lastDiff=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').close();$('diffScroll').replaceChildren()}
 const cancelLoads=()=>{loadVersion.A++;loadVersion.B++};
 const realtimeRun=side=>{loadVersion[side]++;clearTimeout(mt[side]);mt[side]=setTimeout(()=>updateMeta(side),150);if(opts.realtime){clearTimeout(rt);rt=setTimeout(()=>run(true),250)}else clearResult()};
 txtA.addEventListener('input',()=>realtimeRun('A'));txtB.addEventListener('input',()=>realtimeRun('B'));
@@ -546,14 +547,14 @@ function syncUI(withRules){document.querySelectorAll('.switch[data-opt]').forEac
 
 /* ===================== export ===================== */
 let exportFmt='pdf',exportLayout='split';
-$('exportBtn').onclick=()=>{if(rt)run(true);exportLayout=opts.type;$('exportLayout').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===exportLayout)));$('exportModal').classList.add('open')};
-$('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
+$('exportBtn').onclick=()=>{if(rt)run(true);exportLayout=opts.type;$('exportLayout').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===exportLayout)));$('exportModal').showModal()};
+$('exportCancel').onclick=()=>$('exportModal').close();
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;exportLayout=b.dataset.l;$('exportLayout').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 /* 以浅色主题打印；部分浏览器（如 Safari、移动端）的 window.print() 不阻塞，必须等 afterprint 之后再恢复主题与布局，否则打印出来的仍是深色 / 原布局 */
 function printLight(done){const root=document.documentElement;let ended=false;const fin=()=>{if(ended)return;ended=true;window.removeEventListener('afterprint',fin);root.dataset.theme=theme;/* 恢复为用户当前选择的主题（打印期间也可能被切换） */if(done)done()};
   root.dataset.theme='light';window.addEventListener('afterprint',fin);try{window.print()}catch(e){fin();throw e}}
-$('exportGo').onclick=async()=>{$('exportModal').classList.remove('open');if(rt)run(true);if(!lastDiff)return;/* 只有 PDF（打印当前页面）需要把页面临时切到所选布局：PNG 自己按 exportLayout 绘制，Excel / .diffchecker 与布局无关，不必把整张表来回重渲染两遍 */const prevType=opts.type,swap=exportFmt==='pdf'&&prevType!==exportLayout;if(swap){opts.type=exportLayout;render()}
+$('exportGo').onclick=async()=>{$('exportModal').close();if(rt)run(true);if(!lastDiff)return;/* 只有 PDF（打印当前页面）需要把页面临时切到所选布局：PNG 自己按 exportLayout 绘制，Excel / .diffchecker 与布局无关，不必把整张表来回重渲染两遍 */const prevType=opts.type,swap=exportFmt==='pdf'&&prevType!==exportLayout;if(swap){opts.type=exportLayout;render()}
   let restore=()=>{if(swap&&opts.type===exportLayout){opts.type=prevType;render()}};
   try{if(exportFmt==='pdf'){const r=restore;restore=null;printLight(r)}else if(exportFmt==='png')await exportPng();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile(prevType)}catch(e){console.error(e);notice(t(e&&e.tooTall?'exportTooTall':e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}
   finally{if(restore)restore()}};
@@ -661,9 +662,9 @@ $('exampleBtn').onclick=()=>{cancelLoads();txtA.value=EX_A;txtB.value=EX_B;fileN
 /* init */
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));// 拖入文件时不让浏览器直接打开它而丢掉当前内容
 /* Esc 关闭侧栏与弹窗 */
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;$('panel').classList.remove('open');$('exportModal').classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open)$('panel').classList.remove('open')});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 applyTheme();syncUI(true);applyLang();updateMeta();
 </script>
 </body>

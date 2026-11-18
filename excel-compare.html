@@ -79,8 +79,10 @@ tr.focus td{box-shadow:inset 0 -2px 0 var(--accent)}
 .switch{position:relative;width:34px;height:20px;flex:none;border-radius:20px;background:var(--border2);border:0;transition:.15s}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:.15s}
 .switch[aria-checked="true"]{background:var(--accent)}.switch[aria-checked="true"]::after{left:16px}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:100}.modal-bg.open{display:flex}
-.modal{background:var(--bg);border-radius:14px;width:440px;max-width:94vw;box-shadow:var(--shadow);padding:20px 22px}.modal h3{margin:0 0 12px;font-size:17px}
+.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
+.modal-bg::backdrop{background:rgba(0,0,0,.35)}
+.modal-bg[open]{display:flex}
+.modal{background:var(--bg);border-radius:14px;width:440px;max-width:94vw;max-height:92vh;overflow:auto;box-shadow:var(--shadow);padding:20px 22px}.modal h3{margin:0 0 12px;font-size:17px}
 .modal label{display:block;font-size:12px;color:var(--fg2);margin:12px 0 6px}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .choice{border:1px solid var(--border2);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--bg);text-align:left}.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-bg)}
@@ -146,9 +148,9 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
     <div class="row"><span data-i18n="showOld">Show old value in changed cells</span><button class="switch" data-opt="showOld" role="switch"></button></div>
   </div></aside>
 
-<div class="modal-bg" id="exportModal"><div class="modal" role="dialog" aria-modal="true"><h3 data-i18n="export">Export</h3><label data-i18n="format">Format</label>
+<dialog class="modal-bg" id="exportModal" aria-labelledby="exportModalTitle"><div class="modal"><h3 id="exportModalTitle" data-i18n="export">Export</h3><label data-i18n="format">Format</label>
   <div class="choices" id="fmtChoices"><button class="choice" data-fmt="xlsx" aria-pressed="true"><b>Excel</b><small data-i18n="fmtXlsx">Merged comparison sheet with coloured rows and cells.</small></button><button class="choice" data-fmt="csv" aria-pressed="false"><b>CSV</b><small data-i18n="fmtCsv">Plain comparison table.</small></button><button class="choice" data-fmt="pdf" aria-pressed="false"><b>PDF</b><small data-i18n="fmtPdf">Print the comparison via your browser's PDF printer.</small></button><button class="choice" data-fmt="diffchecker" aria-pressed="false"><b data-i18n="fmtDiff">Diffchecker file</b><small data-i18n="fmtDiffDesc">Save a .diffchecker file that reopens this diff later.</small></button></div>
-  <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div></div></div>
+  <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div></div></dialog>
 <div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
 
 <script>
@@ -174,7 +176,7 @@ I18N.zh.exportXlsxLimit='结果超出 Excel 规格的行数、列数或单元格
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});document.querySelectorAll('.modal[role="dialog"]').forEach(m=>{const h=m.querySelector('h3');if(h&&h.textContent)m.setAttribute('aria-label',h.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)render()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)render()}
 function applyTheme(){document.documentElement.dataset.theme=theme;$('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 $('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-theme',theme);applyTheme()};
@@ -553,7 +555,7 @@ function renderDetails(side){const wb=WB[side],sel=SEL[side],det=$('det'+side);c
   const pv=$('prev'+side);pv.classList.remove('hidden');const rows=body.slice(0,30);let h='<table><tr><th></th>';for(let c=0;c<Math.min(cols,40);c++)h+=`<th>${colName(c)}</th>`;h+='</tr>';rows.forEach((r,i)=>{h+=`<tr class="${i===sel.header&&opts.mode==='table'?'hdr':''}"><th>${i+1}</th>`;for(let c=0;c<Math.min(cols,40);c++)h+=`<td title="${esc(r[c]?.f||'')}">${esc(cellText(r[c]))}</td>`;h+='</tr>'});pv.innerHTML=h+'</table>'}
 $('swapBtn').onclick=()=>{if(!WB.A||!WB.B)return;cancelLoads();[WB.A,WB.B]=[WB.B,WB.A];[NAMES.A,NAMES.B]=[NAMES.B,NAMES.A];[SEL.A,SEL.B]=[SEL.B,SEL.A];for(const s of ['A','B']){$('name'+s).textContent=NAMES[s];renderDetails(s)}if(RES)run()};
 $('findBtn').onclick=()=>{if(!WB.A||!WB.B)return notice(t('needTwo'));if(run())$('result').scrollIntoView({behavior:'smooth',block:'start'})};
-function clearResult(){RES=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').classList.remove('open');$('gridWrap').replaceChildren()}
+function clearResult(){RES=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').close();$('gridWrap').replaceChildren()}
 function run(){if(!WB.A||!WB.B)return false;
   try{const gA=WB.A.load(WB.A.sheets[SEL.A.sheet]),gB=WB.B.load(WB.B.sheets[SEL.B.sheet]);RES=compare(gA,gB,SEL.A.header,SEL.B.header);expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();return true}
   catch(e){clearResult();if(e.message!=='compareTooLarge')console.error(e);notice(t(e.message==='compareTooLarge'?'compareTooLarge':'compareFailed'));return false}}
@@ -586,7 +588,7 @@ document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{const
 function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));$('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)))}
 
 /* ===================== export ===================== */
-let exportFmt='xlsx';$('exportBtn').onclick=()=>$('exportModal').classList.add('open');$('exportCancel').onclick=()=>$('exportModal').classList.remove('open');
+let exportFmt='xlsx';$('exportBtn').onclick=()=>$('exportModal').showModal();$('exportCancel').onclick=()=>$('exportModal').close();
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
@@ -594,7 +596,7 @@ const baseName=()=>(stem(NAMES.A,'original')+'-vs-'+stem(NAMES.B,'changed')).rep
 /* 以浅色主题打印；部分浏览器（如 Safari、移动端）的 window.print() 不阻塞，必须等 afterprint 之后再恢复主题，否则打印出来的仍是深色 */
 function printLight(){const root=document.documentElement;let ended=false;const fin=()=>{if(ended)return;ended=true;window.removeEventListener('afterprint',fin);root.dataset.theme=theme};
   root.dataset.theme='light';window.addEventListener('afterprint',fin);try{window.print()}catch(e){fin();throw e}}
-$('exportGo').onclick=()=>{$('exportModal').classList.remove('open');if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')printLight();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t(e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
+$('exportGo').onclick=()=>{$('exportModal').close();if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')printLight();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t(e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
 function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':c.st==='mov'?' (⇄)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?(opts.showOld?`${c.a} → ${c.b}`:c.b):c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
 function csvField(value){
   let v=String(value),first=v.replace(/^[\s\u200b\u2060]+/u,'');
@@ -640,9 +642,9 @@ function exampleWb(v){const H=['Order ID','Site','Severity','Assigned within (h)
 $('exampleBtn').onclick=()=>{cancelLoads();setWorkbook('A',exampleWb(0),'work-orders-v1.xlsx');setWorkbook('B',exampleWb(1),'work-orders-v2.xlsx');run();$('result').scrollIntoView({behavior:'smooth',block:'start'})};
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 /* Esc 关闭侧栏与弹窗 */
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;$('panel').classList.remove('open');$('exportModal').classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open)$('panel').classList.remove('open')});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 applyTheme();syncUI();applyLang();
 </script>
 </body>
