@@ -493,7 +493,8 @@ function phaseCorr(ga,gb,N){let F=ga._c&&ga._fft;if(ga._c&&(!F||F.N!==N)){const 
 async function autoAlign(A,B,allow){
   /* 翻转无法从相位相关里估计出来：沿用调用方当前的翻转状态去搜索平移 / 旋转 / 缩放，并原样带回结果。否则在手动对齐里先翻转再点“自动对齐”，翻转会被悄悄清掉，镜像的图片永远对不上；OpenCV 的仿射估计同样不含镜像，带翻转时改用内置算法 */
   const fh=!!allow.fh,fv=!!allow.fv,active=allow.active||(()=>true);if(!active())return null;
-  if(!fh&&!fv&&window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B,allow);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
+  // ORB 同时估计旋转与缩放，不能事后把某一项置零来模拟受限拟合。
+  if(!fh&&!fv&&allow.rot&&allow.scale&&window.cv&&window.cv.ORB){try{const r=alignWithOpenCV(A,B);if(r){notice(t('opencv'));return r}}catch(e){console.warn('OpenCV align failed',e)}}
   const W=Math.max(A.width,B.width),H=Math.max(A.height,B.height);const tick=()=>new Promise(r=>setTimeout(r,0));
   const baseScale=allow.scale?Math.min(A.width/B.width,A.height/B.height):1;
   const evalAt=(N,pa,sc,rot)=>{const pb=grayPatch(B,N,sc,rot,fh,fv,W,H);const r=phaseCorr(pa.g,pb.g,N);return {...r,sc,rot,f:pa.f}};
@@ -510,21 +511,28 @@ async function autoAlign(A,B,allow){
   // 3) final translation at 512²
   N=512;pa=grayPatch(A,N,1,0,false,false,W,H);let fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
   /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显更优才替换 */
-  for(const dr of allow.rot?[-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick();if(!active())return null}
+  for(const dr of allow.rot?[0,-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick();if(!active())return null}
   // Both patches are drawn with their top-left at the frame origin (same as drawAligned with dx=dy=0), so the
   // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
   // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
   const whole=fin.rot===0&&fin.sc===1,px=v=>whole?Math.round(v)||0:v;
   return {dx:px(fin.dx/f),dy:px(fin.dy/f),rot:fin.rot,scale:fin.sc,fh,fv,conf:Math.min(1,fin.psr/40)};
 }
-function alignWithOpenCV(A,B,allow={}){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
+function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
   try{const ma=keep(cv.imread(A)),mb=keep(cv.imread(B)),ga=keep(new cv.Mat()),gb=keep(new cv.Mat());cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=keep(new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20));const k1=keep(new cv.KeyPointVector()),k2=keep(new cv.KeyPointVector()),d1=keep(new cv.Mat()),d2=keep(new cv.Mat()),nomask=keep(new cv.Mat());orb.detectAndCompute(ga,nomask,k1,d1);orb.detectAndCompute(gb,nomask,k2,d2);
-    const bf=keep(new cv.BFMatcher(cv.NORM_HAMMING,false)),mm=keep(new cv.DMatchVectorVector());bf.knnMatch(d2,d1,mm,2);const src=[],dst=[];for(let i=0;i<mm.size();i++){const m=mm.get(i);if(m.size()<2)continue;const a=m.get(0),b=m.get(1);if(a.distance<.75*b.distance){const p2=k2.get(a.queryIdx).pt,p1=k1.get(a.trainIdx).pt;src.push(p2.x,p2.y);dst.push(p1.x,p1.y)}}
-    if(src.length<8)return null;const sm=keep(cv.matFromArray(src.length/2,1,cv.CV_32FC2,src)),dm=keep(cv.matFromArray(dst.length/2,1,cv.CV_32FC2,dst)),inl=keep(new cv.Mat());const M=keep(cv.estimateAffinePartial2D(sm,dm,inl,cv.RANSAC,5,2000,.95,10));if(M.empty())return null;const m=M.data64F;
-    // M = [[s·cosθ, −s·sinθ, tx],[s·sinθ, s·cosθ, ty]]；canvas 的 rotate(θ) 与之同向，所以 θ = atan2(m[3], m[0])（原先误用 m[1]，符号相反）
-    const sc=allow.scale===false?1:Math.hypot(m[0],m[3]),rot=allow.rot===false?0:Math.atan2(m[3],m[0])*180/Math.PI;// B centre maps to:
+    if(d1.empty()||d2.empty())return null;
+    const bf=keep(new cv.BFMatcher(cv.NORM_HAMMING,false)),mm=keep(new cv.DMatchVectorVector());bf.knnMatch(d2,d1,mm,2);const src=[],dst=[];
+    for(let i=0;i<mm.size();i++){const matches=mm.get(i);try{
+      if(matches.size()<2)continue;const a=matches.get(0),b=matches.get(1);
+      if(a.distance<.75*b.distance){const p2=k2.get(a.queryIdx).pt,p1=k1.get(a.trainIdx).pt;src.push(p2.x,p2.y);dst.push(p1.x,p1.y)}
+    }finally{matches.delete?.()}}
+    if(src.length<8)return null;const sm=keep(cv.matFromArray(src.length/2,1,cv.CV_32FC2,src)),dm=keep(cv.matFromArray(dst.length/2,1,cv.CV_32FC2,dst)),inl=keep(new cv.Mat());const M=keep(cv.estimateAffinePartial2D(sm,dm,inl,cv.RANSAC,5,2000,.95,10));
+    if(M.empty())return null;const m=M.data64F,good=inl.data.reduce((n,v)=>n+Number(v!==0),0),conf=good/(src.length/2);
+    if(m.length!==6||!m.every(Number.isFinite)||good<4||conf<.35)return null;
+    const scale=Math.hypot(m[0],m[3]),rot=Math.atan2(m[3],m[0])*180/Math.PI;
+    if(!(scale>0))return null;
     const cxB=B.width/2,cyB=B.height/2,tx=m[0]*cxB+m[1]*cyB+m[2],ty=m[3]*cxB+m[4]*cyB+m[5];
-    return {dx:tx-cxB,dy:ty-cyB,rot,scale:sc,fh:false,fv:false,conf:.9}}
+    return {dx:tx-cxB,dy:ty-cyB,rot,scale,fh:false,fv:false,conf}}
   finally{for(const x of del){try{x.delete()}catch(e){}}}}
 
 /* ===================== export ===================== */

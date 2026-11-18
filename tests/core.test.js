@@ -750,6 +750,7 @@ test('image.autoAlign: 沿用并带回调用方当前的翻转状态；带翻转
   assert.equal((await X.autoAlign(A, B, { rot: true, scale: true })).fh, false); // 不传翻转时与原先一致
   X.window.cv = { ORB: 1 };
   assert.equal((await X.autoAlign(A, B, { rot: true, scale: true })).dx, 9); assert.equal(X.ocv.length, 1);
+  assert.equal((await X.autoAlign(A, B, { rot: false, scale: true })).dx, 3); assert.equal(X.ocv.length, 1);
   const flipped = await X.autoAlign(A, B, { rot: true, scale: true, fh: true });
   assert.equal(X.ocv.length, 1); assert.equal(flipped.fh, true); assert.equal(flipped.dx, 3);
 });
@@ -1082,4 +1083,15 @@ test('图片工作画布：极窄的输入仍至少保留一个像素', () => {
   assert.deepEqual({ ...workingFrame(1, 12000) }, { w: 1, h: 2600, scale: 2600 / 12000 });
   assert.equal(fitsCanvas(3000, 6000, 32 * 1024 * 1024), true);
   assert.equal(fitsCanvas(16384, 4096, 32 * 1024 * 1024), false);
+});
+
+test('image.autoAlign: 同时允许旋转和缩放时，终步仍评估仅缩放候选', async () => {
+  const code = between(script('image-compare.html'), 'async function autoAlign', 'function alignWithOpenCV');
+  const pre = 'const window={},setTimeout=f=>f();'
+    + 'function grayPatch(src,N,sc,rot){return {g:{N,sc,rot},f:1}}'
+    + 'function phaseCorr(a,b){return {dx:0,dy:0,psr:b.N===512&&b.sc===1.01&&b.rot===0?100:50}}';
+  const { autoAlign } = run(code, 'autoAlign', pre), dim = { width: 64, height: 64 };
+  const r = await autoAlign(dim, dim, { rot: true, scale: true });
+  assert.equal(r.rot, 0);
+  assert.equal(r.scale, 1.01);
 });
