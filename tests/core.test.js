@@ -1102,3 +1102,8 @@ test('文本 PNG 排版保留长行和换行后的高亮，不切断代理对', 
   assert.deepEqual(JSON.parse(JSON.stringify(rows)).map(r => r.map(p => [p.text, p.mark])), [[['abcd', false]], [['😀efg', true]], [['h', true]]]);
   assert.throws(() => wrapPngLine([{ text: 'x'.repeat(20), mark: true }], 4, () => 1, 3), /image too tall/);
 });
+
+test('共享公式：长标识符保持原样，非 ASCII 字母不会误认成列引用', () => {
+  const name = 'X'.repeat(60000) + '_note';
+  assert.equal(excel.shiftFormula(`${name}+K1+a1`, 1, 1), `${name}+K1+b2`);
+});

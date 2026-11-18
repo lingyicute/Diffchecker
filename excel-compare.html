@@ -244,7 +244,7 @@ const xstr=s=>s.indexOf('_x')<0?s:s.replace(/_x([0-9A-Fa-f]{4})_/g,(m,h)=>String
 // 共享公式（<f t="shared" si="…"/>）：只有主单元格带公式文本，其余单元格要按位移平移相对引用（$ 锁定的行 / 列不动，字符串与带引号的工作表名里的内容不动）
 function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
   // 跳过字符串、工作表限定符与结构化引用。后者的列名可以恰好形如 A1，也可以嵌套括号。
-  const tokens=/("(?:[^"]|"")*"|'(?:[^']|'')*'|[\p{L}\p{N}_.]+(?::[\p{L}\p{N}_.]+)?!)|(\[)|(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\p{L}\p{N}_.(!])|(\$?)([A-Z]{1,3}):(\$?)([A-Z]{1,3})(?![\p{L}\p{N}_.(!])|(\$?)(\d+):(\$?)(\d+)(?![\p{L}\p{N}_.(!])/giu;
+  const tokens=/("(?:[^"]|"")*"|'(?:[^']|'')*'|[\p{L}\p{N}_.]+(?::[\p{L}\p{N}_.]+)?!)|(\[)|(\$?)([A-Za-z]{1,3})(\$?)(\d+)(?![\p{L}\p{N}_.(!])|(\$?)([A-Za-z]{1,3}):(\$?)([A-Za-z]{1,3})(?![\p{L}\p{N}_.(!])|(\$?)(\d+):(\$?)(\d+)(?![\p{L}\p{N}_.(!])|[\p{L}\p{N}_.]+/gu;
   const moveCol=(name,delta)=>{const i=colIndex(name.toUpperCase())+delta;return i>=0&&i<=16383?(delta?(name===name.toLowerCase()?colName(i).toLowerCase():colName(i)):name):null};
   let m,pos=0,out='';
   while((m=tokens.exec(f))){
@@ -256,7 +256,7 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
     let next=raw;
     if(xc!=null){const a=moveCol(xc,xa?0:dc),b=moveCol(xd,xb?0:dc);if(a&&b)next=xa+a+':'+xb+b}
     else if(yr!=null){const a=+yr+(ya?0:dr),b=+yd+(yb?0:dr);if(a>=1&&a<=1048576&&b>=1&&b<=1048576)next=ya+a+':'+yb+b}
-    else{const c=moveCol(col,ca?0:dc),r=+row+(ra?0:dr);if(c&&r>=1&&r<=1048576)next=ca+c+ra+r}
+    else if(col!=null){const c=moveCol(col,ca?0:dc),r=+row+(ra?0:dr);if(c&&r>=1&&r<=1048576)next=ca+c+ra+r}
     if(next!==raw){out+=f.slice(pos,m.index)+next;pos=tokens.lastIndex}
   }
   return out+f.slice(pos);
