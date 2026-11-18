@@ -1008,6 +1008,16 @@ test('readZip: 本地条目名、长度必须与中央目录相符', async () =>
   }
 });
 
+test('XLSX ZIP：XML 部件可以使用带 BOM 的 UTF-16LE 或 UTF-16BE', async () => {
+  const xml = '<?xml version="1.0" encoding="UTF-16"?><worksheet>中文 😀</worksheet>';
+  const le = Buffer.from('\ufeff' + xml, 'utf16le'), be = Buffer.from(le).swap16();
+  const blob = zipLib.zipStore([{ name: 'le.xml', data: le }, { name: 'be.xml', data: be }, { name: 'broken.xml', data: Uint8Array.of(255) }]);
+  const zip = zipLib.readZip(await blob.arrayBuffer());
+  assert.equal(zip.text('le.xml'), xml);
+  assert.equal(zip.text('be.xml'), xml);
+  assert.throws(() => zip.text('broken.xml'), /badZip/);
+});
+
 test('CSV: 按候选分隔符解析引号，拒绝未闭合字段', () => {
   const read = (s, d) => JSON.parse(JSON.stringify(excel.parseCsv(s, d).sheets[0].grid.rows.map(r => r.map(c => c.v))));
   assert.deepEqual(read('ID;Label\n1;"first, line\nsecond"\n2;"last, row"'), [['ID', 'Label'], ['1', 'first, line\nsecond'], ['2', 'last, row']]);

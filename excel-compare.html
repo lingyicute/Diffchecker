@@ -230,7 +230,11 @@ function readZip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf),bad=()=>
     const data=u8.subarray(start,start+f.csize);
     const out=f.method===0?data:f.method===8?inflate(data,f.usize):(()=>{throw new Error('unsupported compression '+f.method)})();
     if(out.length!==f.usize||crc32(out)!==f.crc)bad();return out},
-    text(name){const d=this.get(name);return d?dec.decode(d):null},names:Object.keys(files)}}
+    text(name){const d=this.get(name);if(!d)return null;
+      // OPC 的 XML 部件也允许 UTF-16；部件内容编码与 ZIP 条目名称编码无关。
+      const le=d[0]===0xFF&&d[1]===0xFE,be=d[0]===0xFE&&d[1]===0xFF;
+      try{return new TextDecoder(le?'utf-16le':be?'utf-16be':'utf-8',{fatal:true}).decode(d)}catch(e){bad()}
+    },names:Object.keys(files)}}
 
 /* ===================== XLSX parsing ===================== */
 const DATE_IDS=new Set([14,15,16,17,18,19,20,21,22,27,28,29,30,31,32,33,34,35,36,45,46,47,50,51,52,53,54,55,56,57,58]);
