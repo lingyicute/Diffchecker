@@ -1014,6 +1014,19 @@ test('Excel 数值时间：格式精度决定小数秒，跨秒及午夜正确�
   assert.equal(serialToElapsed(-(90001.125 / 86400), 3), '-25:00:01.125');
 });
 
+test('Excel 自定义数值格式：只按实际生效的格式段识别日期', () => {
+  const code = between(script('excel-compare.html'), 'function secondFraction', '// t="d"');
+  const { customNumberStyle } = run(code, 'customNumberStyle');
+  const signed = customNumberStyle('yyyy-mm-dd ";";0.00;0;@');
+  assert.equal(signed(45356).kind, 'date');
+  assert.equal(signed(-1).kind, '');
+  assert.equal(signed(0).kind, '');
+  const conditional = customNumberStyle('[Blue][>=1]yyyy-mm-dd;[>=0]hh:mm:ss.000;0');
+  assert.equal(conditional(1).kind, 'date');
+  assert.deepEqual({ ...conditional(0.5) }, { kind: 'time', precision: 3 });
+  assert.equal(conditional(-2).kind, '');
+});
+
 test('XLSX 部件路径：以当前部件目录为基准解析相对路径', () => {
   const { resolvePart } = run(between(script('excel-compare.html'), 'function resolvePart', 'function parseXlsx'), 'resolvePart');
   assert.equal(resolvePart('xl/', 'xl/sheet.xml'), 'xl/xl/sheet.xml');

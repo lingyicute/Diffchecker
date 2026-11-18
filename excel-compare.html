@@ -299,6 +299,26 @@ function dateNumberStyle(format){
   const kind=customDateKind(format),m=/s+\]?\.(0+)/i.exec(format.replace(/"[^"]*"|[\\_*]./g,''));
   return {kind,precision:kind?Math.min(3,m?.[1].length||0):0};
 }
+function customNumberStyle(format){
+  // 条件和日期标记只对各自所在的数值段生效；引号、转义或括号里的分号不分段。
+  const parts=[];let start=0,quoted=false,bracket=false;
+  for(let i=0;i<format.length;i++){
+    const c=format[i];if(c==='"'&&!bracket){quoted=!quoted;continue}if(quoted)continue;
+    if(c==='\\'||c==='_'||c==='*'){i++;continue}
+    if(c==='[')bracket=true;else if(c===']')bracket=false;else if(c===';'&&!bracket){parts.push(format.slice(start,i));start=i+1}
+  }
+  parts.push(format.slice(start));
+  const sections=parts.slice(0,3).map(part=>{
+    const style=dateNumberStyle(part),prefix=/^(?:\[[^\]]*\]\s*)*/.exec(part)[0];
+    const m=/\[(<=|>=|<>|<|>|=)([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)\]/i.exec(prefix);
+    if(!m)return {style};
+    const rhs=+m[2],op=m[1];return {style,test:n=>op==='<'?n<rhs:op==='>'?n>rhs:op==='<='?n<=rhs:op==='>='?n>=rhs:op==='='?n===rhs:n!==rhs};
+  });
+  if(!sections.some(s=>s.style.kind))return {kind:'',precision:0};
+  if(sections.some(s=>s.test))return n=>sections.find(s=>s.test?.(n))?.style??sections.find(s=>!s.test)?.style;
+  if(sections.length===1)return sections[0].style;
+  return n=>sections[n<0?1:n===0&&sections.length===3?2:0].style;
+}
 // t="d" 单元格（ISO 8601 文本，如 2024-03-05T00:00:00 / 10:30:00）：统一成与日期序列号一致的显示，否则同一日期在两种存储方式下会被误报为修改
 function isoDateCell(raw){
   // SpreadsheetML 的日期/时间是本地时刻，最多三位小数秒；带时区的非标准值保留原文。
@@ -331,9 +351,9 @@ function parseXlsx(buf){const z=readZip(buf),bad=()=>{throw new Error(t('badZip'
   const dateStyles=new Map(),stx=relatedText('styles','styles.xml');
   if(stx){const st=xml(stx),custom=new Map(),nfs=els(st,'numFmts')[0];
     // 只读 numFmts，忽略条件格式 dxf 里可能同号的 numFmt。
-    for(const nf of nfs?els(nfs,'numFmt'):[])custom.set(+nf.getAttribute('numFmtId'),dateNumberStyle(nf.getAttribute('formatCode')||''));
+    for(const nf of nfs?els(nfs,'numFmt'):[])custom.set(+nf.getAttribute('numFmtId'),customNumberStyle(nf.getAttribute('formatCode')||''));
     const timeIds=new Set([18,19,20,21,32,33,45,47]),xfs=els(st,'cellXfs')[0];
-    if(xfs)[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),style=custom.get(id)??{kind:id===46?'elapsed':timeIds.has(id)?'time':DATE_IDS.has(id)?'date':'',precision:id===47?1:0};if(style.kind)dateStyles.set(i,style)});
+    if(xfs)[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),style=custom.get(id)??{kind:id===46?'elapsed':timeIds.has(id)?'time':DATE_IDS.has(id)?'date':'',precision:id===47?1:0};if(typeof style==='function'||style.kind)dateStyles.set(i,style)});
   }
   const sheets=[];for(const sh of els(wb,'sheet')){
     // Transitional 与 Strict 的 r:id 命名空间不同；非 worksheet 部件（如 chartsheet）不参与比较。
@@ -358,7 +378,7 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
     seenRows.add(ri);lastRi=ri;const cells=[],seenCols=new Set();let ci=-1;
     for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r'),addr=ref==null?null:cellAddress(ref);
       if(ref!=null&&(!addr||addr.row!==ri))bad();ci=addr?.col??ci+1;if(ci>=16384||seenCols.has(ci))bad();seenCols.add(ci);
-      const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null,shared=null;
+      const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null,shared=null,d=tt==='d';
       for(const ch of c.children){
         if(ch.localName==='v')raw=ch.textContent;
         else if(ch.localName==='f'){
@@ -375,8 +395,9 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText){
       else if(tt==='s'){const idx=+raw;if(!/^\d+$/.test(raw.trim())||idx>=sst.length)bad();v=sst[idx]}
       else if(tt==='b'){const b=raw.trim().toLowerCase();if(!/^(0|1|false|true)$/.test(b))bad();v=b==='1'||b==='true'?'TRUE':'FALSE'}
       else if(tt==='str')v=xstr(raw);else if(tt==='inlineStr'||tt==='e')v=raw;else if(tt==='d')v=isoDateCell(raw);
-      else if(raw.trim()!==''){const n=Number(raw),style=dateStyles.get(s);v=isFinite(n)?(style?(style.kind==='elapsed'?serialToElapsed(n,style.precision):serialToDate(n,d1904,style.kind==='time',compat,style.precision)):String(+n.toPrecision(15))):raw}else v='';
-      cells[ci]={v,f,d:dateStyles.has(s)||tt==='d'};if(shared!=null)pending.push({shared,cell:cells[ci],ri,ci});if(ci+1>cols)cols=ci+1}
+      else if(raw.trim()!==''){const n=Number(raw),format=dateStyles.get(s),style=typeof format==='function'?format(n):format;
+        d=!!style?.kind&&isFinite(n);v=isFinite(n)?(d?(style.kind==='elapsed'?serialToElapsed(n,style.precision):serialToDate(n,d1904,style.kind==='time',compat,style.precision)):String(+n.toPrecision(15))):raw}else v='';
+      cells[ci]={v,f,d};if(shared!=null)pending.push({shared,cell:cells[ci],ri,ci});if(ci+1>cols)cols=ci+1}
     if(cells.length){rows[ri]=cells}}
   for(const {shared,cell,ri,ci} of pending){const master=sharedF.get(shared);if(!master)bad();cell.f='='+shiftFormula(master.f,ri-master.r,ci-master.c)}
   for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];return {rows,cols};
