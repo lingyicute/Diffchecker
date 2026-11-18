@@ -1193,6 +1193,14 @@ test('文本打印视图可以使用不同布局，但不改当前布局、不�
   assert.match(ctx.screen.html, /class="split chg" id="focus-0"/);
 });
 
+test('文本 PNG 的尺寸和画布像素面积都有限', () => {
+  const { pngLineBudget } = run(between(script('text-compare.html'), 'function pngLineBudget', 'async function exportPng'), 'pngLineBudget');
+  const width = 1600, header = 72, line = 20, max = pngLineBudget(width, header, line);
+  assert.ok((header + max * line) * width <= 16 * 1024 * 1024);
+  assert.ok((header + (max + 1) * line) * width > 16 * 1024 * 1024);
+  assert.ok(header + pngLineBudget(100, header, line) * line <= 16384);
+});
+
 test('文本 PNG 排版保留长行和换行后的高亮，不切断代理对', () => {
   const { wrapPngLine } = run(between(script('text-compare.html'), 'function wrapPngLine', 'async function exportPng'), 'wrapPngLine');
   const rows = wrapPngLine([{ text: 'abcd', mark: false }, { text: '😀efgh', mark: true }], 4, () => 1, 10);
