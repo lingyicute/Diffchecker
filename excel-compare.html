@@ -292,11 +292,13 @@ function customDateKind(format){
   return /[yd]/i.test(code)||!/[hs]/i.test(code)?'date':'time';
 }
 // t="d" 单元格（ISO 8601 文本，如 2024-03-05T00:00:00 / 10:30:00）：统一成与日期序列号一致的显示，否则同一日期在两种存储方式下会被误报为修改
-function isoDateCell(raw){const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)(\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?(?:Z|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?\s*$/.exec(raw||'');if(!m||(!m[1]&&!m[4]))return raw??'';
-  /* t="d" 也可能是伪造的非法日期 / 时间。不能在验证前丢掉时刻或时区，否则非法的完整文本会与另一个单元格里的截断文本伪相等。 */
+const secondFraction=digits=>{const f=(digits||'').replace(/0+$/,'');return f?'.'+f:''};
+function isoDateCell(raw){
+  // SpreadsheetML 的日期/时间是本地时刻，最多三位小数秒；带时区的非标准值保留原文。
+  const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?\s*$/.exec(raw||'');if(!m||(!m[1]&&!m[4]))return raw??'';
   const y=+(m[1]||0),mo=+(m[2]||0),dy=+(m[3]||0),h=+(m[4]||0),mi=+(m[5]||0),se=+(m[6]||0),dim=mo===2?28+(y%4===0&&(y%100!==0||y%400===0)?1:0):[4,6,9,11].includes(mo)?30:31;
-  if(h>23||mi>59||se>59||(m[1]&&(mo<1||mo>12||dy<1||dy>dim)))return raw??'';
-  const tm=m[4]?`${m[4]}:${m[5]}:${m[6]||'00'}`:'';if(!m[1])return tm;const d=`${m[1]}-${m[2]}-${m[3]}`;return tm&&tm!=='00:00:00'?d+' '+tm:d}
+  if(h>23||mi>59||se>59||(m[1]&&(y<1||mo<1||mo>12||dy<1||dy>dim)))return raw??'';
+  const tm=m[4]?`${m[4]}:${m[5]}:${m[6]||'00'}${secondFraction(m[7])}`:'';if(!m[1])return tm;const d=`${m[1]}-${m[2]}-${m[3]}`;return tm&&tm!=='00:00:00'?d+' '+tm:d}
 // 只认完整的 ZIP 签名（PK\x03\x04 / 空包 PK\x05\x06 / 分卷 PK\x07\x08）；仅凭 "PK" 两个字节会把以 PK 开头的 CSV 误判成 xlsx
 const isZipSig=u=>u[0]===0x50&&u[1]===0x4B&&((u[2]===3&&u[3]===4)||(u[2]===5&&u[3]===6)||(u[2]===7&&u[3]===8));
 // OOXML 部件可能使用带前缀的命名空间（<x:sheet>、<x:row>…），getElementsByTagName 只按限定名匹配，会把这类文件读成空工作簿；统一按本地名匹配
@@ -447,14 +449,14 @@ const opts={mode:'table',val:'standard',matchHeaders:true,ignoreWs:false,ignoreC
 function mergeOpts(src){if(!src||typeof src!=='object')return;for(const k of Object.keys(opts)){if(!Object.prototype.hasOwnProperty.call(src,k))continue;const v=src[k];if(k==='mode'){if(v==='table'||v==='rows')opts.mode=v}else if(k==='val'){if(v==='standard'||v==='formulas')opts.val=v}else if(typeof v==='boolean')opts[k]=v}}
 try{mergeOpts(JSON.parse(lsGet('excel-opts')||'{}'))}catch(e){}
 const saveOpts=()=>lsSet('excel-opts',JSON.stringify(opts));
-const DATE_RX=/^\s*(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})|(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}))(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$/;
+const DATE_RX=/^\s*(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})|(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}))(?:[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?\s*$/;
 function cellText(c){if(!c)return '';if(opts.val==='formulas'&&c.f)return c.f;return c.v??''}
-const TIME_RX=/^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/;
+const TIME_RX=/^\s*(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?\s*$/;
 const DAYS_IN_MONTH=[31,28,31,30,31,30,31,31,30,31,30,31];
-function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);const p=n=>String(n).padStart(2,'0');if(!m){const tm=TIME_RX.exec(s);if(tm&&+tm[1]<=23&&+tm[2]<=59&&+(tm[3]||0)<=59)s=p(tm[1])+':'+tm[2]+':'+(tm[3]||'00')}// 纯时间统一成 HH:MM:SS，与 .xlsx 里的时间单元格一致
+function normalize(s){if(opts.normDates){const m=DATE_RX.exec(s);const p=n=>String(n).padStart(2,'0');if(!m){const tm=TIME_RX.exec(s);if(tm&&+tm[1]<=23&&+tm[2]<=59&&+(tm[3]||0)<=59)s=p(tm[1])+':'+tm[2]+':'+(tm[3]||'00')+secondFraction(tm[4])}// 纯时间统一成 HH:MM:SS，与 .xlsx 里的时间单元格一致
     if(m){const yr=m[1]||m[6],[mo,dy]=m[1]?[+m[2],+m[3]]:(+m[4]<=12&&+m[5]>12?[+m[4],+m[5]]:[+m[5],+m[4]]);/* 第二位 >12 时只可能是 月/日/年；否则按 日/月/年 */
       const y=+yr,leap=mo===2&&y%4===0&&(y%100!==0||y%400===0);/* 非法月末（含非闰年的 2 月 29 日）不能规范化，否则不同的无效日期文本会误判相同 */
-      if(mo>=1&&mo<=12&&dy>=1&&dy<=DAYS_IN_MONTH[mo-1]+(leap?1:0)&&(!m[7]||(+m[7]<=23&&+m[8]<=59&&+(m[9]||0)<=59))){s=`${yr}-${p(mo)}-${p(dy)}`+(m[7]?` ${p(m[7])}:${m[8]}:${m[9]||'00'}`:'');if(s.endsWith(' 00:00:00'))s=s.slice(0,-9)/* 午夜时刻等同于纯日期：.xlsx 的日期单元格午夜时只显示日期 */}}}
+      if(y>=1&&mo>=1&&mo<=12&&dy>=1&&dy<=DAYS_IN_MONTH[mo-1]+(leap?1:0)&&(!m[7]||(+m[7]<=23&&+m[8]<=59&&+(m[9]||0)<=59))){s=`${yr}-${p(mo)}-${p(dy)}`+(m[7]?` ${p(m[7])}:${m[8]}:${m[9]||'00'}${secondFraction(m[10])}`:'');if(s.endsWith(' 00:00:00'))s=s.slice(0,-9)/* 午夜时刻等同于纯日期：.xlsx 的日期单元格午夜时只显示日期 */}}}
   if(opts.ignoreWs)s=s.replace(/\s+/g,' ').trim();if(opts.ignoreCase)s=s.toLowerCase();return s}
 function detectHeader(rows){let best=0,bestN=0;const lim=Math.min(rows.length,20);const counts=[];for(let i=0;i<lim;i++){const n=(rows[i]||[]).filter(c=>c&&(String(c.v).trim()!==''||c.f)).length;counts.push(n);if(n>bestN)bestN=n}
   for(let i=0;i<lim;i++)if(counts[i]>=2&&counts[i]>=.6*bestN){best=i;break}return best}

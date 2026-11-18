@@ -579,7 +579,7 @@ test('excel.compare: 按行排序只以共有列为键，删除 / 新增的列�
 
 test('excel.isoDateCell: t="d" 的 ISO 日期与日期序列号的显示一致', () => {
   assert.equal(excel.isoDateCell('2024-03-05T00:00:00'), excel.serialToDate(45356));
-  assert.equal(excel.isoDateCell('2024-03-05T00:00:00Z'), '2024-03-05');
+  assert.equal(excel.isoDateCell('2024-03-05T00:00:00Z'), '2024-03-05T00:00:00Z');
   assert.equal(excel.isoDateCell('2024-03-05T08:05:09.000'), '2024-03-05 08:05:09');
   assert.equal(excel.isoDateCell('2024-03-05T08:05'), '2024-03-05 08:05:00');
   assert.equal(excel.isoDateCell('10:30:00'), excel.serialToDate(0.4375));
@@ -593,7 +593,18 @@ test('excel.isoDateCell: 非法日历日期、越界时间与时区保持原文�
     '2024-01-01T24:00:00', '2024-01-01T12:60:00', '25:00:00', '2024-01-01T00:00:00+25:00',
   ]) assert.equal(excel.isoDateCell(value), value);
   assert.equal(excel.isoDateCell('2024-02-29T00:00:00'), '2024-02-29');
-  assert.equal(excel.isoDateCell('2024-02-29T08:05:09+05:30'), '2024-02-29 08:05:09');
+  assert.equal(excel.isoDateCell('2024-02-29T08:05:09+05:30'), '2024-02-29T08:05:09+05:30');
+});
+
+test('Excel 的 ISO 日期和日期文本保留有效的小数秒，不与整秒伪相等', () => {
+  Object.assign(excel.opts, { normDates: true });
+  const date = excel.isoDateCell('2024-02-29T00:00:00.125');
+  assert.equal(date, '2024-02-29 00:00:00.125');
+  assert.equal(excel.normalize('2024/2/29 0:00:00.125'), date);
+  assert.equal(excel.isoDateCell('08:30:00.100'), '08:30:00.1');
+  assert.equal(excel.normalize('8:30:00.100'), '08:30:00.1');
+  assert.notEqual(date, excel.isoDateCell('2024-02-29T00:00:00.000'));
+  assert.equal(excel.isoDateCell('0000-02-29T00:00:00'), '0000-02-29T00:00:00');
 });
 
 test('image.invertAlign: 带翻转的对齐参数求逆后仍能把点映射回原位', () => {
