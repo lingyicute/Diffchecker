@@ -567,22 +567,45 @@ function pairedRows(collapse){const d=lastDiff,out=[];d.blocks.forEach((b,bi)=>{
     if(collapse&&opts.hideUnchanged&&hidden>1&&!expanded.has(bi)){for(const r of b.rows.slice(0,head))out.push({l:r.l,r:r.r,changed:false});out.push({collapsed:hidden});for(const r of b.rows.slice(b.rows.length-tail))out.push({l:r.l,r:r.r,changed:false})}
     else for(const r of b.rows)out.push({l:r.l,r:r.r,changed:false})}
   else for(const p of b.pairs)out.push({l:p.l,r:p.r,changed:true})});return out}
+function wrapPngLine(parts,maxWidth,widthOf,maxLines){
+  const lines=[[]];let x=0;
+  for(const {text,mark} of parts)for(const char of text.replace(/\t/g,'    ')){
+    const w=widthOf(char);if(x>0&&x+w>maxWidth){if(lines.length===maxLines)throw Object.assign(new Error('image too tall'),{tooTall:true});lines.push([]);x=0}
+    const row=lines[lines.length-1],p=row[row.length-1];if(p?.mark===mark){p.text+=char;p.w+=w}else row.push({text:char,mark,w});x+=w;
+  }
+  return lines;
+}
 async function exportPng(){
-  const d=lastDiff,rows=pairedRows(true),unified=exportLayout==='unified';const dark=theme==='dark';
-  const css=getComputedStyle(document.body),cssVar=(n,d)=>css.getPropertyValue(n).trim()||d,W=1600,LH=20,PAD=16,font='13px '+cssVar('--mono','monospace');
-  /* 增删行的底色与行内高亮直接取当前主题的 CSS 变量：原先写死的是浅色主题的淡色，深色背景上 9% 透明度的红 / 绿几乎看不见 */const col={del:cssVar('--del-block','rgba(255,46,0,.09)'),ins:cssVar('--ins-block','rgba(0,180,144,.12)'),delHl:cssVar('--del-hl','rgba(255,46,0,.3)'),insHl:cssVar('--ins-hl','rgba(0,180,144,.34)')};
-  const lines=unified?rows.reduce((n,r)=>n+(r.changed?(r.l!=null)+(r.r!=null):1),0):rows.length;
-  const H=PAD*2+40+lines*LH;if(H>32000)throw Object.assign(new Error('image too tall'),{tooTall:true});const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
-  ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14);
-  ctx.font=font;const colW=unified?W-PAD*2:(W-PAD*2)/2;let y=PAD+40;/* 行号栏按最大行号的实际宽度算：固定 40px 只放得下 5 位数，行数上十万时行号会压到代码上（与页面里按位数加宽行号列一致） */const gut=Math.ceil(Math.max(40,ctx.measureText(String(Math.max(d.A.length,d.B.length))).width+8));
-  const drawLine=(x,txt,num,kind,segs,side,width)=>{if(kind)ctx.fillStyle=kind==='del'?col.del:col.ins,ctx.fillRect(x,y,width,LH);ctx.fillStyle=dark?'#7d858d':'#9aa1a8';ctx.textAlign='right';ctx.fillText(num==null?'':String(num+1),x+gut,y+14);ctx.textAlign='left';
-    let cx=x+gut+12;ctx.save();ctx.beginPath();ctx.rect(x,y,width,LH);ctx.clip();const parts=segs?segs.filter(s=>side==='l'?s.a:s.b).map(s=>({tx:(side==='l'?s.a:s.b).replace(/\t/g,'    '),m:s.t!==EQ})):[{tx:txt.replace(/\t/g,'    '),m:false}];
-    for(const p of parts){const w=ctx.measureText(p.tx).width;if(p.m){ctx.fillStyle=kind==='del'?col.delHl:col.insHl;ctx.fillRect(cx,y+2,w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.tx,cx,y+14);cx+=w;if(cx>x+width)break}ctx.restore()};
-  for(const r of rows){if(r.collapsed){ctx.fillStyle=dark?'#1f2226':'#f6f8f7';ctx.fillRect(PAD,y,W-PAD*2,LH);ctx.fillStyle=dark?'#aeb6be':'#626971';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('⋯ '+t('unchangedLines',{n:r.collapsed}),W/2,y+14);ctx.textAlign='left';ctx.font=font;y+=LH;continue}
+  const d=lastDiff,rows=pairedRows(true),unified=exportLayout==='unified',dark=theme==='dark';
+  const css=getComputedStyle(document.body),cssVar=(n,d)=>css.getPropertyValue(n).trim()||d,W=1600,LH=20,PAD=16,HEADER=PAD*2+40,font='13px '+cssVar('--mono','monospace');
+  const col={del:cssVar('--del-block','rgba(255,46,0,.09)'),ins:cssVar('--ins-block','rgba(0,180,144,.12)'),delHl:cssVar('--del-hl','rgba(255,46,0,.3)'),insHl:cssVar('--ins-hl','rgba(0,180,144,.34)')};
+  const cv=document.createElement('canvas');cv.width=W;cv.height=1;const ctx=cv.getContext('2d');ctx.font=font;
+  const colW=unified?W-PAD*2:(W-PAD*2)/2,gut=Math.ceil(Math.max(40,ctx.measureText(String(Math.max(d.A.length,d.B.length))).width+8)),limit=Math.floor((32000-HEADER)/LH);
+  const widths=new Map(),widthOf=ch=>{if(!widths.has(ch))widths.set(ch,ctx.measureText(ch).width);return widths.get(ch)};
+  const wrap=(txt,segs,side)=>wrapPngLine(segs?segs.map(s=>({text:side==='l'?s.a:s.b,mark:s.t!==EQ})):[{text:txt,mark:false}],colW-gut-16,widthOf,limit);
+  const laid=[];let total=0;const add=row=>{const height=row.collapsed?1:Math.max(row.left?.length||0,row.right?.length||0,1);
+    total+=height;if(total>limit)throw Object.assign(new Error('image too tall'),{tooTall:true});laid.push({...row,height})};
+  for(const r of rows){if(r.collapsed){add(r);continue}
     let segs=null;if(r.changed&&r.l!=null&&r.r!=null){const ck=opts.level+'|'+r.l+'|'+r.r;segs=d.segCache.get(ck);if(!segs){segs=inlineDiff(d.A[r.l],d.B[r.r],opts.level,d.norm);d.segCache.set(ck,segs)}}
-    if(unified){if(r.l!=null){drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);y+=LH}if(r.changed&&r.r!=null){drawLine(PAD,d.B[r.r],r.r,'ins',segs,'r',colW);y+=LH}}
-    else{if(r.l!=null)drawLine(PAD,d.A[r.l],r.l,r.changed?'del':'',segs,'l',colW);if(r.r!=null)drawLine(PAD+colW,d.B[r.r],r.r,r.changed?'ins':'',segs,'r',colW);y+=LH}}
-  ctx.strokeStyle=dark?'#353a3f':'#e6e8eb';ctx.beginPath();ctx.moveTo(W/2,PAD+24);ctx.lineTo(W/2,H-PAD);if(!unified)ctx.stroke();
+    const left=r.l!=null?wrap(d.A[r.l],segs,'l'):null;
+    const right=r.r!=null&&(!unified||r.changed)?wrap(d.B[r.r],segs,'r'):null;
+    if(unified){if(left)add({...r,left});if(right)add({...r,right})}else add({...r,left,right});
+  }
+  const H=HEADER+total*LH;cv.height=H;ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';
+  const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14,colW);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14,colW);
+  ctx.font=font;let y=PAD+40;
+  const drawLines=(x,lines,num,kind,height)=>{if(kind){ctx.fillStyle=col[kind];ctx.fillRect(x,y,colW,height*LH)}
+    ctx.fillStyle=dark?'#7d858d':'#696f75';ctx.textAlign='right';ctx.fillText(String(num+1),x+gut,y+14);ctx.textAlign='left';
+    for(const [i,parts] of lines.entries()){let cx=x+gut+12;const yy=y+i*LH;
+      for(const p of parts){if(p.mark){ctx.fillStyle=col[kind+'Hl'];ctx.fillRect(cx,yy+2,p.w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.text,cx,yy+14);cx+=p.w}
+    }
+  };
+  for(const r of laid){if(r.collapsed){ctx.fillStyle=dark?'#1f2226':'#f6f8f7';ctx.fillRect(PAD,y,W-PAD*2,LH);ctx.fillStyle=dark?'#aeb6be':'#626971';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('⋯ '+t('unchangedLines',{n:r.collapsed}),W/2,y+14);ctx.textAlign='left';ctx.font=font}
+    if(r.left)drawLines(PAD,r.left,r.l,r.changed?'del':'',r.height);
+    if(r.right)drawLines(unified?PAD:PAD+colW,r.right,r.r,r.changed?'ins':'',r.height);
+    y+=r.height*LH;
+  }
+  if(!unified){ctx.strokeStyle=dark?'#353a3f':'#e6e8eb';ctx.beginPath();ctx.moveTo(W/2,PAD+24);ctx.lineTo(W/2,H-PAD);ctx.stroke()}
   const name=baseName()+'.png',blob=await new Promise(r=>cv.toBlob(r,'image/png'));if(!blob)throw new Error('toBlob failed');download(blob,name);
 }
 /* ---- minimal XLSX writer (zip STORE, inline strings) ---- */

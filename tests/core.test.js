@@ -1095,3 +1095,10 @@ test('image.autoAlign: 同时允许旋转和缩放时，终步仍评估仅缩放
   assert.equal(r.rot, 0);
   assert.equal(r.scale, 1.01);
 });
+
+test('文本 PNG 排版保留长行和换行后的高亮，不切断代理对', () => {
+  const { wrapPngLine } = run(between(script('text-compare.html'), 'function wrapPngLine', 'async function exportPng'), 'wrapPngLine');
+  const rows = wrapPngLine([{ text: 'abcd', mark: false }, { text: '😀efgh', mark: true }], 4, () => 1, 10);
+  assert.deepEqual(JSON.parse(JSON.stringify(rows)).map(r => r.map(p => [p.text, p.mark])), [[['abcd', false]], [['😀efg', true]], [['h', true]]]);
+  assert.throws(() => wrapPngLine([{ text: 'x'.repeat(20), mark: true }], 4, () => 1, 3), /image too tall/);
+});
