@@ -818,6 +818,22 @@ test('文本页 CSS 的自动识别与着色：结果正确，且不会在超长
   assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0}ms`);
 });
 
+test('文本语法着色把未闭合的跨行注释或三引号字符串持续到文末', () => {
+  const code = between(script('text-compare.html'), 'const SYN=', 'const esc=');
+  const { synClasses } = run(code, 'synClasses');
+  for (const [lang, open, close, kind] of [
+    ['js', '/*', '*/', 'c'], ['css', '/*', '*/', 'c'], ['sql', '/*', '*/', 'c'],
+    ['xml', '<!--', '-->', 'c'], ['py', '"""', '"""', 's'],
+  ]) {
+    const prefix = '  ', closed = open + '\ncomment\n' + close, rest = ' ' + open + '\ncontinued\n';
+    const cls = synClasses(prefix + closed + rest, lang);
+    assert.equal(cls[0], '', lang);
+    assert.ok(cls.slice(prefix.length, prefix.length + closed.length).every(c => c === kind), lang);
+    assert.equal(cls[prefix.length + closed.length], '', lang);
+    assert.ok(cls.slice(prefix.length + closed.length + 1).every(c => c === kind), lang);
+  }
+});
+
 test('文本页语法自动识别：缩进的 Python / JS 仍能识别，且不会在大量连续空行上回溯成 O(n²)', () => {
   const s = script('text-compare.html');
   const { detectSyntax } = run(between(s, 'const SYN={', '/* ===================== state'), 'detectSyntax');
