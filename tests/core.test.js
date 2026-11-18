@@ -1015,6 +1015,15 @@ test('CSV: 按候选分隔符解析引号，拒绝未闭合字段', () => {
   assert.throws(() => read('ID,Label\n1,"not closed'), /badCsvQuotes/);
 });
 
+test('CSV：多行字段内部的分隔符不会抢走真实分隔符', () => {
+  const values = (s, d) => Array.from(excel.parseCsv(s, d).sheets[0].grid.rows, r => Array.from(r, c => c.v));
+  for (const [d, other] of [[',', ';'], [';', ','], ['|', ';']]) {
+    const notes = Array.from({ length: 8 }, (_, i) => `label${i}${other}detail`).join('\n');
+    assert.deepEqual(values(`ID${d}Notes\n1${d}"${notes}"\n2${d}end`), [['ID', 'Notes'], ['1', notes], ['2', 'end']]);
+  }
+  assert.throws(() => values('a,"b"junk\nc,d', ','), /badCsvQuotes/);
+});
+
 test('CSV 导出：前导空白的公式样式文本被保留为文本，数值保持原样', () => {
   const { csvField } = run(between(script('excel-compare.html'), 'function csvField', 'function exportDiffFile'), 'csvField');
   assert.equal(csvField('  =1+2'), "'  =1+2");
