@@ -1013,3 +1013,12 @@ test('CSV: 按候选分隔符解析引号，拒绝未闭合字段', () => {
   assert.deepEqual(read('a,tag;ok\nb,"one|two"\nc,x', ','), [['a', 'tag;ok'], ['b', 'one|two'], ['c', 'x']]);
   assert.throws(() => read('ID,Label\n1,"not closed'), /badCsvQuotes/);
 });
+
+test('CSV 导出：前导空白的公式样式文本被保留为文本，数值保持原样', () => {
+  const { csvField } = run(between(script('excel-compare.html'), 'function csvField', 'function exportDiffFile'), 'csvField');
+  assert.equal(csvField('  =1+2'), "'  =1+2");
+  assert.equal(csvField('＝1+2'), "'＝1+2");
+  assert.equal(csvField('-12.5'), '-12.5');
+  assert.equal(csvField('-.5e+2'), '-.5e+2');
+  assert.equal(csvField('Tea; Coffee | Water'), '"Tea; Coffee | Water"');
+});

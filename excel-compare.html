@@ -581,7 +581,14 @@ function printLight(){const root=document.documentElement;let ended=false;const 
   root.dataset.theme='light';window.addEventListener('afterprint',fin);try{window.print()}catch(e){fin();throw e}}
 $('exportGo').onclick=()=>{$('exportModal').classList.remove('open');if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')printLight();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t('exportFailed'))}};
 function tableRows(){const R=RES;const head=[t('origRow'),t('chgRow'),...R.columns.map(c=>c.name+(c.st==='ins'?' (+)':c.st==='del'?' (−)':c.st==='mov'?' (⇄)':''))];const body=R.rows.map(r=>[r.na??'',r.nb??'',...r.cells.map(c=>c.st==='chg'?(opts.showOld?`${c.a} → ${c.b}`:c.b):c.st==='cdel'||c.st==='rdel'?c.a:(c.b||c.a))]);return {head,body}}
-function exportCsv(){const {head,body}=tableRows();const q=v=>{v=String(v);/* 防止 CSV 公式注入：以 = + - @ 开头的非数字文本加单引号前缀 */if(/^[=+\-@\t\r]/.test(v)&&!/^[+-]?\d+(\.\d+)?(e[+-]?\d+)?$/i.test(v))v="'"+v;return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};download(new Blob(['\ufeff'+[head,...body].map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}),baseName()+'.csv')}
+function csvField(value){
+  let v=String(value),first=v.replace(/^[\s\u200b\u2060]+/u,'');
+  // 不让前导空白掩盖公式标记；保留真正的带符号数字。
+  if((/^[=+\-@＝＋－＠]/u.test(first)||/^[\t\r\n]/.test(v))&&!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(v))v="'"+v;
+  // 也引用其他候选分隔符，避免本工具重新读取自己的导出时选错列。
+  return /[",;|\t\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+}
+function exportCsv(){const {head,body}=tableRows();download(new Blob(['\ufeff'+[head,...body].map(r=>r.map(csvField).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),baseName()+'.csv')}
 function exportDiffFile(){const toGrid=side=>{const w=WB[side],s=SEL[side],sheet=w.sheets[s.sheet];return toSavedGrid(sheet,w.load(sheet),s.header)};download(new Blob([JSON.stringify({type:'excel',version:1,left:toGrid('A'),right:toGrid('B'),leftName:NAMES.A,rightName:NAMES.B,options:{...opts},createdAt:new Date().toISOString()})],{type:'application/json'}),baseName()+'.diffchecker')}
 /* minimal xlsx writer (STORE zip, inline strings; styles 0 normal 1 bold 2 red 3 green 4 yellow) */
 const CRC_T=(()=>{const T=new Int32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c}return T})();
