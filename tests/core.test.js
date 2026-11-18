@@ -1107,3 +1107,10 @@ test('共享公式：长标识符保持原样，非 ASCII 字母不会误认成�
   const name = 'X'.repeat(60000) + '_note';
   assert.equal(excel.shiftFormula(`${name}+K1+a1`, 1, 1), `${name}+K1+b2`);
 });
+
+test('XLSX 单元格地址保留实际坐标并拒绝越界或非法地址', () => {
+  const { cellAddress } = run(between(script('excel-compare.html'), 'function colIndex', '// OOXML 字符串'), 'cellAddress');
+  assert.deepEqual({ ...cellAddress('xfd1048576') }, { row: 1048575, col: 16383 });
+  assert.deepEqual({ ...cellAddress('B7') }, { row: 6, col: 1 });
+  for (const ref of ['XFE1', 'A1048577', 'A0', 'A7B', '1A', '']) assert.equal(cellAddress(ref), null);
+});
