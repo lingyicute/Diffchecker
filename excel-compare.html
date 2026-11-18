@@ -232,10 +232,28 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
     if(yr!=null){const r1=ya?+yr:+yr+dr,r2=yb?+yd:+yd+dr;if(r1<1||r1>1048576||r2<1||r2>1048576)return m;return ya+r1+':'+yb+r2}
     const ci=ca?colIndex(col):colIndex(col)+dc,ri=ra?+row:+row+dr;if(ci<0||ci>16383||ri<1||ri>1048576)return m;/* 与整行 / 整列引用一致：平移后越过最后一行（1048576）的引用保持原样，不生成 A1048581 这类不存在的引用 */
     return (ca||'')+(ca?col:colName(ci))+(ra||'')+ri})}
-function serialToDate(v,d1904){if(v>=0&&v<1){const s=Math.round(v*86400)%86400,p=n=>String(n).padStart(2,'0');return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}// 纯时间格式：不再带上 1899-12-30 的日期前缀。贴近午夜的值四舍五入到 86400 秒时回绕为 00:00:00——Excel 同样按最近的整秒显示（带日期的值也是进位到次日），不能单独钳成 23:59:59，否则与日期时间 / 时长两条路径不一致，且和 Excel 里看到的值对不上
-  const base=Date.UTC(1899,11,30)+(d1904?1462*86400000:v>=1&&v<60?86400000:0);const d=new Date(base+Math.round(v*86400)*1000);if(isNaN(d.getTime()))return String(v);/* 伪造的超大序列号会得到 Invalid Date，不要显示成 NaN-NaN-NaN */const p=n=>String(n).padStart(2,'0');let s=`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;if(d.getUTCHours()||d.getUTCMinutes()||d.getUTCSeconds())s+=` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;return s}
-// 时长格式（[h]:mm:ss）：小时数可以超过 24，不能当作日期显示
-function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return (neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60)}
+function serialToDate(v,d1904,timeOnly=v>=0&&v<1&&!d1904,compat=true){
+  const seconds=Math.round(v*86400);if(!Number.isSafeInteger(seconds))return String(v);
+  const day=Math.floor(seconds/86400),sec=seconds-day*86400,p=n=>String(n).padStart(2,'0');
+  const time=`${p(Math.floor(sec/3600))}:${p(Math.floor(sec%3600/60))}:${p(sec%60)}`;
+  if(timeOnly)return time;
+  // 兼容旧 Excel 的 1900 闰年错误：序列 60 不能和序列 59 显示成同一天。
+  let date;
+  if(!d1904&&compat&&day===60)date='1900-02-29';
+  else{const base=d1904?Date.UTC(1904,0,1):Date.UTC(1899,11,compat&&day<60?31:30),d=new Date(base+day*86400000);
+    if(!Number.isFinite(d.getTime()))return String(v);
+    date=`${String(d.getUTCFullYear()).padStart(4,'0')}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;
+  }
+  return sec?date+' '+time:date;
+}
+function serialToElapsed(v){const neg=v<0,s=Math.round(Math.abs(v)*86400),p=n=>String(n).padStart(2,'0');return Number.isSafeInteger(s)?(neg?'-':'')+p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(s%60):String(v)}
+function customDateKind(format){
+  const bare=format.replace(/"[^"]*"|[\\_*]./g,'');
+  if(/\[(?:h+|m+|s+)\]/i.test(bare))return 'elapsed';
+  const code=bare.replace(/\[[^\]]*\]|AM\/PM|A\/P/gi,'');
+  if(!/[ymdhs]/i.test(code)||/[#0?]/.test(code.replace(/\.0+/g,'')))return '';
+  return /[yd]/i.test(code)||!/[hs]/i.test(code)?'date':'time';
+}
 // t="d" 单元格（ISO 8601 文本，如 2024-03-05T00:00:00 / 10:30:00）：统一成与日期序列号一致的显示，否则同一日期在两种存储方式下会被误报为修改
 function isoDateCell(raw){const m=/^\s*(?:(\d{4})-(\d{2})-(\d{2}))?(?:(?:^|T|\s)(\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?(?:Z|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?\s*$/.exec(raw||'');if(!m||(!m[1]&&!m[4]))return raw??'';
   /* t="d" 也可能是伪造的非法日期 / 时间。不能在验证前丢掉时刻或时区，否则非法的完整文本会与另一个单元格里的截断文本伪相等。 */
@@ -252,11 +270,16 @@ function parseXlsx(buf){const z=readZip(buf);
   const relsOf=path=>{const i=path.lastIndexOf('/')+1,dir=path.slice(0,i),x=z.text(dir+'_rels/'+path.slice(i)+'.rels'),m=[];if(x)for(const r of els(xml(x),'Relationship'))if(r.getAttribute('TargetMode')!=='External')m.push({id:r.getAttribute('Id'),type:r.getAttribute('Type')||'',target:resolve(dir,r.getAttribute('Target'))});return m};
   const wbPath=(relsOf('').find(r=>/\/officeDocument$/.test(r.type))||{}).target||'xl/workbook.xml',wbDir=wbPath.slice(0,wbPath.lastIndexOf('/')+1);
   const wbx=z.text(wbPath)||z.text('xl/workbook.xml');if(!wbx)throw new Error(t('badZip'));const wb=xml(wbx);const wbRels=relsOf(wbPath),relOf=type=>(wbRels.find(r=>r.type.endsWith('/'+type))||{}).target;
-  const d1904=/^(1|true)$/i.test(els(wb,'workbookPr')[0]?.getAttribute('date1904')||'');
+  const pr=els(wb,'workbookPr')[0],d1904=/^(1|true)$/i.test(pr?.getAttribute('date1904')||''),compat=!/^(0|false)$/i.test(pr?.getAttribute('dateCompatibility')||'');
   const rels={};for(const r of wbRels)rels[r.id]=r.target;
   const sst=[];const sx=z.text(relOf('sharedStrings')||wbDir+'sharedStrings.xml');if(sx){for(const si of els(xml(sx),'si')){let s='';for(const tn of els(si,'t'))if(tn.parentNode.localName!=='rPh')s+=tn.textContent;sst.push(xstr(s))}}
-  const dateStyles=new Set(),elapsedStyles=new Set(),elapsedIds=new Set();const stx=z.text(relOf('styles')||wbDir+'styles.xml');if(stx){const st=xml(stx);const custom={},nfs=els(st,'numFmts')[0];/* 只读 <numFmts> 里的格式：条件格式的 <dxf> 也带 numFmt，其 numFmtId 可能与单元格格式重号，后读到的会把真正的单元格格式覆盖掉 */for(const nf of nfs?els(nfs,'numFmt'):[]){const fc=nf.getAttribute('formatCode')||'',nid=+nf.getAttribute('numFmtId');if(/\[(?:h+|m+|s+)\]/i.test(fc.replace(/"[^"]*"/g,'')))elapsedIds.add(nid);const code=fc.replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'').replace(/\\./g,'');custom[nid]=elapsedIds.has(nid)||/[ymdhs]/i.test(code)&&!/[#0]/.test(code.replace(/0\.0+|\.0+/g,''))}
-    const xfs=els(st,'cellXfs')[0];if(xfs){[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId');if(DATE_IDS.has(id)||custom[id])dateStyles.add(i);if(id===46||elapsedIds.has(id))elapsedStyles.add(i)})}}
+  const dateStyles=new Map(),stx=z.text(relOf('styles')||wbDir+'styles.xml');
+  if(stx){const st=xml(stx),custom=new Map(),nfs=els(st,'numFmts')[0];
+    // 只读 numFmts，忽略条件格式 dxf 里可能同号的 numFmt。
+    for(const nf of nfs?els(nfs,'numFmt'):[])custom.set(+nf.getAttribute('numFmtId'),customDateKind(nf.getAttribute('formatCode')||''));
+    const timeIds=new Set([18,19,20,21,32,33,45,47]),xfs=els(st,'cellXfs')[0];
+    if(xfs)[...xfs.children].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),kind=custom.get(id)??(id===46?'elapsed':timeIds.has(id)?'time':DATE_IDS.has(id)?'date':'');if(kind)dateStyles.set(i,kind)});
+  }
   const sheets=[];for(const sh of els(wb,'sheet')){/* r:id 的命名空间在 Transitional 与 Strict（purl.oclc.org）两种格式下不同，按本地名 + 命名空间后缀匹配 */const rid=([...sh.attributes].find(a=>a.localName==='id'&&/\/relationships$/.test(a.namespaceURI||''))||{}).value||sh.getAttribute('r:id');const target=rels[rid]||'';
     sheets.push({name:sh.getAttribute('name'),target,hidden:/hidden/i.test(sh.getAttribute('state')||'')})}
   if(!sheets.length)throw new Error(t('badZip'));
@@ -266,7 +289,7 @@ function parseXlsx(buf){const z=readZip(buf);
     let lastRi=-1;for(const r of els(doc,'row')){const rn=+r.getAttribute('r'),ri=Number.isInteger(rn)&&rn>0?rn-1:lastRi+1;/* 超出规格上限（或非整数行号）的行直接丢弃：钳到末行会让多个伪造行互相覆盖，小数下标则会变成数组的普通属性而丢数据 */if(ri>1048575)continue;lastRi=ri;const cells=[];let ci=-1;
       for(const c of r.children){if(c.localName!=='c')continue;const ref=c.getAttribute('r');ci=ref?colIndex(ref):ci+1;if(ci<0||ci>16383)continue;const tt=c.getAttribute('t'),s=+(c.getAttribute('s')||0);let v=null,f=null,raw=null;
         for(const ch of c.children){if(ch.localName==='v')raw=ch.textContent;else if(ch.localName==='f'){const si=ch.getAttribute('si'),sh=ch.getAttribute('t')==='shared'&&si!=null;if(ch.textContent){f='='+ch.textContent;if(sh)sharedF[si]={f:ch.textContent,r:ri,c:ci}}else if(sh&&sharedF[si]){const mf=sharedF[si];f='='+shiftFormula(mf.f,ri-mf.r,ci-mf.c)}}else if(ch.localName==='is')raw=xstr([...els(ch,'t')].filter(x=>x.parentNode.localName!=='rPh').map(x=>x.textContent).join(''))/* 与 sharedStrings 一致：跳过 rPh 里的拼音 / 注音 */}
-        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='str')v=xstr(raw??'');else if(tt==='inlineStr'||tt==='e')v=raw??'';else if(tt==='d')v=isoDateCell(raw);else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(elapsedStyles.has(s)?serialToElapsed(n):serialToDate(n,d1904)):String(+n.toPrecision(15))):raw}else v='';
+        if(raw==null&&!f)continue;if(tt==='s')v=sst[+raw]??'';else if(tt==='b')v=raw==='1'||/^true$/i.test(raw)?'TRUE':'FALSE';else if(tt==='str')v=xstr(raw??'');else if(tt==='inlineStr'||tt==='e')v=raw??'';else if(tt==='d')v=isoDateCell(raw);else if(raw!=null&&raw.trim()!==''){const n=Number(raw);v=isFinite(n)?(dateStyles.has(s)?(dateStyles.get(s)==='elapsed'?serialToElapsed(n):serialToDate(n,d1904,dateStyles.get(s)==='time',compat)):String(+n.toPrecision(15))):raw}else v='';
         cells[ci]={v,f,d:dateStyles.has(s)||tt==='d'};if(ci+1>cols)cols=ci+1}
       if(cells.length){rows[ri]=cells}}
     for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];sheet.grid={rows,cols};return sheet.grid};

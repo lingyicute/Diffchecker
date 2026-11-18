@@ -975,3 +975,17 @@ test('表格会话：保留实际行宽与公式，拒绝结构无效的单元�
     assert.throws(() => fromJsonGrid(bad), /wrongFile/);
   }
 });
+
+test('Excel 日期系统：日期格式的 0、虚拟闰日与超过一天的纯时间', () => {
+  const code = between(script('excel-compare.html'), 'function serialToDate', '// t="d"');
+  const { serialToDate, customDateKind, serialToElapsed } = run(code, 'serialToDate,customDateKind,serialToElapsed');
+  assert.equal(serialToDate(0, true, false), '1904-01-01');
+  assert.equal(serialToDate(0.5, true, false), '1904-01-01 12:00:00');
+  assert.equal(serialToDate(1.5, false, true), '12:00:00');
+  assert.equal(serialToDate(60.25, false, false), '1900-02-29 06:00:00');
+  assert.equal(serialToDate(60, false, false, false), '1900-02-28');
+  assert.equal(serialToElapsed(1e300), '1e+300');
+  for (const [format, kind] of [['yyyy-mm-dd hh:mm', 'date'], ['mm', 'date'], ['hh:mm:ss.000', 'time'], ['h:mm AM/PM', 'time'], ['[h]:mm', 'elapsed'], ['0.00 "days"', '']]) {
+    assert.equal(customDateKind(format), kind, format);
+  }
+});
