@@ -1075,6 +1075,13 @@ test('readZip: 本地条目名、长度必须与中央目录相符', async () =>
   }
 });
 
+test('XLSX XML：仅序言里的文档类型声明被拒绝，不误判注释和正文', () => {
+  const { hasXmlDoctype } = run(between(script('excel-compare.html'), 'function hasXmlDoctype', 'const xml='), 'hasXmlDoctype');
+  assert.equal(hasXmlDoctype('<?xml version="1.0"?> \n<!-- intro -->\n<!DOCTYPE workbook><workbook/>'), true);
+  assert.equal(hasXmlDoctype('<!-- <!DOCTYPE workbook> --><workbook><![CDATA[<!DOCTYPE sample>]]></workbook>'), false);
+  assert.equal(hasXmlDoctype('<?xml version="1.0"?><workbook/>'), false);
+});
+
 test('XLSX ZIP：XML 部件可以使用带 BOM 的 UTF-16LE 或 UTF-16BE', async () => {
   const xml = '<?xml version="1.0" encoding="UTF-16"?><worksheet>中文 😀</worksheet>';
   const le = Buffer.from('\ufeff' + xml, 'utf16le'), be = Buffer.from(le).swap16();
