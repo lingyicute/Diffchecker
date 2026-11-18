@@ -1182,6 +1182,17 @@ test('image.autoAlign: 同时允许旋转和缩放时，终步仍评估仅缩放
   assert.equal(r.scale, 1.01);
 });
 
+test('文本打印视图可以使用不同布局，但不改当前布局、不复制导航标识', () => {
+  const s = script('text-compare.html'), d = text.computeDiff('old line', 'new line', { rules: [] });
+  const ctx = { d, opts: { type: 'split', level: 'smart', syntax: '' }, inlineDiff: text.inlineDiff };
+  vm.createContext(ctx);
+  vm.runInContext(`const EQ=0,DEL=1,INS=2,t=k=>k,expanded=new Set();${between(s, 'const SYN=', '/* ===================== state')}${between(s, 'const CTX=', '/* 展开折叠块')}this.output=diffView(d,'unified',false);this.screen=diffView(d,opts.type);`, ctx);
+  assert.equal(ctx.opts.type, 'split');
+  assert.match(ctx.output.html, /class="sign">−/);
+  assert.doesNotMatch(ctx.output.html, /id="focus-/);
+  assert.match(ctx.screen.html, /class="split chg" id="focus-0"/);
+});
+
 test('文本 PNG 排版保留长行和换行后的高亮，不切断代理对', () => {
   const { wrapPngLine } = run(between(script('text-compare.html'), 'function wrapPngLine', 'async function exportPng'), 'wrapPngLine');
   const rows = wrapPngLine([{ text: 'abcd', mark: false }, { text: '😀efgh', mark: true }], 4, () => 1, 10);
