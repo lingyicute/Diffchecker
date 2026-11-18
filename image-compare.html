@@ -132,7 +132,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
     <div class="toolbar">
       <div class="seg" id="modeSeg"><button data-mode="split" aria-pressed="false" data-i18n="m.split">Split</button><button data-mode="fade" aria-pressed="false" data-i18n="m.fade">Fade</button><button data-mode="flicker" aria-pressed="false" data-i18n="m.flicker">Flicker</button><button data-mode="slider" aria-pressed="false" data-i18n="m.slider">Slider</button><button data-mode="highlight" aria-pressed="true" data-i18n="m.highlight">Highlight</button><button data-mode="subtract" aria-pressed="false" data-i18n="m.subtract">Subtract</button></div>
       <span class="ctl" id="ctlFade"><span data-i18n="opacity">Opacity</span><input type="range" id="fadeRange" min="0" max="100" value="50"><span id="fadeVal">50%</span></span>
-      <span class="ctl" id="ctlFlicker"><span data-i18n="slower">Slower</span><input type="range" id="flickRange" min="100" max="2000" step="50" value="700"><span data-i18n="faster">Faster</span><button class="btn sm" id="holdA" data-i18n-title="holdATip" title="Show original. Shortcut: 1">1 · <span data-i18n="fOriginal">Original</span></button><button class="btn sm" id="holdB" data-i18n-title="holdBTip" title="Show changes. Shortcut: 2">2 · <span data-i18n="fChanged">Changed</span></button></span>
+      <span class="ctl" id="ctlFlicker"><span data-i18n="slower">Slower</span><input type="range" id="flickRange" min="100" max="1900" step="50" value="700"><span data-i18n="faster">Faster</span><button class="btn sm" id="flickPause">Pause</button><button class="btn sm" id="holdA" data-i18n-title="holdATip" title="Show original. Shortcut: 1">1 · <span data-i18n="fOriginal">Original</span></button><button class="btn sm" id="holdB" data-i18n-title="holdBTip" title="Show changes. Shortcut: 2">2 · <span data-i18n="fChanged">Changed</span></button></span>
       <span class="ctl" id="ctlHighlight"><span data-i18n="hlStyle">Highlight style</span><select id="hlMode"><option value="context" data-i18n="hlContext">In context</option><option value="changes" data-i18n="hlChanges">Changes only</option></select><span data-i18n="threshold">Threshold</span><input type="range" id="hlThr" min="1" max="255" value="25"><span id="hlThrVal">25</span></span>
       <span class="spacer"></span>
       <button class="btn sm" id="alignBtn" data-i18n="align">Align Images</button>
@@ -225,17 +225,20 @@ I18N.en.alignOutOfRange='The aligned images span too large a frame. Reduce the s
 I18N.zh.alignOutOfRange='对齐后的画幅过大，请减小平移量或缩放比例。';
 I18N.en.invalidAlignment='Enter finite alignment values and a positive scale.';
 I18N.zh.invalidAlignment='请输入有效的对齐数值，缩放比例必须为正数。';
+Object.assign(I18N.en,{pauseFlicker:'Pause',resumeFlicker:'Resume'});
+Object.assign(I18N.zh,{pauseFlicker:'暂停',resumeFlicker:'继续'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(!I18N[lang])lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});if(S.W){applyTransform();redrawFlicker()}renderPasses();renderList()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});if(S.W){applyTransform();redrawFlicker()}syncFlickerButton();renderPasses();renderList()}
 function applyTheme(){document.documentElement.dataset.theme=theme;$('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 $('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-theme',theme);applyTheme()};
 const notice=m=>{const n=$('notice');n.textContent=m;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),2600)};
 
 /* ===================== state ===================== */
-const S={A:null,B:null,align:null,mode:'highlight',fade:.5,flick:1400,hlMode:'context',hlThr:25,zoom:1,px:0,py:0,sliderPos:.5,boxes:true,darken:false,passes:[],regions:[],active:-1,W:0,H:0,scale:1,frame:null};
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+const S={A:null,B:null,align:null,mode:'highlight',fade:.5,flick:1400,flickPaused:reducedMotion.matches,hlMode:'context',hlThr:25,zoom:1,px:0,py:0,sliderPos:.5,boxes:true,darken:false,passes:[],regions:[],active:-1,W:0,H:0,scale:1,frame:null};
 const defAlign=()=>({dx:0,dy:0,rot:0,scale:1,fh:false,fv:false});S.align=defAlign();
 const MAXDIM=2600,MAX_SOURCE_PIXELS=32*1024*1024,MAX_CANVAS_DIM=16384;
 const fitsCanvas=(w,h,maxPixels)=>w>0&&h>0&&w<=MAX_CANVAS_DIM&&h<=MAX_CANVAS_DIM&&w*h<=maxPixels;
@@ -366,7 +369,7 @@ function compositeCanvas(mode,sourceA=baseA,sourceB=baseB){const W=sourceA.width
   }
   ctx.putImageData(out,0,0);return c;
 }
-function flickShow(){return holdSide||flickState?(holdSide===1?0:holdSide===2?1:flickState):0}
+function flickShow(){return holdSide?holdSide-1:flickState}
 /* ===================== view / stage ===================== */
 const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null;
 function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
@@ -383,7 +386,14 @@ function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=nu
     }
   }
   $('flickTag').classList.toggle('hidden',S.mode!=='flicker');applyTransform();$('ctlFade').classList.toggle('hidden',S.mode!=='fade');$('ctlFlicker').classList.toggle('hidden',S.mode!=='flicker');$('ctlHighlight').classList.toggle('hidden',S.mode!=='highlight');
-  clearInterval(flickTimer);if(S.mode==='flicker'){flickTimer=setInterval(()=>{flickState^=1;redrawFlicker()},S.flick);redrawFlicker()}}
+  restartFlicker()}
+function syncFlickerButton(){$('flickPause').textContent=t(S.flickPaused?'resumeFlicker':'pauseFlicker')}
+function restartFlicker(){
+  clearInterval(flickTimer);flickTimer=null;syncFlickerButton();
+  if(S.mode!=='flicker'||!S.W)return;
+  if(!S.flickPaused)flickTimer=setInterval(()=>{flickState^=1;redrawFlicker()},S.flick);
+  redrawFlicker();
+}
 function redrawFlicker(){if(!mainCanvas||S.mode!=='flicker')return;const s=flickShow();paintBaseMode(mainCanvas.getContext('2d'),'flicker',baseA,baseB);$('flickTag').textContent=s===0?t('fOriginal'):t('fChanged')}
 function drawOverlay(){if(!overlay)return;const cx=overlay.getContext('2d');cx.clearRect(0,0,S.W,S.H);if(!S.regions.length)return;
   if(S.darken){cx.fillStyle='rgba(0,0,0,.5)';cx.fillRect(0,0,S.W,S.H);cx.globalCompositeOperation='destination-out';cx.fillStyle='#000';for(const r of S.regions){cx.fillRect(r.x,r.y,r.w,r.h)}cx.globalCompositeOperation='source-over'}
@@ -398,10 +408,16 @@ viewport.onpointerdown=e=>{if(e.target.closest('.sl-handle'))return;viewport.set
 /* toolbar */
 $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;const sp=S.mode==='split';S.mode=b.dataset.mode;$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderStage();if(sp||S.mode==='split')fit()};// 只有进出并排模式时舞台尺寸才会变；其余模式之间切换保留当前的缩放与位置，便于对着同一处细节来回比较
 $('fadeRange').oninput=e=>{S.fade=e.target.value/100;$('fadeVal').textContent=e.target.value+'%';if(mainCanvas)paintBaseMode(mainCanvas.getContext('2d'),'fade',baseA,baseB)};
-$('flickRange').oninput=e=>{S.flick=2100-+e.target.value;if(S.mode==='flicker'){clearInterval(flickTimer);flickTimer=setInterval(()=>{flickState^=1;redrawFlicker()},S.flick)}};
+// 至少 200ms 才切换一次，且尊重系统的减少动态效果设置。
+$('flickRange').oninput=e=>{S.flick=Math.max(200,2100-+e.target.value);restartFlicker()};
+$('flickPause').onclick=()=>{S.flickPaused=!S.flickPaused;restartFlicker()};
+reducedMotion.addEventListener?.('change',e=>{if(e.matches){S.flickPaused=true;restartFlicker()}});
 const hold=(side,on)=>{holdSide=on?side:0;redrawFlicker()};
-for(const [id,side] of [['holdA',1],['holdB',2]]){const b=$(id);b.onpointerdown=()=>hold(side,true);b.onpointerup=b.onpointerleave=b.onpointercancel=()=>hold(side,false)}
-document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.target.matches('input,textarea,select'))return;if(e.key==='1')hold(1,true);if(e.key==='2')hold(2,true)});document.addEventListener('keyup',e=>{if(e.key==='1'||e.key==='2')hold(0,false)});window.addEventListener('blur',()=>hold(0,false));
+for(const [id,side] of [['holdA',1],['holdB',2]])$(id).onclick=()=>{S.flickPaused=true;holdSide=0;flickState=side-1;restartFlicker()};
+document.addEventListener('keydown',e=>{if(S.mode!=='flicker'||!S.W||e.ctrlKey||e.metaKey||e.altKey||e.target.closest?.('dialog,input,textarea,select,[contenteditable]'))return;
+  if(e.key==='1'||e.key==='2')hold(+e.key,true)});
+document.addEventListener('keyup',e=>{if((e.key==='1'||e.key==='2')&&holdSide===+e.key)hold(0,false)});
+window.addEventListener('blur',()=>hold(0,false));
 $('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(highlightTimer);highlightTimer=setTimeout(()=>{highlightTimer=0;if(S.W&&S.mode==='highlight')renderStage()},60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
 $('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('sbToggle');/* 收起后按钮仍写着“收起侧边栏”、aria-expanded 也不变，读屏与悬停提示都对不上当前状态 */b.setAttribute('aria-expanded',String(!c));b.dataset.i18nTitle=c?'sbTipOpen':'sbTip';b.title=t(b.dataset.i18nTitle);b.textContent=c?'⇤':'⇥'};
