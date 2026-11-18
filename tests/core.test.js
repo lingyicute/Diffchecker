@@ -1133,3 +1133,29 @@ test('XLSX 单元格地址保留实际坐标并拒绝越界或非法地址', () 
   assert.deepEqual({ ...cellAddress('B7') }, { row: 6, col: 1 });
   for (const ref of ['XFE1', 'A1048577', 'A0', 'A7B', '1A', '']) assert.equal(cellAddress(ref), null);
 });
+
+
+const worksheet = (() => {
+  const s = script('excel-compare.html');
+  const code = between(s, 'function colIndex', 'function parseXlsx') + between(s, 'function parseSheetRows', '// 检测和实际解析');
+  const { parseSheetRows } = run(code, 'parseSheetRows');
+  const node = (localName, attrs = {}, children = [], textContent = '') => ({
+    localName, children, textContent, getAttribute: name => attrs[name] ?? null, hasAttribute: name => Object.hasOwn(attrs, name),
+  });
+  const row = (n, ...cells) => node('row', n == null ? {} : { r: n }, cells);
+  const cell = (ref, value, type) => node('c', { r: ref, t: type }, value === undefined ? [] : [node('v', {}, [], value)]);
+  const readRows = (rows, sst = []) => parseSheetRows({ children: rows }, sst, new Map(), false, true, n => n.textContent);
+  return { node, row, cell, readRows };
+})();
+
+test('XLSX 工作表拒绝重复的空行和空单元格坐标，保留合法的隐式坐标', () => {
+  const { row, cell, readRows } = worksheet;
+  assert.throws(() => readRows([row('2'), row('2', cell('A2', '7'))]), /badZip/);
+  assert.throws(() => readRows([row('1', cell('B1'), cell('B1', '7'))]), /badZip/);
+  assert.throws(() => readRows([row('1e2')]), /badZip/);
+  const { rows, cols } = readRows([row(null, cell('B3', '7'), cell(null, '8'))]);
+  assert.equal(rows.length, 3);
+  assert.equal(cols, 3);
+  assert.equal(rows[2][1].v, '7');
+  assert.equal(rows[2][2].v, '8');
+});
