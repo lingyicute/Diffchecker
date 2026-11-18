@@ -921,3 +921,31 @@ test('decodeBuf: BOM 优先，奇数字节或无偏向的 NUL 不作为 UTF-16 �
     assert.equal(dec([0xff, 0xfe, 0x61, 0x00]), 'a');
   }
 });
+
+test('excel.compare: 表头以前的列不参与匹配；空表头不能与真实名称冲突', () => {
+  const grid = s => excel.parseCsv(s, ',').sheets[0].grid;
+  const saved = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { mode: 'table', matchHeaders: true, sortCols: false, ignoreWs: false });
+    const a = grid('Report,,,Reference\nName,Price\nTea,1'), b = grid('Report\nName,Price\nTea,1');
+    const r = excel.compare(a, b, 1, 1);
+    assert.equal(r.identical, true);
+    assert.equal(r.columns.length, 2);
+    const named = excel.compare(grid(',Name\n1,Tea'), grid('__col0,Name\n1,Tea'), 0, 0);
+    assert.equal(named.stats.colsDel, 1);
+    assert.equal(named.stats.colsIns, 1);
+  } finally { Object.assign(excel.opts, saved); }
+});
+
+test('excel.compare: 仅含空白的尾部行列只在开启忽略空白时裁掉', () => {
+  const grid = s => excel.parseCsv(s, ',').sheets[0].grid;
+  const saved = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { mode: 'rows', sortRows: false, ignoreWs: false });
+    const a = grid('Tea, '), b = grid('Tea');
+    assert.equal(excel.compare(a, b, 0, 0).stats.colsDel, 1);
+    assert.equal(excel.compare(grid('Tea\n '), b, 0, 0).stats.rowsDel, 1);
+    excel.opts.ignoreWs = true;
+    assert.equal(excel.compare(a, b, 0, 0).identical, true);
+  } finally { Object.assign(excel.opts, saved); }
+});
