@@ -1056,6 +1056,9 @@ test('Excel 自定义数值格式：只按实际生效的格式段识别日期',
   assert.equal(conditional(1).kind, 'date');
   assert.deepEqual({ ...conditional(0.5) }, { kind: 'time', precision: 3 });
   assert.equal(conditional(-2).kind, '');
+  const spaced = customNumberStyle(' [>=1]yyyy-mm-dd;0.00');
+  assert.equal(spaced(1).kind, 'date');
+  assert.equal(spaced(0).kind, '');
 });
 
 test('XLSX 部件路径：以当前部件目录为基准解析相对路径', () => {

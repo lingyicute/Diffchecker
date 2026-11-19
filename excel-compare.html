@@ -321,7 +321,7 @@ function customNumberStyle(format){
   }
   parts.push(format.slice(start));
   const sections=parts.slice(0,3).map(part=>{
-    const style=dateNumberStyle(part),prefix=/^(?:\[[^\]]*\]\s*)*/.exec(part)[0];
+    const style=dateNumberStyle(part),prefix=/^\s*(?:\[[^\]]*\]\s*)*/.exec(part)[0];
     const m=/\[(<=|>=|<>|<|>|=)([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)\]/i.exec(prefix);
     if(!m)return {style};
     const rhs=+m[2],op=m[1];return {style,test:n=>op==='<'?n<rhs:op==='>'?n>rhs:op==='<='?n<=rhs:op==='>='?n>=rhs:op==='='?n===rhs:n!==rhs};
