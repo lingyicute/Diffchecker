@@ -263,7 +263,7 @@ let openTarget='A',alignJob=0;
 const loadVersion={A:0,B:0},pending={A:false,B:false};
 function cancelLoad(side){loadVersion[side]++;pending[side]=false}
 function cancelLoads(){cancelLoad('A');cancelLoad('B')}
-function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false}
+function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;$('alignErr').textContent=''}
 function closeAlign(){stopAuto();$('alignModal').close()}
 function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();
