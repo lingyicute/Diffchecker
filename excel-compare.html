@@ -264,7 +264,9 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
   // 跳过字符串、工作表限定符与结构化引用。后者的列名可以恰好形如 A1，也可以嵌套括号。
   const tokens=/("(?:[^"]|"")*"|'(?:[^']|'')*'|[\p{L}\p{N}_.]+(?::[\p{L}\p{N}_.]+)?!)|(\[)|(\$?)([A-Za-z]{1,3})(\$?)(\d+)(?![\p{L}\p{N}_.(!])|(\$?)([A-Za-z]{1,3}):(\$?)([A-Za-z]{1,3})(?![\p{L}\p{N}_.(!])|(\$?)(\d+):(\$?)(\d+)(?![\p{L}\p{N}_.(!])|[\p{L}\p{N}_.]+/gu;
   // XFE1、A1048577 等超出网格的词可以是 Excel 名称，而不是待平移的引用。
-  const moveCol=(name,delta)=>{const base=colIndex(name.toUpperCase()),i=base+delta;return base<16384&&i>=0&&i<16384?(delta?(name===name.toLowerCase()?colName(i).toLowerCase():colName(i)):name):null};
+  // 共享公式的相对引用越过网格边界时会环绕到另一端；原本越界的名称则不是引用。
+  const wrap=(n,size)=>(n%size+size)%size;
+  const moveCol=(name,delta)=>{const base=colIndex(name.toUpperCase());if(base>=16384)return null;const i=wrap(base+delta,16384);return delta?(name===name.toLowerCase()?colName(i).toLowerCase():colName(i)):name};
   const validRow=n=>n>=1&&n<=1048576;
   let m,pos=0,out='';
   while((m=tokens.exec(f))){
@@ -275,8 +277,8 @@ function shiftFormula(f,dr,dc){if(!dr&&!dc)return f;
     if(locked||(m.index>0&&/[\p{L}\p{N}_.]/u.test(f[m.index-1])))continue;
     let next=raw;
     if(xc!=null){const a=moveCol(xc,xa?0:dc),b=moveCol(xd,xb?0:dc);if(a&&b)next=xa+a+':'+xb+b}
-    else if(yr!=null){const a=+yr+(ya?0:dr),b=+yd+(yb?0:dr);if(validRow(+yr)&&validRow(+yd)&&validRow(a)&&validRow(b))next=ya+a+':'+yb+b}
-    else if(col!=null){const c=moveCol(col,ca?0:dc),r=+row+(ra?0:dr);if(c&&validRow(+row)&&validRow(r))next=ca+c+ra+r}
+    else if(yr!=null){if(validRow(+yr)&&validRow(+yd)){const a=wrap(+yr-1+(ya?0:dr),1048576)+1,b=wrap(+yd-1+(yb?0:dr),1048576)+1;next=ya+a+':'+yb+b}}
+    else if(col!=null){const c=moveCol(col,ca?0:dc);if(c&&validRow(+row)){const r=wrap(+row-1+(ra?0:dr),1048576)+1;next=ca+c+ra+r}}
     if(next!==raw){out+=f.slice(pos,m.index)+next;pos=tokens.lastIndex}
   }
   return out+f.slice(pos);
