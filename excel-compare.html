@@ -299,7 +299,7 @@ function serialToDate(v,d1904,timeOnly=v>=0&&v<1&&!d1904,compat=true,precision=0
   }
   return sec?date+' '+time:date;
 }
-function serialToElapsed(v,precision=0){const ticks=Math.round(Math.abs(v)*86400*10**precision);return Number.isSafeInteger(ticks)?(v<0?'-':'')+clockText(ticks,precision):String(v)}
+function serialToElapsed(v,precision=0){const ticks=Math.round(Math.abs(v)*86400*10**precision);return Number.isSafeInteger(ticks)?(ticks&&v<0?'-':'')+clockText(ticks,precision):String(v)}
 function customDateKind(format){
   const bare=format.replace(/"[^"]*"|[\\_*]./g,'');
   if(/\[(?:h+|m+|s+)\]/i.test(bare))return 'elapsed';

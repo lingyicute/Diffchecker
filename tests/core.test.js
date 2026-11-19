@@ -1043,6 +1043,7 @@ test('Excel 数值时间：格式精度决定小数秒，跨秒及午夜正确�
   assert.equal(serialToDate(0.5 + 0.2 / 86400, false, true, true, 1), '12:00:00.2');
   assert.equal(serialToDate(1 - 0.0004 / 86400, false, true, true, 3), '00:00:00');
   assert.equal(serialToElapsed(-(90001.125 / 86400), 3), '-25:00:01.125');
+  assert.equal(serialToElapsed(-(0.1 / 86400)), '00:00:00');
 });
 
 test('Excel 自定义数值格式：只按实际生效的格式段识别日期', () => {
