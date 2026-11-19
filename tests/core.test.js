@@ -1344,3 +1344,23 @@ test('XLSX XML：没有 BOM 的显式 UTF-16LE 和 UTF-16BE 部件也能正确�
   assert.equal(zip.text('le'), xml);
   assert.equal(zip.text('be'), beXml);
 });
+
+
+test('Excel 行内高亮：整段大小写转换支持词尾西格玛和多码点展开', () => {
+  const old = {...excel.opts};
+  try {
+    for (const ws of [false, true]) {
+      Object.assign(excel.opts, {ignoreCase:true, ignoreWs:ws});
+      for (const [a,b] of [['ΟΣ a','ος b'],['İ a','i\u0307 b'],['😀 ΟΣ a','😀 ος b']]) {
+        const segs = excel.inlineDiff(a,b);
+        assert.equal(segs.map(s=>s.a).join(''), a);
+        assert.equal(segs.map(s=>s.b).join(''), b);
+        assert.equal(segs.filter(s=>s.t===1).map(s=>s.a).join(''), 'a');
+        assert.equal(segs.filter(s=>s.t===2).map(s=>s.b).join(''), 'b');
+      }
+      const partial = excel.inlineDiff('İ x','i x');
+      assert.equal(partial.map(s=>s.a).join(''), 'İ x');
+      assert.equal(partial.filter(s=>s.t===1).map(s=>s.a).join(''), 'İ');
+    }
+  } finally { Object.assign(excel.opts, old); }
+});

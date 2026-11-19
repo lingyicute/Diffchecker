@@ -486,7 +486,23 @@ function midSnake(a,b,a0,a1,b0,b1,eq,lim=MYERS_LIMIT){const N=a1-a0,M=b1-b0,MAX=
     for(let k=-d;k<=d;k+=2){let x=(k===-d||(k!==d&&vb[off+k-1]<vb[off+k+1]))?vb[off+k+1]:vb[off+k-1]+1,y=x-k;const xs=x,ys=y;while(x<N&&y<M&&eq(a[a1-1-x],b[b1-1-y])){x++;y++}vb[off+k]=x;if(!odd){const kf=delta-k;if(kf>=-d&&kf<=d&&x+vf[off+kf]>=N)return{x:N-x,y:M-y,u:N-xs,v:M-ys}}}}return null}
 const WORD_RE=/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]|(?:(?![\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF])[\p{L}\p{M}\p{N}_])+|\s+|[^\s\p{L}\p{M}\p{N}_]/gu;
 const INLINE_MAX_TOKENS=20000;
+// 对整段文字做大小写转换，再把比较结果映回原字符：希腊词尾 Σ 有上下文规则，İ 还会展开为两个码点。
+function projectedCaseDiff(l,r,ws,big){
+  const project=raw=>{const key=raw.toLowerCase(),map=new Uint32Array(key.length),marks=new Uint8Array(raw.length);let k=0;
+    for(let i=0;i<raw.length;){const ch=String.fromCodePoint(raw.codePointAt(i));for(let n=ch.toLowerCase().length;n--;)map[k++]=i;i+=ch.length}return {raw,key,map,marks}};
+  const a=project(l),b=project(r),tk=s=>big?(s.match(WORD_RE)||[]):ws?(s.match(/\s+|[^\s]/gu)||[]):Array.from(s);
+  const A=tk(a.key),B=tk(b.key),fold=s=>ws&&!s.trim()?' ':s,na=A.map(fold),nb=B.map(fold);
+  let ops;if(A.length+B.length>INLINE_MAX_TOKENS){let p=0,q=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
+    ops=[];for(let i=0;i<p;i++)ops.push([EQ,i,i]);for(let i=p;i<A.length-q;i++)ops.push([DEL,i,-1]);for(let i=p;i<B.length-q;i++)ops.push([INS,-1,i]);for(let i=0;i<q;i++)ops.push([EQ,A.length-q+i,B.length-q+i]);
+  }else ops=diffSeq(na,nb);
+  let ap=0,bp=0;const mark=(p,start,token)=>{if(ws&&!token.trim())return;for(let i=start;i<start+token.length;i++)p.marks[p.map[i]]=1};
+  for(const [op,i,j] of ops){if(op!==INS){if(op===DEL)mark(a,ap,A[i]);ap+=A[i].length}if(op!==DEL){if(op===INS)mark(b,bp,B[j]);bp+=B[j].length}}
+  const out=[],add=(t,x,y)=>{const last=out[out.length-1];if(last&&last.t===t){last.a+=x;last.b+=y}else out.push({t,a:x,b:y})};
+  for(const [p,side] of [[a,'a'],[b,'b']])for(let i=0;i<p.raw.length;){const ch=String.fromCodePoint(p.raw.codePointAt(i)),t=p.marks[i]?(side==='a'?DEL:INS):EQ;add(t,side==='a'?ch:'',side==='b'?ch:'');i+=ch.length}
+  return out;
+}
 function inlineDiff(l,r){const ws=opts.ignoreWs,big=l.length+r.length>400,tk=s=>big?(s.match(WORD_RE)||[]):ws?(s.match(/\s+|[^\s]/gu)||[]):Array.from(s),A=tk(l),B=tk(r);
+  if(opts.ignoreCase&&([A,B].some(tokens=>tokens.some(x=>x.toLowerCase().length!==x.length))||A.map(x=>x.toLowerCase()).join('')!==l.toLowerCase()||B.map(x=>x.toLowerCase()).join('')!==r.toLowerCase()))return projectedCaseDiff(l,r,ws,big);
   /* 忽略大小写时按小写比较 token（显示仍用原文）：否则仅大小写不同的字符会被高亮成改动，与“忽略大小写差异”自相矛盾 *//* 忽略空白时，连续空白按一个空格比较，且只剩空白的差异不再标成改动：否则“a  b”与“a b”之间多出的空格会被高亮，与“忽略空白”自相矛盾 */const fold=x=>x.map(s=>{if(ws&&!s.trim())s=' ';return opts.ignoreCase?s.toLowerCase():s}),na=fold(A),nb=fold(B);
   if(A.length+B.length>INLINE_MAX_TOKENS){// 超长单元格（最长 32767 字符）：只裁掉公共前后缀，中间整体标记为改动，避免 Myers 的 O(ND) 卡死页面（与文本页一致）
     let p=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;let q=0;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
