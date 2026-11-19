@@ -1334,3 +1334,13 @@ test('共享公式：工作表读取器展开跨边界的相对引用', () => {
   const { rows } = readRows([row('1', f('A1', ''), f('B1', 'A1+$XFD$1'))]);
   assert.equal(rows[0][0].f, '=XFD1+$XFD$1');
 });
+
+
+test('XLSX XML：没有 BOM 的显式 UTF-16LE 和 UTF-16BE 部件也能正确解码', async () => {
+  const xml = '<?xml version="1.0" encoding="UTF-16LE"?><worksheet>中文 😀</worksheet>';
+  const le = Buffer.from(xml, 'utf16le'), beXml = xml.replace('UTF-16LE', 'UTF-16BE');
+  const be = Buffer.from(beXml, 'utf16le').swap16();
+  const zip = zipLib.readZip(await zipLib.zipStore([{name:'le',data:le},{name:'be',data:be}]).arrayBuffer());
+  assert.equal(zip.text('le'), xml);
+  assert.equal(zip.text('be'), beXml);
+});

@@ -236,7 +236,8 @@ function readZip(buf){const u8=new Uint8Array(buf),dv=new DataView(buf),bad=()=>
     if(out.length!==f.usize||crc32(out)!==f.crc)bad();return out},
     text(name){const d=this.get(name);if(!d)return null;
       // OPC 的 XML 部件也允许 UTF-16；部件内容编码与 ZIP 条目名称编码无关。
-      const le=d[0]===0xFF&&d[1]===0xFE,be=d[0]===0xFE&&d[1]===0xFF;
+      const le=d[0]===0xFF&&d[1]===0xFE||d.length>=4&&d[0]!==0&&d[1]===0&&d[3]===0;
+      const be=d[0]===0xFE&&d[1]===0xFF||d.length>=4&&d[0]===0&&d[1]!==0&&d[2]===0;
       try{return new TextDecoder(le?'utf-16le':be?'utf-16be':'utf-8',{fatal:true}).decode(d)}catch(e){bad()}
     },names:Object.keys(files)}}
 
