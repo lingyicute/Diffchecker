@@ -599,7 +599,7 @@ async function exportPng(){
   const css=getComputedStyle(document.body),cssVar=(n,d)=>css.getPropertyValue(n).trim()||d,W=1600,LH=20,PAD=16,HEADER=PAD*2+40,font='13px '+cssVar('--mono','monospace');
   const col={del:cssVar('--del-block','rgba(255,46,0,.09)'),ins:cssVar('--ins-block','rgba(0,180,144,.12)'),delHl:cssVar('--del-hl','rgba(255,46,0,.3)'),insHl:cssVar('--ins-hl','rgba(0,180,144,.34)')};
   const cv=document.createElement('canvas');cv.width=W;cv.height=1;const ctx=cv.getContext('2d');ctx.font=font;
-  const colW=unified?W-PAD*2:(W-PAD*2)/2,gut=Math.ceil(Math.max(40,ctx.measureText(String(Math.max(d.A.length,d.B.length))).width+8)),limit=pngLineBudget(W,HEADER,LH);
+  const colW=unified?W-PAD*2:(W-PAD*2)/2,numW=Math.ceil(Math.max(40,ctx.measureText(String(Math.max(d.A.length,d.B.length))).width+8)),gut=unified?numW*2:numW,limit=pngLineBudget(W,HEADER,LH);
   const widths=new Map(),widthOf=ch=>{if(!widths.has(ch))widths.set(ch,ctx.measureText(ch).width);return widths.get(ch)};
   const wrap=(txt,segs,side)=>wrapPngLine(segs?segs.map(s=>({text:side==='l'?s.a:s.b,mark:s.t!==EQ})):[{text:txt,mark:false}],colW-gut-16,widthOf,limit);
   const laid=[];let total=0;const add=row=>{const height=row.collapsed?1:Math.max(row.left?.length||0,row.right?.length||0,1);
@@ -613,15 +613,16 @@ async function exportPng(){
   const H=HEADER+total*LH;cv.height=H;ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';
   const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14,colW);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14,colW);
   ctx.font=font;let y=PAD+40;
-  const drawLines=(x,lines,num,kind,height)=>{if(kind){ctx.fillStyle=col[kind];ctx.fillRect(x,y,colW,height*LH)}
-    ctx.fillStyle=dark?'#7d858d':'#696f75';ctx.textAlign='right';ctx.fillText(String(num+1),x+gut,y+14);ctx.textAlign='left';
+  // 统一视图与页面一致，用两列行号（原始 / 修改后）；删除行只有原始行号，新增行只有修改后行号
+  const drawLines=(x,lines,nums,kind,height)=>{if(kind){ctx.fillStyle=col[kind];ctx.fillRect(x,y,colW,height*LH)}
+    ctx.fillStyle=dark?'#7d858d':'#696f75';ctx.textAlign='right';nums.forEach((n,i)=>{if(n!=null)ctx.fillText(String(n+1),x+numW*(i+1),y+14)});ctx.textAlign='left';
     for(const [i,parts] of lines.entries()){let cx=x+gut+12;const yy=y+i*LH;
       for(const p of parts){if(p.mark){ctx.fillStyle=col[kind+'Hl'];ctx.fillRect(cx,yy+2,p.w,LH-4)}ctx.fillStyle=dark?'#ebedef':'#202329';ctx.fillText(p.text,cx,yy+14);cx+=p.w}
     }
   };
   for(const r of laid){if(r.collapsed){ctx.fillStyle=dark?'#1f2226':'#f6f8f7';ctx.fillRect(PAD,y,W-PAD*2,LH);ctx.fillStyle=dark?'#aeb6be':'#626971';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('⋯ '+t('unchangedLines',{n:r.collapsed}),W/2,y+14);ctx.textAlign='left';ctx.font=font}
-    if(r.left)drawLines(PAD,r.left,r.l,r.changed?'del':'',r.height);
-    if(r.right)drawLines(unified?PAD:PAD+colW,r.right,r.r,r.changed?'ins':'',r.height);
+    if(r.left)drawLines(PAD,r.left,unified?[r.l,r.changed?null:r.r]:[r.l],r.changed?'del':'',r.height);
+    if(r.right)drawLines(unified?PAD:PAD+colW,r.right,unified?[null,r.r]:[r.r],r.changed?'ins':'',r.height);
     y+=r.height*LH;
   }
   if(!unified){ctx.strokeStyle=dark?'#353a3f':'#e6e8eb';ctx.beginPath();ctx.moveTo(W/2,PAD+24);ctx.lineTo(W/2,H-PAD);ctx.stroke()}
