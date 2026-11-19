@@ -408,9 +408,11 @@ function restartFlicker(){
   redrawFlicker();
 }
 function redrawFlicker(){if(!mainCanvas||S.mode!=='flicker')return;const s=flickShow();paintBaseMode(mainCanvas.getContext('2d'),'flicker',baseA,baseB);$('flickTag').textContent=s===0?t('fOriginal'):t('fChanged')}
-function drawOverlay(){if(!overlay)return;const cx=overlay.getContext('2d');cx.clearRect(0,0,S.W,S.H);if(!S.regions.length)return;
+/* 线宽与标签字号按“输出像素 / 工作像素”换算：屏幕上取当前缩放，导出时取导出倍率，导出的框不随当前视图缩放变粗或变细 */
+function drawOverlay(){if(overlay)paintOverlay(overlay.getContext('2d'),S.zoom)}
+function paintOverlay(cx,zoom){cx.clearRect(0,0,S.W,S.H);if(!S.regions.length)return;
   if(S.darken){cx.fillStyle='rgba(0,0,0,.5)';cx.fillRect(0,0,S.W,S.H);cx.globalCompositeOperation='destination-out';cx.fillStyle='#000';for(const r of S.regions){cx.fillRect(r.x,r.y,r.w,r.h)}cx.globalCompositeOperation='source-over'}
-  if(S.boxes){const lw=Math.max(1,2/S.zoom);S.regions.forEach((r,i)=>{cx.lineWidth=i===S.active?lw*2:lw;cx.strokeStyle=i===S.active?'#ffb400':'#ff3b30';cx.strokeRect(r.x-lw,r.y-lw,r.w+2*lw,r.h+2*lw);cx.font=`${Math.max(10,14/S.zoom)}px system-ui`;const lbl=String(i+1);const tw=cx.measureText(lbl).width+6/S.zoom;const th=Math.max(12,16/S.zoom),ly=Math.max(0,r.y-lw-th);cx.fillStyle=i===S.active?'#ffb400':'#ff3b30';cx.fillRect(r.x-lw,ly,tw,th);cx.fillStyle='#fff';cx.fillText(lbl,r.x-lw+3/S.zoom,ly+th*0.78)})}}
+  if(S.boxes){const lw=Math.max(1,2/zoom);S.regions.forEach((r,i)=>{cx.lineWidth=i===S.active?lw*2:lw;cx.strokeStyle=i===S.active?'#ffb400':'#ff3b30';cx.strokeRect(r.x-lw,r.y-lw,r.w+2*lw,r.h+2*lw);cx.font=`${Math.max(10,14/zoom)}px system-ui`;const lbl=String(i+1);const tw=cx.measureText(lbl).width+6/zoom;const th=Math.max(12,16/zoom),ly=Math.max(0,r.y-lw-th);cx.fillStyle=i===S.active?'#ffb400':'#ff3b30';cx.fillRect(r.x-lw,ly,tw,th);cx.fillStyle='#fff';cx.fillText(lbl,r.x-lw+3/zoom,ly+th*0.78)})}}
 function applyTransform(){stage.classList.toggle('pix',S.zoom>=3);stage.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`;$('zoomRange').value=Math.round(S.zoom*100);$('zoomVal').textContent=Math.round(S.zoom*100)+'%';$('hud').textContent=`${S.W}×${S.H}${S.scale<1?t('hudScale',{s:S.scale.toFixed(2)}):''} · ${t('hudDiff',{p:(100*diffCount/(S.W*S.H)).toFixed(2)})}`}
 function fit(){const vw=viewport.clientWidth,vh=viewport.clientHeight;const sw=S.mode==='split'?S.W*2+16:S.W,sh=S.mode==='split'?S.H+24:S.H;S.zoom=Math.min(1,Math.max(.05,Math.min((vw-24)/sw,(vh-24)/sh)));S.px=(vw-sw*S.zoom)/2;S.py=(vh-sh*S.zoom)/2;applyTransform();drawOverlay()}
 $('fitBtn').onclick=fit;
@@ -636,7 +638,7 @@ function exportCanvas(native=false){
   if(!fitsCanvas(split?w*2+16:w,h,MAX_EXPORT_PIXELS))throw new Error('pngTooLarge');
   const [a,b]=w===S.W&&h===S.H?[baseA,baseB]:makeBases(w,h);
   if(split){const c=mk(w*2+16,h),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
-  const c=compositeCanvas(S.mode,a,b);if(overlay)c.getContext('2d').drawImage(overlay,0,0,w,h);return c;
+  const c=compositeCanvas(S.mode,a,b);if(overlay){const ov=mk(w,h),ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}return c;
 }
 function pngUrl(canvas){const url=canvas.toDataURL('image/png');if(url==='data:,')throw new Error('PNG encoding failed');return url}
 function reportHtml(c){
