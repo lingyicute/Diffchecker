@@ -442,10 +442,10 @@ function scanCsv(text,delim,collect,maxRows=Infinity,limit=MAX_IMPORTED_CELLS){
   return {rows,hit,top,errors,quoteEvidence};
 }
 function parseCsv(text,delim){
-  if(!delim){let best;for(const d of [',','\t',';','|']){
+  if(!delim){let best;const ok=x=>Number(x.hit>0&&x.errors===0);for(const d of [',','\t',';','|']){
     const s=scanCsv(text,d,false,10);
-    // 合法的带引号记录比行数更有辨识力：错误分隔符可能把同一个多行字段拆成很多看似规则的行。
-    if(!best||(Number(s.quoteEvidence)-Number(best.quoteEvidence)||s.hit-best.hit||s.top-best.top||best.errors-s.errors)>0){best=s;delim=d}
+    // 优先选择能分成多列且无引号语法错误的候选；合法的带引号记录比行数更有辨识力。
+    if(!best||(ok(s)-ok(best)||Number(s.quoteEvidence)-Number(best.quoteEvidence)||s.hit-best.hit||s.top-best.top||best.errors-s.errors)>0){best=s;delim=d}
   }}
   let cols=0;const grid=scanCsv(text,delim,true).rows.map(r=>{cols=Math.max(cols,r.length);return r.map(v=>({v,f:null,d:false}))});
   const sheet={name:'Sheet1',target:'',grid:{rows:grid,cols}};return {sheets:[sheet],load:s=>s.grid,type:'csv'}

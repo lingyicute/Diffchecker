@@ -1505,3 +1505,8 @@ test('excel.isoDateCell: 孤立的 T 时间前缀和尾部孤立 T 保持原文'
   assert.equal(excel.isoDateCell('2024-03-0510:30:00'), '2024-03-0510:30:00');
   assert.equal(excel.isoDateCell(' 10:30:00 '), '10:30:00');
 });
+
+test('excel.parseCsv: 错误分隔符命中更多行但触发引号错误时，选择无语法错误的真实分隔符', () => {
+  const rows = JSON.parse(JSON.stringify(excel.parseCsv('note,title\nx,"5" pipe;10\ny,"6" pipe;20').sheets[0].grid.rows.map(r => r.map(c => c.v))));
+  assert.deepEqual(rows, [['note,title'], ['x,"5" pipe', '10'], ['y,"6" pipe', '20']]);
+});
