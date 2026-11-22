@@ -1498,3 +1498,10 @@ test('xlsx.customDateKind: 只有秒占位后的小数位才按时间格式忽�
   assert.equal(customDateKind('hh:mm:ss.000'), 'time');
   assert.equal(customDateKind('yyyy-mm-dd hh:mm:ss.00'), 'date');
 });
+
+test('excel.isoDateCell: 孤立的 T 时间前缀和尾部孤立 T 保持原文', () => {
+  assert.equal(excel.isoDateCell('T10:30:00'), 'T10:30:00');
+  assert.equal(excel.isoDateCell('2024-03-05T'), '2024-03-05T');
+  assert.equal(excel.isoDateCell('2024-03-0510:30:00'), '2024-03-0510:30:00');
+  assert.equal(excel.isoDateCell(' 10:30:00 '), '10:30:00');
+});
