@@ -833,6 +833,7 @@ test('文本语法着色把未闭合的跨行注释或三引号字符串持续�
   for (const [lang, open, close, kind] of [
     ['js', '/*', '*/', 'c'], ['css', '/*', '*/', 'c'], ['sql', '/*', '*/', 'c'],
     ['xml', '<!--', '-->', 'c'], ['py', '"""', '"""', 's'],
+    ['js', '`', '`', 's'], ['sql', "'", "'", 's'],
   ]) {
     const prefix = '  ', closed = open + '\ncomment\n' + close, rest = ' ' + open + '\ncontinued\n';
     const cls = synClasses(prefix + closed + rest, lang);
