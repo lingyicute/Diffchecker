@@ -495,8 +495,8 @@ function projectedCaseDiff(l,r,ws,big){
   let ops;if(A.length+B.length>INLINE_MAX_TOKENS){let p=0,q=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
     ops=[];for(let i=0;i<p;i++)ops.push([EQ,i,i]);for(let i=p;i<A.length-q;i++)ops.push([DEL,i,-1]);for(let i=p;i<B.length-q;i++)ops.push([INS,-1,i]);for(let i=0;i<q;i++)ops.push([EQ,A.length-q+i,B.length-q+i]);
   }else ops=diffSeq(na,nb);
-  const eqs=[];let ap=0,bp=0;const mark=(p,start,token)=>{if(ws&&!token.trim())return;for(let i=start;i<start+token.length;i++)p.marks[p.map[i]]=1};
-  for(const [op,i,j] of ops){if(op===EQ&&(!ws||A[i].trim()))eqs.push([ap,bp,A[i].length]);if(op!==INS){if(op===DEL)mark(a,ap,A[i]);ap+=A[i].length}if(op!==DEL){if(op===INS)mark(b,bp,B[j]);bp+=B[j].length}}
+  const eqs=[];let ap=0,bp=0;const mark=(p,start,token,skip)=>{if(skip)return;for(let i=start;i<start+token.length;i++)p.marks[p.map[i]]=1};
+  for(let k=0;k<ops.length;k++){const [op,i,j]=ops[k];if(op===EQ&&(!ws||A[i].trim()))eqs.push([ap,bp,A[i].length]);if(op!==INS){if(op===DEL)mark(a,ap,A[i],ws&&wsIgnorable(ops,k,A,B));ap+=A[i].length}if(op!==DEL){if(op===INS)mark(b,bp,B[j],ws&&wsIgnorable(ops,k,A,B));bp+=B[j].length}}
   for(let pass=0,chg=true;chg&&pass<4;pass++){chg=false;for(const [x,y,n] of eqs)for(let k=0;k<n;k++){const ai=a.map[x+k],bi=b.map[y+k];if(a.marks[ai]!==b.marks[bi]){a.marks[ai]=b.marks[bi]=1;chg=true}}}
   const out=[],add=(t,x,y)=>{const last=out[out.length-1];if(last&&last.t===t){last.a+=x;last.b+=y}else out.push({t,a:x,b:y})};
   for(const [p,side] of [[a,'a'],[b,'b']])for(let i=0;i<p.raw.length;){const ch=String.fromCodePoint(p.raw.codePointAt(i)),t=p.marks[i]?(side==='a'?DEL:INS):EQ;add(t,side==='a'?ch:'',side==='b'?ch:'');i+=ch.length}
@@ -508,7 +508,12 @@ function inlineDiff(l,r){const ws=opts.ignoreWs,big=l.length+r.length>400,tk=s=>
   if(A.length+B.length>INLINE_MAX_TOKENS){// 超长单元格（最长 32767 字符）：只裁掉公共前后缀，中间整体标记为改动，避免 Myers 的 O(ND) 卡死页面（与文本页一致）
     let p=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;let q=0;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
     const m=[],add=(t,a,b)=>{if(a||b)m.push({t,a,b})};add(EQ,A.slice(0,p).join(''),B.slice(0,p).join(''));add(DEL,A.slice(p,A.length-q).join(''),'');add(INS,'',B.slice(p,B.length-q).join(''));add(EQ,A.slice(A.length-q).join(''),B.slice(B.length-q).join(''));return m}
-  const ops=diffSeq(na,nb);const m=[];for(const [op,i,j] of ops){const s={t:ws&&op!==EQ&&!(op===INS?B[j]:A[i]).trim()?EQ:op,a:op===INS?'':A[i],b:op===DEL?'':B[j]};const p=m[m.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else m.push(s)}return m}
+  const ops=diffSeq(na,nb);const m=[];for(let k=0;k<ops.length;k++){const [op,i,j]=ops[k];const s={t:op!==EQ&&ws&&wsIgnorable(ops,k,A,B)?EQ:op,a:op===INS?'':A[i],b:op===DEL?'':B[j]};const p=m[m.length-1];if(p&&p.t===s.t){p.a+=s.a;p.b+=s.b}else m.push(s)}return m}
+// 忽略空白时 normalize 只折叠连续空白并裁掉首尾，“ab”与“a b”仍算不同。单侧多出的空白只有位于首尾、或紧挨着其他已标出的改动时才不标成改动；
+// 内部单独多出的空格要照常高亮，否则单元格被标为修改却看不到任何改动位置
+function wsIgnorable(ops,k,A,B){const tok=o=>o[0]===INS?B[o[2]]:A[o[1]],[op,i,j]=ops[k];if(tok(ops[k]).trim())return false;
+  if(op===INS?j===0||j===B.length-1:i===0||i===A.length-1)return true;
+  const real=o=>!!o&&o[0]!==EQ&&!!tok(o).trim();return real(ops[k-1])||real(ops[k+1])}
 
 /* ===================== comparison engine ===================== */
 const opts={mode:'table',val:'standard',matchHeaders:true,ignoreWs:false,ignoreCase:false,normDates:true,sortRows:false,sortCols:false,hideRows:false,hideCols:false,showOld:true};

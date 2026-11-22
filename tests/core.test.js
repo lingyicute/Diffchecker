@@ -876,13 +876,22 @@ test('excel.inlineDiff: 忽略空白时空白差异不标成改动，且仍能�
     excel.opts.ignoreWs = true;
     const join = (segs, k) => segs.map(s => s[k]).join('');
     const bad = s => s.t !== 0 && !(s.t === 1 ? s.a : s.b).trim();
-    for (const [l, r] of [['a  b x', 'a b y'], ['  a b x', 'a b y'], ['x  y', 'x y z'], ['a\tb', 'a b'], ['ab', 'a b']]) {
+    for (const [l, r] of [['a  b x', 'a b y'], ['  a b x', 'a b y'], ['x  y', 'x y z'], ['a\tb', 'a b'], [' ab', 'ab'], ['ab', 'ab \t']]) {
       const segs = excel.inlineDiff(l, r);
       assert.equal(join(segs, 'a'), l); assert.equal(join(segs, 'b'), r);
       assert.ok(!segs.some(bad), JSON.stringify([l, r, segs]));
     }
     assert.ok(excel.inlineDiff('x  y', 'x y z').every(s => s.t === 0 || s.b === 'z'));
     assert.ok(excel.inlineDiff('a  b', 'a b').every(s => s.t === 0));
+    // normalize 只折叠内部空白并裁掉首尾，"ab" 与 "a b" 仍算不同：这样的单元格会标为修改，行内必须标出那个内部空格
+    assert.notEqual(excel.normalize('ab'), excel.normalize('a b'));
+    const changes = (l, r) => JSON.stringify(excel.inlineDiff(l, r).filter(s => s.t !== 0).map(s => [s.t, s.a, s.b]));
+    assert.equal(changes('ab', 'a b'), JSON.stringify([[2, '', ' ']]));
+    assert.equal(changes('a b', 'ab'), JSON.stringify([[1, ' ', '']]));
+    assert.equal(changes('İ\t\tς \t', 'İς'), JSON.stringify([[1, '\t\t', '']]));
+    excel.opts.ignoreCase = true;
+    assert.equal(changes('ΣS', 'Σ S '), JSON.stringify([[2, '', ' ']]));
+    excel.opts.ignoreCase = false;
     excel.opts.ignoreWs = false;
     assert.ok(excel.inlineDiff('a  b', 'a b').some(s => s.t !== 0));
   } finally { excel.opts.ignoreWs = saved; }
