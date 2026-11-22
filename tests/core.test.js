@@ -1422,6 +1422,8 @@ test('Excel 切换对比模式或显示模式时，即使尚未对比也同步�
 test('image.invertAlign 与 maybePromptAlign: 零角度求逆不产生负零，比较失败时不覆盖错误提示', async () => {
   const zeroInv = img.invertAlign({ dx: 0, dy: 0, rot: 0, scale: 1, fh: false, fv: false }, { w: 100, h: 80 }, { w: 100, h: 80 });
   assert.ok(Object.is(zeroInv.rot, 0));
+  const flipZeroInv = img.invertAlign({ dx: 0, dy: 0, rot: -0, scale: 1, fh: true, fv: false }, { w: 100, h: 80 }, { w: 100, h: 80 });
+  assert.ok(Object.is(flipZeroInv.rot, 0));
 
   const s = script('image-compare.html');
   const code = between(s, 'function alignNotice', 'function showPrompt');
