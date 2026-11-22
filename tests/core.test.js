@@ -1358,9 +1358,13 @@ test('Excel 行内高亮：整段大小写转换支持词尾西格玛和多码�
         assert.equal(segs.filter(s=>s.t===1).map(s=>s.a).join(''), 'a');
         assert.equal(segs.filter(s=>s.t===2).map(s=>s.b).join(''), 'b');
       }
-      const partial = excel.inlineDiff('İ x','i x');
-      assert.equal(partial.map(s=>s.a).join(''), 'İ x');
-      assert.equal(partial.filter(s=>s.t===1).map(s=>s.a).join(''), 'İ');
+      for (const [l, r, dl, il] of [['İ x', 'i x', 'İ', 'i'], ['i x', 'İ x', 'i', 'İ']]) {
+        const partial = excel.inlineDiff(l, r);
+        assert.equal(partial.map(s => s.a).join(''), l);
+        assert.equal(partial.map(s => s.b).join(''), r);
+        assert.equal(partial.filter(s => s.t === 1).map(s => s.a).join(''), dl);
+        assert.equal(partial.filter(s => s.t === 2).map(s => s.b).join(''), il);
+      }
     }
   } finally { Object.assign(excel.opts, old); }
 });

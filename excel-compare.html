@@ -495,8 +495,9 @@ function projectedCaseDiff(l,r,ws,big){
   let ops;if(A.length+B.length>INLINE_MAX_TOKENS){let p=0,q=0;while(p<A.length&&p<B.length&&na[p]===nb[p])p++;while(q<A.length-p&&q<B.length-p&&na[A.length-1-q]===nb[B.length-1-q])q++;
     ops=[];for(let i=0;i<p;i++)ops.push([EQ,i,i]);for(let i=p;i<A.length-q;i++)ops.push([DEL,i,-1]);for(let i=p;i<B.length-q;i++)ops.push([INS,-1,i]);for(let i=0;i<q;i++)ops.push([EQ,A.length-q+i,B.length-q+i]);
   }else ops=diffSeq(na,nb);
-  let ap=0,bp=0;const mark=(p,start,token)=>{if(ws&&!token.trim())return;for(let i=start;i<start+token.length;i++)p.marks[p.map[i]]=1};
-  for(const [op,i,j] of ops){if(op!==INS){if(op===DEL)mark(a,ap,A[i]);ap+=A[i].length}if(op!==DEL){if(op===INS)mark(b,bp,B[j]);bp+=B[j].length}}
+  const eqs=[];let ap=0,bp=0;const mark=(p,start,token)=>{if(ws&&!token.trim())return;for(let i=start;i<start+token.length;i++)p.marks[p.map[i]]=1};
+  for(const [op,i,j] of ops){if(op===EQ&&(!ws||A[i].trim()))eqs.push([ap,bp,A[i].length]);if(op!==INS){if(op===DEL)mark(a,ap,A[i]);ap+=A[i].length}if(op!==DEL){if(op===INS)mark(b,bp,B[j]);bp+=B[j].length}}
+  for(let pass=0,chg=true;chg&&pass<4;pass++){chg=false;for(const [x,y,n] of eqs)for(let k=0;k<n;k++){const ai=a.map[x+k],bi=b.map[y+k];if(a.marks[ai]!==b.marks[bi]){a.marks[ai]=b.marks[bi]=1;chg=true}}}
   const out=[],add=(t,x,y)=>{const last=out[out.length-1];if(last&&last.t===t){last.a+=x;last.b+=y}else out.push({t,a:x,b:y})};
   for(const [p,side] of [[a,'a'],[b,'b']])for(let i=0;i<p.raw.length;){const ch=String.fromCodePoint(p.raw.codePointAt(i)),t=p.marks[i]?(side==='a'?DEL:INS):EQ;add(t,side==='a'?ch:'',side==='b'?ch:'');i+=ch.length}
   return out;
