@@ -1523,3 +1523,13 @@ test('excel.compare: 忽略空白时新增列里的纯空白单元格不标为�
     assert.equal(R.rows[1].hasColData, true);
   } finally { Object.assign(excel.opts, old); }
 });
+
+test('text.synClasses: Python 三引号字符串正确处理转义引号且不误染后续代码', () => {
+  const { synClasses } = run(between(script('text-compare.html'), 'const SYN={', '/* ===================== state'), 'synClasses');
+  const src = '"""a \\""" b""" + 1';
+  const cls = synClasses(src, 'py');
+  assert.equal(cls[cls.length - 1], 'n');
+  assert.equal(cls.slice(0, 14).every(c => c === 's'), true);
+  const unclosed = '"""abc\\';
+  assert.equal(synClasses(unclosed, 'py').every(c => c === 's'), true);
+});
