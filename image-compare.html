@@ -588,18 +588,21 @@ async function autoAlign(A,B,allow){
   // 1) coarse search 128²
   let N=128,pa=grayPatch(A,N,1,0,false,false,W,H),best=null,n=0;
   const scales=allow.scale?[0.85,0.9,0.95,1,1.05,1.1,1.15].map(s=>s*baseScale):[baseScale];if(allow.scale&&!scales.includes(1))scales.push(1);/* 尺寸不同往往只是裁剪 / 留白不同、内容并没有缩放：按尺寸比推出的候选里通常没有 1，补上“不缩放”，否则只能落在邻近的错误比例上，还会用多余的旋转去凑 */const rots=allow.rot?[-6,-4,-2,-1,0,1,2,4,6]:[0];
-  best=evalAt(N,pa,baseScale,0);/* 只有明显优于“不旋转不缩放”时才采用其他候选，避免噪声导致虚假的缩放 */
-  for(const sc of scales)for(const rot of rots){if(sc===baseScale&&rot===0)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>best.psr*1.05)best=r;if(++n%10===0){await tick();if(!active())return null}}
+  const base1=evalAt(N,pa,baseScale,0);best=base1;let cand1=null;/* 只有明显优于基准时才采用其他候选，且候选之间按真实峰值比较，避免受遍历顺序影响 */
+  for(const sc of scales)for(const rot of rots){if(sc===baseScale&&rot===0)continue;const r=evalAt(N,pa,sc,rot);if(!cand1||r.psr>cand1.psr)cand1=r;if(++n%10===0){await tick();if(!active())return null}}
+  if(cand1&&cand1.psr>base1.psr*1.05)best=cand1;
   // 2) refine 256² around best
-  N=256;pa=grayPatch(A,N,1,0,false,false,W,H);let ref=evalAt(N,pa,best.sc,best.rot);
+  N=256;pa=grayPatch(A,N,1,0,false,false,W,H);const base2=evalAt(N,pa,best.sc,best.rot);let ref=base2,cand2=null;
   const scales2=allow.scale?[-0.03,-0.015,0,0.015,0.03].map(d=>best.sc*(1+d)):[best.sc];const rots2=allow.rot?[-1,-0.5,0,0.5,1].map(d=>best.rot+d):[0];
-  for(const sc of scales2)for(const rot of rots2){if(sc===best.sc&&rot===best.rot)continue;const r=evalAt(N,pa,sc,rot);if(r.psr>ref.psr*1.03)ref=r;if(++n%6===0){await tick();if(!active())return null}}
+  for(const sc of scales2)for(const rot of rots2){if(sc===best.sc&&rot===best.rot)continue;const r=evalAt(N,pa,sc,rot);if(!cand2||r.psr>cand2.psr)cand2=r;if(++n%6===0){await tick();if(!active())return null}}
+  if(cand2&&cand2.psr>base2.psr*1.03)ref=cand2;
   // 无关图片也会在大量候选位移中偶然出现低峰；仅接受可靠的相关峰。
   const minPsr=8;if(!Number.isFinite(ref.psr)||ref.psr<minPsr)return null;
   // 3) final translation at 512²
-  N=512;pa=grayPatch(A,N,1,0,false,false,W,H);let fin=evalAt(N,pa,ref.sc,ref.rot);const f=fin.f;
-  /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显更优才替换 */
-  for(const dr of allow.rot?[0,-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick();if(!active())return null}
+  N=512;pa=grayPatch(A,N,1,0,false,false,W,H);const base3=evalAt(N,pa,ref.sc,ref.rot);let fin=base3,cand3=null;const f=base3.f;
+  /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显优于基准才采用最高峰候选 */
+  for(const dr of allow.rot?[0,-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(!cand3||r.psr>cand3.psr)cand3=r;await tick();if(!active())return null}
+  if(cand3&&cand3.psr>base3.psr*1.06)fin=cand3;
   if(!Number.isFinite(fin.psr)||fin.psr<minPsr)return null;
   // 两张图均在 N×N 画布中心绘制（对齐 Hann 窗且避免放大后在负坐标处被裁掉），
   // 因此相关峰值是 B 中心相对 A 中心的位移，换算回 drawAligned 的 (dx, dy) 需加上中心差 (A - B)/2。

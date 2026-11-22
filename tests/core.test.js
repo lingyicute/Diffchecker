@@ -1477,3 +1477,13 @@ test('image.autoAlign: 不同尺寸图片居中采样时平移换算补上中心
   assert.equal(r.dx, 375);
   assert.equal(r.dy, 300);
 });
+
+test('image.autoAlign: 候选搜索按真实峰值择优，不因遍历顺序被先遇到的次优候选挡住', async () => {
+  const alignCode = between(script('image-compare.html'), 'async function autoAlign', 'function alignWithOpenCV');
+  const pre = 'const window={},setTimeout=f=>f();'
+    + 'function grayPatch(src,N,sc,rot){return {g:{N,sc,rot},f:1}}'
+    + 'function phaseCorr(a,b){const p=b.rot===0?10:b.rot===2?20:b.rot===4?20.6:5;return {dx:0,dy:0,psr:p}}';
+  const { autoAlign } = run(alignCode, 'autoAlign', pre), dim = { width: 64, height: 64 };
+  const r = await autoAlign(dim, dim, { rot: true, scale: false });
+  assert.equal(r.rot, 4);
+});
