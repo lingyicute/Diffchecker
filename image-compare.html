@@ -675,6 +675,7 @@ $('exportGo').onclick=async()=>{
       if(!blob)throw new Error('PNG encoding failed');download(blob,filename);return;
     }
     rep.innerHTML=reportHtml(exportCanvas());await Promise.all([...rep.querySelectorAll('img')].map(decodeReportImage));
+    if(!S.W){clearPrintReport();return}
     printing=true;document.body.classList.add('printing-image-report');window.print();
   }catch(e){clearPrintReport();console.error(e);notice(t(e.message==='pngTooLarge'?'pngTooLarge':'exportFailed'))}
   finally{exporting=false}
