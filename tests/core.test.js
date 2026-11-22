@@ -1510,3 +1510,16 @@ test('excel.parseCsv: 错误分隔符命中更多行但触发引号错误时，�
   const rows = JSON.parse(JSON.stringify(excel.parseCsv('note,title\nx,"5" pipe;10\ny,"6" pipe;20').sheets[0].grid.rows.map(r => r.map(c => c.v))));
   assert.deepEqual(rows, [['note,title'], ['x,"5" pipe', '10'], ['y,"6" pipe', '20']]);
 });
+
+test('excel.compare: 忽略空白时新增列里的纯空白单元格不标为新增且不阻止折叠', () => {
+  const G = rows => ({ rows: rows.map(r => r.map(v => ({ v: String(v), f: null, d: false }))), cols: Math.max(0, ...rows.map(r => r.length)) });
+  const old = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { mode: 'table', matchHeaders: true, ignoreWs: true, sortRows: false, sortCols: false });
+    const R = excel.compare(G([['K', 'V'], ['1', 'a'], ['2', 'b']]), G([['K', 'V', 'Extra'], ['1', 'a', '   '], ['2', 'b', 'hi']]), 0, 0);
+    assert.equal(R.rows[0].cells[2].st, 'eq');
+    assert.equal(R.rows[0].hasColData, false);
+    assert.equal(R.rows[1].cells[2].st, 'cins');
+    assert.equal(R.rows[1].hasColData, true);
+  } finally { Object.assign(excel.opts, old); }
+});
