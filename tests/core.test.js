@@ -926,6 +926,7 @@ test('excel.compare: 新增或删除列含数据时，对应行不能被隐藏�
       assert.deepEqual(Array.from(result.rows, r => r.hasColData), [true, false, true]);
       assert.equal(result.stats.rowsChg, 0); // 新列有独立统计，不计入共有列的修改数
       assert.equal(result.rows[0].cells[1].st, status);
+      assert.equal(result.rows[1].cells[1].st, 'eq');
       assert.equal(result.rows[2].cells[1].st, status);
       assert.ok(result.colChanged.has(1));
       const nodes = { stats: { innerHTML: '' }, modeSeg: { querySelectorAll: () => [] }, valSeg: { querySelectorAll: () => [] }, gridWrap: { dataset: {}, querySelectorAll: () => [] } };
@@ -933,6 +934,7 @@ test('excel.compare: 新增或删除列含数据时，对应行不能被隐藏�
       vm.createContext(ctx);
       vm.runInContext(`const RES=result,opts=options,focusIdx=-1,expanded=new Set(),t=k=>k,esc=String,$=id=>nodes[id];${between(script('excel-compare.html'), 'function renderCell', 'function goChange')}render()`, ctx);
       assert.match(nodes.gridWrap.innerHTML, /also new/);
+      assert.match(nodes.gridWrap.innerHTML, /<td class="colx"><\/td>/);
       assert.doesNotMatch(nodes.gridWrap.innerHTML, /class="collapsed"/);
       assert.match(nodes.gridWrap.innerHTML, /<th[^>]+id="focus-0"/);
       assert.equal(nodes.gridWrap.dataset.changes, 3); // 列标题与两行数据均可定位。
