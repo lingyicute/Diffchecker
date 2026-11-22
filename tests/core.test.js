@@ -1364,3 +1364,41 @@ test('Excel 行内高亮：整段大小写转换支持词尾西格玛和多码�
     }
   } finally { Object.assign(excel.opts, old); }
 });
+
+test('Excel 切换对比模式或显示模式时，即使尚未对比也同步更新按钮的 aria-pressed 状态', () => {
+  const s = script('excel-compare.html');
+  const code = between(s, "$('modeSeg').onclick=", '/* ===================== export');
+  const mkBtns = (attr, vals) => vals.map(v => {
+    const b = { dataset: { [attr]: v }, attrs: { 'aria-pressed': String(v === vals[0]) }, setAttribute(k, val) { this.attrs[k] = val; }, closest() { return b; } };
+    return b;
+  });
+  const modeBtns = mkBtns('mode', ['table', 'rows']);
+  const valBtns = mkBtns('val', ['standard', 'formulas']);
+  const nodes = {
+    modeSeg: { querySelectorAll: () => modeBtns },
+    valSeg: { querySelectorAll: () => valBtns },
+    panel: { classList: { contains: () => false } },
+    panelClose: {},
+    toolsBtn: {},
+  };
+  const ctx = {
+    opts: { mode: 'table', val: 'standard' },
+    WB: { A: null, B: null },
+    RES: null,
+    saveOpts() {},
+    renderDetails() {},
+    run() {},
+    $: id => nodes[id],
+    document: { querySelectorAll: () => [] },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  nodes.modeSeg.onclick({ target: modeBtns[1] });
+  assert.equal(ctx.opts.mode, 'rows');
+  assert.equal(modeBtns[0].attrs['aria-pressed'], 'false');
+  assert.equal(modeBtns[1].attrs['aria-pressed'], 'true');
+  nodes.valSeg.onclick({ target: valBtns[1] });
+  assert.equal(ctx.opts.val, 'formulas');
+  assert.equal(valBtns[0].attrs['aria-pressed'], 'false');
+  assert.equal(valBtns[1].attrs['aria-pressed'], 'true');
+});
