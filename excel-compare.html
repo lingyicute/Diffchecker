@@ -535,15 +535,15 @@ function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns order
   const sim=(i,j)=>{const a=cellsA[i],b=cellsB[j];const n=Math.max(a.length,b.length);if(!n)return 1;let eq=0,nonEmpty=0;for(let k=0;k<n;k++){const x=a[k]||'',y=b[k]||'';if(x||y)nonEmpty++;if(x===y&&(x||y))eq++}return nonEmpty?eq/nonEmpty:1};
   // 改动块很大时不做全量相似度配对，退化为按位置配对；但位置相同的两行仍要足够相似才算“修改”，否则分别记为删除与新增
   if(delIdx.length*insIdx.length>2500){const n=Math.max(delIdx.length,insIdx.length);for(let k=0;k<n;k++){if(k<delIdx.length&&k<insIdx.length){if(sim(delIdx[k],insIdx[k])>=.34)out.push({type:'chg',ai:delIdx[k],bi:insIdx[k]});else{out.push({type:'del',ai:delIdx[k]});out.push({type:'ins',bi:insIdx[k]})}}else if(k<delIdx.length)out.push({type:'del',ai:delIdx[k]});else out.push({type:'ins',bi:insIdx[k]})}return out}
-  const cand=[];for(const i of delIdx)for(const j of insIdx){const s=sim(i,j);if(s>=.34)cand.push([s,i,j])}cand.sort((p,q)=>q[0]-p[0]||p[1]-q[1]||p[2]-q[2]);
-  const usedA=new Set(),usedB=new Set(),pairs=new Map();for(const [s,i,j] of cand){if(usedA.has(i)||usedB.has(j))continue;usedA.add(i);usedB.add(j);pairs.set(i,j)}
+  const cand=[];for(let x=0;x<delIdx.length;x++)for(let y=0;y<insIdx.length;y++){const s=sim(delIdx[x],insIdx[y]);if(s>=.34)cand.push([s,x,y])}cand.sort((p,q)=>q[0]-p[0]||p[1]-q[1]||p[2]-q[2]);
+  const usedA=new Set(),usedB=new Set(),pairs=new Map();for(const [s,x,y] of cand){if(usedA.has(x)||usedB.has(y))continue;usedA.add(x);usedB.add(y);pairs.set(x,y)}
   // 只保留 B 侧顺序与 A 侧一致的最长配对子序列：交叉的配对会让 B 行的显示顺序错乱
-  {const pos=new Map(insIdx.map((v,p)=>[v,p])),ps=delIdx.filter(i=>pairs.has(i)),js=ps.map(i=>pos.get(pairs.get(i))),tails=[],tIdx=[],prev=[];
+  {const ps=[...pairs.keys()].sort((a,b)=>a-b),js=ps.map(x=>pairs.get(x)),tails=[],tIdx=[],prev=[];
     for(let k=0;k<js.length;k++){let lo=0,hi=tails.length;while(lo<hi){const m=(lo+hi)>>1;if(tails[m]<js[k])lo=m+1;else hi=m}tails[lo]=js[k];tIdx[lo]=k;prev[k]=lo?tIdx[lo-1]:-1}
     const keepK=new Set();for(let k=tIdx[tails.length-1];k!=null&&k>=0;k=prev[k])keepK.add(k);
-    ps.forEach((i,k)=>{if(!keepK.has(k)){usedB.delete(pairs.get(i));pairs.delete(i)}})}
-  let bp=0;const insSorted=insIdx.slice(),posB=new Map(insIdx.map((v,p)=>[v,p]));for(const i of delIdx){if(pairs.has(i)){const j=pairs.get(i);while(bp<insSorted.length&&posB.get(insSorted[bp])<posB.get(j)){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}out.push({type:'chg',ai:i,bi:j});if(bp<insSorted.length&&insSorted[bp]===j)bp++}else out.push({type:'del',ai:i})}
-  while(bp<insSorted.length){if(!usedB.has(insSorted[bp]))out.push({type:'ins',bi:insSorted[bp]});bp++}return out}
+    ps.forEach((x,k)=>{if(!keepK.has(k)){usedB.delete(pairs.get(x));pairs.delete(x)}})}
+  let bp=0;for(let x=0;x<delIdx.length;x++){if(pairs.has(x)){const y=pairs.get(x);while(bp<y){if(!usedB.has(bp))out.push({type:'ins',bi:insIdx[bp]});bp++}out.push({type:'chg',ai:delIdx[x],bi:insIdx[y]});bp=y+1}else out.push({type:'del',ai:delIdx[x]})}
+  while(bp<insIdx.length){if(!usedB.has(bp))out.push({type:'ins',bi:insIdx[bp]});bp++}return out}
 const MAX_COMPARE_CELLS=500000;
 function compare(gA,gB,hA,hB){
   const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows);let columns=[];let dataA,dataB,startA,startB;

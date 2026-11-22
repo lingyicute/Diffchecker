@@ -127,6 +127,9 @@ test('excel.pairBlock: 配对不交叉，A / B 两侧的行序都保持原有顺
   const A = [['a', 'b', 'c'], ['x', 'y', 'z']], B = [['x', 'y', 'q'], ['a', 'b', 'd']];
   const out = excel.pairBlock([0, 1], [0, 1], null, null, A, B);
   assert.deepEqual(Array.from(out.filter(e => e.bi != null), e => e.bi), [0, 1]);
+  // 按行排序后原始行号可能逆序，知名度打平时仍按当前行序逐一配对而非按原始行号交叉丢弃
+  const sorted = excel.pairBlock([1, 0], [0, 1], null, null, [['k', 'b', '1'], ['k', 'a', '1']], [['k', 'c', '1'], ['k', 'd', '1']]);
+  assert.deepEqual(Array.from(sorted, e => [e.type, e.ai, e.bi]), [['chg', 1, 0], ['chg', 0, 1]]);
   for (let it = 0; it < 1500; it++) {
     const na = rnd(12), nb = rnd(12), mk = n => Array.from({ length: n }, () => Array.from({ length: 3 }, () => String(rnd(3))));
     const ca = mk(na), cb = mk(nb), da = ca.map((_, i) => i), db = cb.map((_, i) => i);
