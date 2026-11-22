@@ -1446,3 +1446,34 @@ test('image.invertAlign 与 maybePromptAlign: 零角度求逆不产生负零，�
     assert.equal(notices.length, ok ? 1 : 0);
   }
 });
+
+test('image.autoAlign: 不同尺寸图片居中采样时平移换算补上中心差', async () => {
+  const s = script('image-compare.html');
+  const patchCode = between(s, 'function grayPatch', 'function phaseCorr');
+  const ops = [];
+  const mk = (w, h) => ({
+    width: w, height: h,
+    getContext: () => ({
+      fillRect() {}, save() {}, restore() {},
+      translate(x, y) { ops.push(['translate', x, y]); },
+      scale(x, y) { ops.push(['scale', x, y]); },
+      rotate() {}, drawImage() {},
+      getImageData: () => ({ data: new Uint8ClampedArray(w * h * 4) }),
+    }),
+  });
+  const { grayPatch } = run(patchCode, 'grayPatch', 'const mk=this._mk;');
+  // 直接通过上下文传入 mk
+  const ctx = { mk }; vm.createContext(ctx);
+  vm.runInContext(patchCode + ';this.grayPatch=grayPatch;', ctx);
+  ctx.grayPatch({ width: 250, height: 200 }, 128, 4, 0, false, false, 1000, 800);
+  assert.deepEqual(ops[0], ['translate', 64, 64]);
+
+  const alignCode = between(s, 'async function autoAlign', 'function alignWithOpenCV');
+  const pre = 'const window={},setTimeout=f=>f();'
+    + 'function grayPatch(src,N,sc,rot,fh,fv,W,H){return {g:sc,f:N/Math.max(W,H)}}'
+    + 'function phaseCorr(){return {dx:0,dy:0,psr:50}}';
+  const { autoAlign } = run(alignCode, 'autoAlign', pre);
+  const r = await autoAlign({ width: 1000, height: 800 }, { width: 250, height: 200 }, { rot: false, scale: true });
+  assert.equal(r.dx, 375);
+  assert.equal(r.dy, 300);
+});

@@ -566,7 +566,7 @@ function fft1d(re,im,inv){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>
   if(inv)for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}}
 function fft2d(re,im,N,inv){const r=new Float64Array(N),m=new Float64Array(N);for(let y=0;y<N;y++){fft1d(re.subarray(y*N,y*N+N),im.subarray(y*N,y*N+N),inv)}for(let x=0;x<N;x++){for(let y=0;y<N;y++){r[y]=re[y*N+x];m[y]=im[y*N+x]}fft1d(r,m,inv);for(let y=0;y<N;y++){re[y*N+x]=r[y];im[y*N+x]=m[y]}}}
 function grayPatch(src,N,sc,rot,fh,fv,wOut,hOut){// render src into N×N (fitting wOut×hOut frame at scale 'frame') and return windowed gray float array
-  const c=mk(N,N),cx=c.getContext('2d');cx.fillStyle='#808080';cx.fillRect(0,0,N,N);const f=N/Math.max(wOut,hOut);cx.save();cx.scale(f,f);cx.translate(src.width/2,src.height/2);cx.rotate(rot*Math.PI/180);cx.scale(sc*(fh?-1:1),sc*(fv?-1:1));cx.drawImage(src,-src.width/2,-src.height/2);cx.restore();
+  const c=mk(N,N),cx=c.getContext('2d');cx.fillStyle='#808080';cx.fillRect(0,0,N,N);const f=N/Math.max(wOut,hOut);cx.save();cx.translate(N/2,N/2);cx.scale(f,f);cx.rotate(rot*Math.PI/180);cx.scale(sc*(fh?-1:1),sc*(fv?-1:1));cx.drawImage(src,-src.width/2,-src.height/2);cx.restore();
   const d=cx.getImageData(0,0,N,N).data,g=new Float64Array(N*N);let mean=0;for(let i=0;i<N*N;i++){g[i]=d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114;mean+=g[i]}mean/=N*N;
   for(let y=0;y<N;y++){const wy=.5-.5*Math.cos(2*Math.PI*y/(N-1));for(let x=0;x<N;x++){const wx=.5-.5*Math.cos(2*Math.PI*x/(N-1));g[y*N+x]=(g[y*N+x]-mean)*wx*wy}}g._c=1;return {g,f}}
 function phaseCorr(ga,gb,N){let F=ga._c&&ga._fft;if(ga._c&&(!F||F.N!==N)){const r=Float64Array.from(ga),i=new Float64Array(N*N);fft2d(r,i,N,false);F=ga._fft={N,r,i}}
@@ -601,11 +601,11 @@ async function autoAlign(A,B,allow){
   /* 终步在 512² 上再做一轮更细的旋转/缩放搜索，只有明显更优才替换 */
   for(const dr of allow.rot?[0,-1,-.5,-.25,.25,.5,1]:[0])for(const ds of allow.scale?[-.01,0,.01]:[0]){if(!dr&&!ds)continue;const r=evalAt(N,pa,ref.sc*(1+ds),ref.rot+dr);if(r.psr>fin.psr*1.06)fin=r;await tick();if(!active())return null}
   if(!Number.isFinite(fin.psr)||fin.psr<minPsr)return null;
-  // Both patches are drawn with their top-left at the frame origin (same as drawAligned with dx=dy=0), so the
-  // correlation peak is directly the shift that must be applied to B (peak at -d when B = A shifted by d).
+  // 两张图均在 N×N 画布中心绘制（对齐 Hann 窗且避免放大后在负坐标处被裁掉），
+  // 因此相关峰值是 B 中心相对 A 中心的位移，换算回 drawAligned 的 (dx, dy) 需加上中心差 (A - B)/2。
   // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
   const whole=fin.rot===0&&fin.sc===1,px=v=>whole?Math.round(v)||0:v;
-  return {dx:px(fin.dx/f),dy:px(fin.dy/f),rot:fin.rot,scale:fin.sc,fh,fv,conf:Math.min(1,fin.psr/40)};
+  return {dx:px((A.width-B.width)/2+fin.dx/f),dy:px((A.height-B.height)/2+fin.dy/f),rot:fin.rot,scale:fin.sc,fh,fv,conf:Math.min(1,fin.psr/40)};
 }
 function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
   try{const ma=keep(cv.imread(A)),mb=keep(cv.imread(B)),ga=keep(new cv.Mat()),gb=keep(new cv.Mat());cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=keep(new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20));const k1=keep(new cv.KeyPointVector()),k2=keep(new cv.KeyPointVector()),d1=keep(new cv.Mat()),d2=keep(new cv.Mat()),nomask=keep(new cv.Mat());orb.detectAndCompute(ga,nomask,k1,d1);orb.detectAndCompute(gb,nomask,k2,d2);
