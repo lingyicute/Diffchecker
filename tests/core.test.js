@@ -331,6 +331,10 @@ test('makeNorm: 忽略规则与正文使用相同的引号 / 小写规范化', (
   assert.equal(plain.nDel + plain.nIns, 0);
   const diff = text.computeDiff('Foo bar', 'baz', { rules: ['Foo '], lower: true });
   assert.equal(diff.nDel + diff.nIns, 2);
+  // 开启按行排序时，按规范化后的键排序而非被前导空白、弯引号或忽略词打乱行序
+  assert.equal(text.computeDiff('  banana\napple', 'apple\nbanana', { sort: true, hideWs: true }).nDel, 0);
+  assert.equal(text.computeDiff('\u201ca\u201d\n"b"', '"a"\n"b"', { sort: true, igQuotes: true }).nDel, 0);
+  assert.equal(text.computeDiff('TAG z\na', 'z\na', { sort: true, rules: ['TAG '] }).nDel, 0);
 });
 
 test('excel.normalize: 只规范化真实存在的日期，非法月末和非闰年不能产生伪相等', () => {
