@@ -1271,6 +1271,7 @@ test('共享公式：长标识符保持原样，非 ASCII 字母不会误认成�
 test('共享公式：超出原工作表网格的名称不能被移进网格', () => {
   assert.equal(excel.shiftFormula('XFE1+A1048577+XFE:XFF+1048577:1048578+B2', -1, -1),
     'XFE1+A1048577+XFE:XFF+1048577:1048578+A1');
+  assert.equal(excel.shiftFormula('A01+Q04+01:02+A1+1:2', 1, 1), 'A01+Q04+01:02+B2+2:3');
 });
 
 test('XLSX 单元格地址保留实际坐标并拒绝越界或非法地址', () => {
