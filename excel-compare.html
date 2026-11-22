@@ -307,7 +307,7 @@ function customDateKind(format){
   const bare=format.replace(/"[^"]*"|[\\_*]./g,'');
   if(/\[(?:h+|m+|s+)\]/i.test(bare))return 'elapsed';
   const code=bare.replace(/\[[^\]]*\]|AM\/PM|A\/P/gi,'');
-  if(!/[ymdhs]/i.test(code)||/[#0?]/.test(code.replace(/\.0+/g,'')))return '';
+  if(!/[ymdhs]/i.test(code)||/[#0?]/.test(code.replace(/s+\.0+/gi,'s')))return '';
   return /[yd]/i.test(code)||!/[hs]/i.test(code)?'date':'time';
 }
 function dateNumberStyle(format){

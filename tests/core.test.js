@@ -1490,3 +1490,11 @@ test('image.autoAlign: 候选搜索按真实峰值择优，不因遍历顺序被
   const r = await autoAlign(dim, dim, { rot: true, scale: false });
   assert.equal(r.rot, 4);
 });
+
+test('xlsx.customDateKind: 只有秒占位后的小数位才按时间格式忽略，纯小数数值格式不误判为日期', () => {
+  const { customDateKind } = run(between(script('excel-compare.html'), 'function customDateKind', 'function isoDateCell'), 'customDateKind');
+  assert.equal(customDateKind('.00 USD'), '');
+  assert.equal(customDateKind('.00 days'), '');
+  assert.equal(customDateKind('hh:mm:ss.000'), 'time');
+  assert.equal(customDateKind('yyyy-mm-dd hh:mm:ss.00'), 'date');
+});
