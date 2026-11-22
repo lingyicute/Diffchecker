@@ -425,19 +425,19 @@ function parseSheetRows(body,sst,dateStyles,d1904,compat,richText,limit=MAX_IMPO
 }
 // 检测和实际解析共用同一个引号状态机；是否处于字段开头取决于当前候选分隔符。
 function scanCsv(text,delim,collect,maxRows=Infinity,limit=MAX_IMPORTED_CELLS){
-  const rows=[],freq=new Map();let row=[],cell='',fields=1,n=0,hit=0,top=0,errors=0,state=0,stored=0,quoted=false,quoteEvidence=false;
+  const rows=[],freq=new Map();let row=[],cell='',fields=1,n=0,hit=0,top=0,errors=0,rowErr=false,state=0,stored=0,quoted=false,quoteEvidence=false;
   const pushCell=()=>{if(state===3)quoted=true;if(collect){if(++stored>limit||row.length>=16384)throw new Error(t('importTooLarge'));row.push(cell);cell=''}state=0};
-  const endRow=()=>{pushCell();if(collect){rows.push(row);row=[]}if(fields>1){quoteEvidence||=quoted;hit++;const count=(freq.get(fields)||0)+1;freq.set(fields,count);top=Math.max(top,count)}fields=1;quoted=false;n++};
+  const endRow=()=>{pushCell();if(collect){rows.push(row);row=[]}if(fields>1){if(!rowErr)quoteEvidence||=quoted;hit++;const count=(freq.get(fields)||0)+1;freq.set(fields,count);top=Math.max(top,count)}fields=1;quoted=false;rowErr=false;n++};
   for(let i=0;i<text.length&&n<maxRows;i++){
     const ch=text[i];
     if(state===2){if(ch==='"'&&text[i+1]==='"'){if(collect)cell+='"';i++}else if(ch==='"')state=3;else if(collect)cell+=ch;continue}
     if(ch===delim){pushCell();fields++;continue}
     if(ch==='\r'||ch==='\n'){endRow();if(ch==='\r'&&text[i+1]==='\n')i++;continue}
     if(state===0&&ch==='"'){state=2;continue}
-    if(state===3){if(collect)throw new Error(t('badCsvQuotes'));errors++}
+    if(state===3){if(collect)throw new Error(t('badCsvQuotes'));errors++;rowErr=true}
     state=1;if(collect)cell+=ch;
   }
-  if(state===2){if(collect)throw new Error(t('badCsvQuotes'));errors++}
+  if(state===2){if(collect)throw new Error(t('badCsvQuotes'));errors++;rowErr=true}
   if(n<maxRows&&(fields>1||state!==0))endRow();
   return {rows,hit,top,errors,quoteEvidence};
 }

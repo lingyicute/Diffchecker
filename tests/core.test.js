@@ -1127,6 +1127,8 @@ test('CSV：多行字段内部的分隔符不会抢走真实分隔符', () => {
     const notes = Array.from({ length: 8 }, (_, i) => `label${i}${other}detail`).join('\n');
     assert.deepEqual(values(`ID${d}Notes\n1${d}"${notes}"\n2${d}end`), [['ID', 'Notes'], ['1', notes], ['2', 'end']]);
   }
+  // 错误候选分隔符在同一行里既命中局部引号又产生语法错误时，不能算作合法的引号证据
+  assert.deepEqual(values('id;spec\n1;a,"b","c"d\n2;x,"y","z"w'), [['id', 'spec'], ['1', 'a,"b","c"d'], ['2', 'x,"y","z"w']]);
   assert.throws(() => values('a,"b"junk\nc,d', ','), /badCsvQuotes/);
 });
 
