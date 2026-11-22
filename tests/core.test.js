@@ -1402,3 +1402,31 @@ test('Excel 切换对比模式或显示模式时，即使尚未对比也同步�
   assert.equal(valBtns[0].attrs['aria-pressed'], 'false');
   assert.equal(valBtns[1].attrs['aria-pressed'], 'true');
 });
+
+test('image.invertAlign 与 maybePromptAlign: 零角度求逆不产生负零，比较失败时不覆盖错误提示', async () => {
+  const zeroInv = img.invertAlign({ dx: 0, dy: 0, rot: 0, scale: 1, fh: false, fv: false }, { w: 100, h: 80 }, { w: 100, h: 80 });
+  assert.ok(Object.is(zeroInv.rot, 0));
+
+  const s = script('image-compare.html');
+  const code = between(s, 'function alignNotice', 'function showPrompt');
+  for (const ok of [false, true]) {
+    let onGo = null;
+    const notices = [];
+    const ctx = {
+      S: { A: { w: 100, h: 80, c: {} }, B: { w: 120, h: 80, c: {} }, align: null },
+      alignJob: 0,
+      t: k => k,
+      notice: m => notices.push(m),
+      showPrompt: (_ti, _ms, _sk, _go, fn) => { onGo = fn; },
+      autoAlign: async () => ({ dx: 1, dy: 2, rot: 0, scale: 1, fh: false, fv: false, conf: 0.9 }),
+      compare: () => (notices.length ? ok : true),
+    };
+    vm.createContext(ctx);
+    vm.runInContext(code, ctx);
+    let call = 0;
+    ctx.compare = () => (++call === 1 ? true : ok);
+    ctx.maybePromptAlign();
+    await onGo();
+    assert.equal(notices.length, ok ? 1 : 0);
+  }
+});
