@@ -600,7 +600,7 @@ async function exportPng(){
   const d=lastDiff,rows=pairedRows(true),unified=exportLayout==='unified',dark=theme==='dark';
   const css=getComputedStyle(document.body),cssVar=(n,d)=>css.getPropertyValue(n).trim()||d,W=1600,LH=20,PAD=16,HEADER=PAD*2+40,font='13px '+cssVar('--mono','monospace');
   const col={del:cssVar('--del-block','rgba(255,46,0,.09)'),ins:cssVar('--ins-block','rgba(0,180,144,.12)'),delHl:cssVar('--del-hl','rgba(255,46,0,.3)'),insHl:cssVar('--ins-hl','rgba(0,180,144,.34)')};
-  const cv=document.createElement('canvas');cv.width=W;cv.height=1;const ctx=cv.getContext('2d');ctx.font=font;
+  const cv=document.createElement('canvas');try{cv.width=W;cv.height=1;const ctx=cv.getContext('2d');ctx.font=font;
   const colW=unified?W-PAD*2:(W-PAD*2)/2,numW=Math.ceil(Math.max(40,ctx.measureText(String(Math.max(d.A.length,d.B.length))).width+8)),gut=unified?numW*2:numW,limit=pngLineBudget(W,HEADER,LH);
   const widths=new Map(),widthOf=ch=>{if(!widths.has(ch))widths.set(ch,ctx.measureText(ch).width);return widths.get(ch)};
   const wrap=(txt,segs,side)=>wrapPngLine(segs?segs.map(s=>({text:side==='l'?s.a:s.b,mark:s.t!==EQ})):[{text:txt,mark:false}],colW-gut-16,widthOf,limit);
@@ -613,7 +613,7 @@ async function exportPng(){
     if(unified){if(left)add({...r,left});if(right)add({...r,right})}else add({...r,left,right});
   }
   const H=HEADER+total*LH;cv.height=H;ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';
-  const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14,colW);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14,colW);
+  const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14,unified?colW:colW-PAD);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14,colW-PAD);
   ctx.font=font;let y=PAD+40;
   // 统一视图与页面一致，用两列行号（原始 / 修改后）；删除行只有原始行号，新增行只有修改后行号
   const drawLines=(x,lines,nums,kind,height)=>{if(kind){ctx.fillStyle=col[kind];ctx.fillRect(x,y,colW,height*LH)}
@@ -629,6 +629,7 @@ async function exportPng(){
   }
   if(!unified){ctx.strokeStyle=dark?'#353a3f':'#e6e8eb';ctx.beginPath();ctx.moveTo(W/2,PAD+24);ctx.lineTo(W/2,H-PAD);ctx.stroke()}
   const name=baseName()+'.png',blob=await new Promise(r=>cv.toBlob(r,'image/png'));if(!blob)throw new Error('toBlob failed');download(blob,name);
+  }finally{cv.width=cv.height=0}
 }
 /* ---- minimal XLSX writer (zip STORE, inline strings) ---- */
 const CRC_T=(()=>{const T=new Int32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c}return T})();
