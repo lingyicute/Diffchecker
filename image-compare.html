@@ -373,14 +373,25 @@ function makeBases(w,h){
     bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy);return [a,b];
   }catch(e){dropCanvas(a);dropCanvas(b);throw e}
 }
-function buildBases(){const nextFrame=comparisonFrame(S.A,S.B,S.align),frame=workingFrame(nextFrame.w,nextFrame.h);
-  dropCanvas(baseA);dropCanvas(baseB);dropCanvas(mainCanvas);dropCanvas(overlay);baseA=baseB=mainCanvas=overlay=dataA=dataB=diffMap=signMap=null;stage.replaceChildren();clearList($('chgList'));
-  S.frame=nextFrame;
+function releaseWorkingCanvases(){
+  dropCanvas(baseA);dropCanvas(baseB);dropCanvas(mainCanvas);dropCanvas(overlay);
+  baseA=baseB=mainCanvas=overlay=dataA=dataB=diffMap=signMap=null;stage.replaceChildren();
+}
+function buildBases(ready){
+  const nextFrame=comparisonFrame(S.A,S.B,S.align),frame=workingFrame(nextFrame.w,nextFrame.h);
+  releaseWorkingCanvases();clearList($('chgList'));S.frame=nextFrame;
   for(let k=1;k>.2;k*=Math.SQRT1_2){
     const w=Math.max(1,Math.round(frame.w*k)),h=Math.max(1,Math.round(frame.h*k));
-    try{[baseA,baseB]=makeBases(w,h);S.W=w;S.H=h;S.scale=frame.scale*k;break}catch(e){if(k*Math.SQRT1_2<=.2)throw e}
+    try{
+      [baseA,baseB]=makeBases(w,h);S.W=w;S.H=h;S.scale=frame.scale*k;
+      dataA=baseA.getContext('2d').getImageData(0,0,w,h);dataB=baseB.getContext('2d').getImageData(0,0,w,h);
+      computeDiffMap();ready?.();return;
+    }catch(e){
+      // 缓冲读回或第三张主画布也可能在总内存不足时失败。
+      releaseWorkingCanvases();if(k*Math.SQRT1_2<=.2)throw e;
+    }
   }
-  dataA=baseA.getContext('2d').getImageData(0,0,S.W,S.H);dataB=baseB.getContext('2d').getImageData(0,0,S.W,S.H);computeDiffMap()}
+}
 function drawAligned(ctx,img,al,sx,sy=sx){ctx.save();ctx.scale(sx,sy);const w=img.width,h=img.height;ctx.translate(w/2+al.dx,h/2+al.dy);ctx.rotate((al.rot%360)*Math.PI/180);ctx.scale(al.scale*(al.fh?-1:1),al.scale*(al.fv?-1:1));ctx.drawImage(img,-w/2,-h/2);ctx.restore()}
 function diffPixels(a,b,map,sign,rgba){
   let changed=0;
@@ -550,8 +561,11 @@ $('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('
 
 /* ===================== compare pipeline ===================== */
 function compare(){if(!S.A||!S.B)return false;
-  try{buildBases();$('result').classList.remove('hidden');if(!S.seeded){S.seeded=true;S.passes=[newPass('words-sentences')]}
-    S.passes.forEach(p=>{if(p.linked)p.options=presetOptions(p.presetId)});scan();renderStage();fit();
+  try{
+    S.regions=[];S.active=-1;
+    buildBases(()=>{$('result').classList.remove('hidden');renderStage()});
+    if(!S.seeded){S.seeded=true;S.passes=[newPass('words-sentences')]}
+    S.passes.forEach(p=>{if(p.linked)p.options=presetOptions(p.presetId)});scan();fit();
     if(diffCount===0)notice(t('identicalTitle')+' — '+t('identicalMsg'));return true
   }catch(e){console.error(e);clearComparison();notice(t(e.message==='alignOutOfRange'?'alignOutOfRange':'compareFailed'));return false}
 }

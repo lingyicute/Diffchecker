@@ -1747,11 +1747,15 @@ test('image.buildBases: 画布不可用时释放失败画布并按比例降级�
   };
   vm.createContext(ctx);
   vm.runInContext(code + ';this.buildBases=buildBases;', ctx);
-  ctx.buildBases();
-  assert.ok(ctx.S.W < 2000 && ctx.S.W * ctx.S.H <= 2000000);
+  const attempts = [];
+  ctx.buildBases(() => {
+    attempts.push(ctx.S.W);
+    if (attempts.length === 1) throw new Error('main canvas unavailable');
+  });
+  assert.deepEqual(attempts, [1414, 1000]);
+  assert.equal(ctx.S.W, 1000);
   assert.ok(ctx.S.scale < 1);
-  assert.equal(canvases[0].width, 0);
-  assert.equal(canvases[0].height, 0);
+  assert.ok(canvases.slice(0, -2).every(c => c.width === 0 && c.height === 0));
 });
 
 test('image.hideLoading: 任一侧仍在载入时不隐藏提示，取消全部载入后不论语言均收起提示', () => {
