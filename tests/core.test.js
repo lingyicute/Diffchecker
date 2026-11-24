@@ -1575,3 +1575,19 @@ test('image.pinchTransform: 双指捏合以中点为中心缩放平移并限幅'
   assert.equal(tiny.z, 1);
   assert.ok(Number.isFinite(tiny.x) && Number.isFinite(tiny.y));
 });
+
+test('弹窗遮罩：按下与点击都落在遮罩上才关闭，pointerdown 本身不关闭（避免触屏点击穿透）', () => {
+  for (const f of ['text-compare.html', 'image-compare.html', 'excel-compare.html']) {
+    const { closeOnBackdrop } = run(between(script(f), 'function closeOnBackdrop', '\ncloseOnBackdrop('), 'closeOnBackdrop');
+    const h = {}, dlg = { addEventListener: (n, fn) => { h[n] = fn; } }, child = {};
+    let closed = 0, prevented = 0;
+    closeOnBackdrop(dlg, () => closed++);
+    h.pointerdown({ target: dlg }); assert.equal(closed, 0, f);
+    h.click({ target: dlg }); assert.equal(closed, 1, f);
+    h.pointerdown({ target: child }); h.click({ target: dlg }); assert.equal(closed, 1, f); // 在弹窗内按下、拖到遮罩上松开
+    h.click({ target: dlg }); assert.equal(closed, 1, f); // 没有对应的按下
+    h.pointerdown({ target: dlg }); h.click({ target: child }); h.click({ target: dlg }); assert.equal(closed, 1, f);
+    h.touchmove({ target: dlg, preventDefault: () => prevented++ }); h.touchmove({ target: child, preventDefault: () => prevented++ });
+    assert.equal(prevented, 1, f); // 只拦截遮罩上的拖动，弹窗内部照常滚动
+  }
+});
