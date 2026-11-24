@@ -601,8 +601,8 @@ let clearAlignPtrs=()=>{};
  const end=e=>{if(!ptrs.delete(e.pointerId))return;if(ptrs.size===0){drag=pinch=null;locked=false}else if(ptrs.size===1){drag=pinch=null;locked=true}};
  clearAlignPtrs=()=>{ptrs.clear();drag=pinch=null;locked=false};
  v.onpointerdown=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(v,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);
-   if(ptrs.size===1&&!locked){stopAuto();drag={id:e.pointerId,sx:p.x,sy:p.y,odx:alTmp.dx,ody:alTmp.dy}}
-   else if(ptrs.size===2){const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:alView.x,y:alView.y,z:alView.z}};drag=null;locked=true}};
+   if(ptrs.size===1&&!locked){stopAuto();drag={id:e.pointerId,sx:p.x,sy:p.y,odx:alTmp.dx,ody:alTmp.dy,t:performance.now()}}
+   else if(ptrs.size===2){if(drag){const f1=ptrs.get(drag.id);if(performance.now()-drag.t<300&&f1&&Math.hypot(f1.x-drag.sx,f1.y-drag.sy)<20){alTmp.dx=drag.odx;alTmp.dy=drag.ody;syncAlignInputs();drawAlign()}}const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:alView.x,y:alView.y,z:alView.z}};drag=null;locked=true}};
  v.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);
    if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.02,10);alView.z=r.z;alView.x=r.x;alView.y=r.y;drawAlign()}
    else if(drag&&drag.id===e.pointerId&&!locked){alTmp.dx=drag.odx+(p.x-drag.sx)/(alView.z*alView.sx);alTmp.dy=drag.ody+(p.y-drag.sy)/(alView.z*alView.sy);syncAlignInputs();drawAlign()}};
