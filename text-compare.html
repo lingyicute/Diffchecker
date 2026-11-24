@@ -582,7 +582,7 @@ $('exportGo').onclick=async()=>{$('exportModal').close();if(rt)run(true);if(!las
   catch(e){console.error(e);notice(t(e&&e.tooTall?'exportTooTall':e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(fileNames.A,'original')+'-vs-'+stem(fileNames.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
-function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}
 function exportDiffFile(){const j={type:'text',version:1,...lastDiff.input,options:{...opts},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
 /* rows for tabular exports (pairs of left/right lines) */
 function pairedRows(collapse){const d=lastDiff,out=[];d.blocks.forEach((b,bi)=>{if(b.type==='eq'){const head=bi===0?0:CTX,tail=bi===d.blocks.length-1?0:CTX,hidden=b.rows.length-head-tail;

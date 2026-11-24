@@ -707,7 +707,7 @@ function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.
 /* ===================== export ===================== */
 let exportFmt='xlsx';$('exportBtn').onclick=()=>$('exportModal').showModal();$('exportCancel').onclick=()=>$('exportModal').close();
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
-function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(NAMES.A,'original')+'-vs-'+stem(NAMES.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
 $('exportGo').onclick=()=>{$('exportModal').close();if(!RES)return;/* 与文本页一致：导出出错（如表格过大、字符串超出长度上限）时给出提示，而不是弹窗关掉后毫无反应 */try{if(exportFmt==='pdf')window.print();else if(exportFmt==='csv')exportCsv();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}catch(e){console.error(e);notice(t(e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
