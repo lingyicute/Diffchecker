@@ -1844,12 +1844,21 @@ test('image.exportCanvas: 原分辨率导出时在分配叠加画布前先释放
 
 test('image.alignKeyboardOpen 与 drawAlign: 大屏软键盘弹出取消吸顶，仅改修改图时不重绘原图', () => {
   const s = script('image-compare.html');
-  const kbCode = between(s, 'function alignKeyboardOpen', 'function syncAlignLayout');
+  const kbCode = between(s, 'function keyboardViewport', 'function syncAlignLayout');
   const drawCode = between(s, 'function drawAlign(', '\nfunction syncAlignInputs');
   const ctx = { window: { innerHeight: 932, visualViewport: { height: 610 } } };
   vm.createContext(ctx);
-  vm.runInContext(kbCode + ';this.alignKeyboardOpen=alignKeyboardOpen;', ctx);
+  vm.runInContext(kbCode + ';this.alignKeyboardOpen=alignKeyboardOpen;this.syncKeyboardViewport=syncKeyboardViewport;', ctx);
   assert.equal(ctx.alignKeyboardOpen(), true);
+  const props = new Map(), dialog = { style: { setProperty: (k, v) => props.set(k, v), removeProperty: k => props.delete(k) } };
+  ctx.window.visualViewport.offsetTop = 40;
+  ctx.syncKeyboardViewport(dialog);
+  assert.deepEqual([...props], [['--dialog-top', '40px'], ['--dialog-height', '610px']]);
+  ctx.window.visualViewport.scale = 2;
+  assert.equal(ctx.alignKeyboardOpen(), false); // 捏合放大页面不是键盘
+  ctx.syncKeyboardViewport(dialog);
+  assert.equal(props.size, 0);
+  ctx.window.visualViewport.scale = 1;
   ctx.window.visualViewport.height = 900;
   assert.equal(ctx.alignKeyboardOpen(), false);
   ctx.window.innerHeight = 420; ctx.window.visualViewport.height = 420;

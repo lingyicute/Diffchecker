@@ -107,7 +107,7 @@ tr.focus td.code{box-shadow:inset 3px 0 0 var(--accent)}
 .identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
 .identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
 @media screen{html:has(dialog[open]){overflow:hidden;scrollbar-gutter:stable}}
-.modal-bg.drawer{justify-content:flex-end;padding:0}
+.modal-bg.drawer{justify-content:flex-end;padding:0;top:var(--dialog-top,0px);bottom:auto;height:var(--dialog-height,100%)}
 .panel{height:100%;width:min(320px,100%);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column}
 .panel-head{flex:none;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--border);font-weight:600}
 .panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
@@ -595,9 +595,25 @@ for(const [card,side] of [[$('cardA'),'A'],[$('cardB'),'B']]){card.addEventListe
 $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.type=b.dataset.type;saveOpts();syncUI();render()};
 $('levelSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.level=b.dataset.level;saveOpts();syncUI();render()};
 /* tools panel */
+// 软键盘可缩小可视视口而不改变布局视口；页面捏合缩放不按键盘处理。
+function keyboardViewport(){
+  const v=window.visualViewport;
+  return v&&Math.abs((v.scale??1)-1)<.01&&v.height>0&&window.innerHeight-v.height>80?v:null;
+}
+function syncKeyboardViewport(dialog){
+  const v=keyboardViewport();
+  if(v){dialog.style.setProperty('--dialog-top',Math.max(0,v.offsetTop||0)+'px');dialog.style.setProperty('--dialog-height',v.height+'px')}
+  else{dialog.style.removeProperty('--dialog-top');dialog.style.removeProperty('--dialog-height')}
+  return v;
+}
+function syncPanelViewport(){
+  const panel=$('panel');if(!panel.open)return;
+  const keyboard=syncKeyboardViewport(panel),field=document.activeElement;
+  if(keyboard&&$('rules').contains(field))field.scrollIntoView({block:'nearest'});
+}
 function setPanel(open){const panel=$('panel'),button=$('toolsBtn');
   if(open===panel.open)return;
-  if(open){button.focus({preventScroll:true});panel.showModal()}else panel.close();
+  if(open){button.focus({preventScroll:true});panel.showModal();syncPanelViewport()}else panel.close();
   button.setAttribute('aria-expanded',String(open));
 }
 $('toolsBtn').onclick=()=>setPanel(true);$('panelClose').onclick=()=>setPanel(false);
@@ -768,6 +784,9 @@ $('exampleBtn').onclick=()=>{cancelLoads();txtA.value=EX_A;txtB.value=EX_B;fileN
 
 /* init */
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));// 拖入文件时不让浏览器直接打开它而丢掉当前内容
+window.addEventListener('resize',syncPanelViewport);
+window.visualViewport?.addEventListener('resize',syncPanelViewport);
+window.visualViewport?.addEventListener('scroll',syncPanelViewport);
 $('panel').addEventListener('cancel',e=>{e.preventDefault();setPanel(false)});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
 /* 按下时就关闭会让触屏随后合成的 click 落到遮罩下面的页面上：按下与点击都落在遮罩上才关闭；在遮罩上拖动也不去滚动背后的页面 */

@@ -86,6 +86,8 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(
 .modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
 .modal-bg::backdrop{background:rgba(0,0,0,.4)}
 .modal-bg[open]{display:flex}
+#alignModal{top:var(--dialog-top,0px);bottom:auto;height:var(--dialog-height,100%)}
+#alignModal.kb .align-view{height:clamp(96px,calc(var(--dialog-height,100dvh) * .4),200px);min-height:0}
 .modal{background:var(--bg);border-radius:14px;width:460px;max-width:100%;max-height:100%;overflow:auto;overscroll-behavior:contain;box-shadow:var(--shadow);padding:20px 22px}
 .modal.wide{width:900px}
 .modal h3{margin:0 0 12px;font-size:17px}.modal p{color:var(--fg2);margin:0 0 10px}
@@ -604,10 +606,28 @@ $('alignApply').onclick=()=>{
   S.align={...alTmp};closeAlign();compare();
 };
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign(true)};
-function alignKeyboardOpen(){const vv=window.visualViewport,vh=vv?.height||window.innerHeight;return vh<540||(!!vv&&window.innerHeight-vh>120)}
-function syncAlignLayout(){if(!AL.open)return;AL.classList.toggle('kb',alignKeyboardOpen());const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}}
+// 软键盘可缩小可视视口而不改变布局视口；页面捏合缩放不按键盘处理。
+function keyboardViewport(){
+  const v=window.visualViewport;
+  return v&&Math.abs((v.scale??1)-1)<.01&&v.height>0&&window.innerHeight-v.height>80?v:null;
+}
+function syncKeyboardViewport(dialog){
+  const v=keyboardViewport();
+  if(v){dialog.style.setProperty('--dialog-top',Math.max(0,v.offsetTop||0)+'px');dialog.style.setProperty('--dialog-height',v.height+'px')}
+  else{dialog.style.removeProperty('--dialog-top');dialog.style.removeProperty('--dialog-height')}
+  return v;
+}
+function alignKeyboardOpen(){return window.innerHeight<540||!!keyboardViewport()}
+function syncAlignLayout(){
+  if(!AL.open)return;
+  const keyboard=syncKeyboardViewport(AL);AL.classList.toggle('kb',alignKeyboardOpen());
+  const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;
+  if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}
+  const field=document.activeElement;
+  if(keyboard&&alignFields.some(([id])=>field===$(id)))field.scrollIntoView({block:'nearest'});
+}
 function initAlignView(){
-  AL.classList.toggle('kb',alignKeyboardOpen());
+  syncKeyboardViewport(AL);AL.classList.toggle('kb',alignKeyboardOpen());
   const v=$('alignView'),f=S.frame,w=workingFrame(f.w,f.h),cw=v.clientWidth,ch=v.clientHeight;
   alView.sx=w.w/f.w;alView.sy=w.h/f.h;alView.w=cw;alView.h=ch;
   alView.z=Math.max(.02,Math.min(Math.max(1,cw-20)/w.w,Math.max(1,ch-20)/w.h));
@@ -805,6 +825,7 @@ printMedia.addEventListener?.('change',e=>{if(!e.matches&&printing)clearPrintRep
 window.addEventListener('resize',()=>{syncAlignLayout();
   if(S.W&&!$('result').classList.contains('hidden')){const w=viewport.clientWidth;if(w&&w!==lastVpW)fit()}});
 window.visualViewport?.addEventListener('resize',syncAlignLayout);
+window.visualViewport?.addEventListener('scroll',syncAlignLayout);
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
 // 原生对话框处理焦点与 Esc；对齐取消和跳过提示仍走各自的业务逻辑。
