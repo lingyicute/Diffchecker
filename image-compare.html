@@ -99,7 +99,7 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 50px}
 .align-view canvas{position:absolute;left:0;top:0;width:100%;height:100%}
 .align-ctl .row input[type=number]{width:80px;border:1px solid var(--border2);border-radius:6px;padding:3px 6px;background:var(--bg);font-size:12px}
 .chk{display:flex;align-items:center;gap:6px;font-size:13px;padding:3px 0}
-.err{color:var(--danger);font-size:12px}
+.err{color:var(--danger);font-size:12px}.err.ok{color:var(--accent2)}
 .offline-notice{position:fixed;z-index:10000;bottom:24px;left:50%;width:max-content;max-width:calc(100vw - 32px);transform:translateX(-50%);padding:12px 18px;border:1px solid #d8e8de;border-radius:10px;background:#f2fcf5;color:#195735;box-shadow:0 5px 24px #00000010;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}.offline-notice.show{opacity:1}
 [data-theme="dark"] .offline-notice{border-color:#2f4a3a;background:#1c2b23;color:#c8f5e6;box-shadow:0 5px 24px #00000066}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:40px 20px;text-align:center}
@@ -266,7 +266,8 @@ let openTarget='A',alignJob=0;
 const loadVersion={A:0,B:0},pending={A:false,B:false};
 function cancelLoad(side){loadVersion[side]++;pending[side]=false}
 function cancelLoads(){cancelLoad('A');cancelLoad('B')}
-function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;$('alignErr').textContent=''}
+const setAlignMsg=(m,ok=false)=>{const e=$('alignErr');e.textContent=m;e.classList.toggle('ok',ok&&!!m)};
+function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('')}
 function closeAlign(){stopAuto();clearAlignPtrs();$('alignModal').close()}
 function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
@@ -309,7 +310,8 @@ function setImage(side,img,name,quiet){
     d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;d.focus()};
   S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign();
 }
-function alignNotice(r){notice(t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)}))}
+const alignText=r=>t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)});
+function alignNotice(r){notice(alignText(r))}
 function maybePromptAlign(){
   if(S.A.w===S.B.w&&S.A.h===S.B.h){compare();return}
   showPrompt(t('mismatchTitle'),t('mismatchMsg'),t('skip'),t('autoAlignGo'),async()=>{
@@ -537,14 +539,14 @@ function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').que
 
 /* ===================== alignment ===================== */
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0,w:0,h:0};
-$('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.showModal();initAlignView()};
+$('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};AL.showModal();initAlignView()};
 $('alignCancel').onclick=closeAlign;
 const alignFields=[['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']];
 const validAlignValue=(k,v)=>Number.isFinite(v)&&(k!=='scale'||v>0&&Number.isFinite(1/v));
 $('alignApply').onclick=()=>{
   const invalid=alignFields.find(([id,k])=>!validAlignValue(k,$(id).valueAsNumber));
-  if(invalid){$('alignErr').textContent=t('invalidAlignment');$(invalid[0]).focus();return}
-  try{comparisonFrame(S.A,S.B,alTmp)}catch(e){$('alignErr').textContent=t('alignOutOfRange');return}
+  if(invalid){setAlignMsg(t('invalidAlignment'));$(invalid[0]).focus();return}
+  try{comparisonFrame(S.A,S.B,alTmp)}catch(e){setAlignMsg(t('alignOutOfRange'));return}
   S.align={...alTmp};closeAlign();compare();
 };
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
@@ -568,8 +570,8 @@ function drawAlign(){
   $('alignB').style.opacity=$('alOpacity').value/100;
 }
 function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=Number(alTmp.scale.toPrecision(8));$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
-for(const [id,k] of alignFields)$(id).oninput=e=>{stopAuto();$('alignErr').textContent='';const v=e.target.valueAsNumber;if(validAlignValue(k,v)){alTmp[k]=v;drawAlign()}};
-for(const id of ['allowRot','allowScale'])$(id).onchange=()=>{stopAuto();$('alignErr').textContent=''};
+for(const [id,k] of alignFields)$(id).oninput=e=>{stopAuto();const v=e.target.valueAsNumber;if(validAlignValue(k,v)){alTmp[k]=v;drawAlign()}};
+for(const id of ['allowRot','allowScale'])$(id).onchange=()=>stopAuto();
 $('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
 let clearAlignPtrs=()=>{};
 {const v=$('alignView'),ptrs=new Map();let drag=null,pinch=null,locked=false;
@@ -587,10 +589,10 @@ let clearAlignPtrs=()=>{};
 $('autoAlignBtn').onclick=async()=>{
   const job=++alignJob,current=()=>job===alignJob,A=S.A.c,B=S.B.c;
   const allow={rot:$('allowRot').checked,scale:$('allowScale').checked,fh:alTmp.fh,fv:alTmp.fv,active:current};
-  $('alignErr').textContent='';$('autoAlignBtn').disabled=true;
+  setAlignMsg('');$('autoAlignBtn').disabled=true;
   try{await new Promise(r=>setTimeout(r,20));if(!current())return;const r=await autoAlign(A,B,allow);if(!current())return;
-    if(!r)$('alignErr').textContent=t('alignFail');else{alTmp={...r};syncAlignInputs();drawAlign();alignNotice(r)}
-  }catch(e){if(current()){console.error(e);$('alignErr').textContent=t('alignFail')}}finally{if(current())$('autoAlignBtn').disabled=false}
+    if(!r)setAlignMsg(t('alignFail'));else{alTmp={...r};syncAlignInputs();drawAlign();setAlignMsg(alignText(r),true)}
+  }catch(e){if(current()){console.error(e);setAlignMsg(t('alignFail'))}}finally{if(current())$('autoAlignBtn').disabled=false}
 };
 
 /* ---- pure-JS auto alignment: phase correlation (FFT) with coarse rotation/scale search ---- */
