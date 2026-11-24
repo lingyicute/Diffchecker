@@ -1842,3 +1842,35 @@ test('image.exportCanvas: 原分辨率导出时在分配叠加画布前先释放
   assert.ok(events.indexOf('drop:2') < events.indexOf('mk:4'));
   assert.ok(events.includes('drop:4'));
 });
+
+test('image.alignKeyboardOpen 与 drawAlign: 大屏软键盘弹出取消吸顶，仅改修改图时不重绘原图', () => {
+  const s = script('image-compare.html');
+  const kbCode = between(s, 'function alignKeyboardOpen', 'function syncAlignLayout');
+  const drawCode = between(s, 'function drawAlign(', '\nfunction syncAlignInputs');
+  const ctx = { window: { innerHeight: 932, visualViewport: { height: 610 } } };
+  vm.createContext(ctx);
+  vm.runInContext(kbCode + ';this.alignKeyboardOpen=alignKeyboardOpen;', ctx);
+  assert.equal(ctx.alignKeyboardOpen(), true);
+  ctx.window.visualViewport.height = 900;
+  assert.equal(ctx.alignKeyboardOpen(), false);
+  ctx.window.innerHeight = 420; ctx.window.visualViewport.height = 420;
+  assert.equal(ctx.alignKeyboardOpen(), true);
+
+  const drawn = [];
+  const mkC = side => ({ width: 0, height: 0, style: {}, getContext: () => ({ setTransform() {}, clearRect() {}, drawImage() { drawn.push(side); } }) });
+  const nodes = { alignView: { clientWidth: 300, clientHeight: 200 }, alignA: mkC('A'), alignB: mkC('B'), alOpacity: { value: '50' } };
+  const dctx = {
+    S: { A: { c: {}, w: 100, h: 100 }, B: { c: {} } },
+    alTmp: { dx: 0, dy: 0, rot: 0, scale: 1 }, alView: { sx: 1, sy: 1, z: 1, x: 0, y: 0, w: 0, h: 0 },
+    window: { devicePixelRatio: 1 }, $: id => nodes[id],
+    drawAligned() { drawn.push('B'); },
+  };
+  vm.createContext(dctx);
+  vm.runInContext(drawCode + ';this.drawAlign=drawAlign;', dctx);
+  dctx.drawAlign();
+  assert.deepEqual(drawn, ['A', 'B']);
+  drawn.length = 0;
+  dctx.drawAlign(true);
+  assert.deepEqual(drawn, ['B']);
+});
+
