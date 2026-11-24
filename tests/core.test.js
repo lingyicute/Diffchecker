@@ -1966,3 +1966,15 @@ test('文本页：输入法组词暂停排队的对比，提交后恢复而快�
   key();
   assert.equal(comparisons, 2);
 });
+
+test('文本字符串高亮：转义引号不能充当闭合引号，反斜杠只消费实际转义的字符', () => {
+  const { synClasses } = run(between(script('text-compare.html'), 'const SYN={', '/* ===================== state'), 'synClasses');
+  const slash = String.fromCharCode(92);
+  for (const lang of ['js', 'py']) for (const quote of ['"', "'"]) {
+    const unclosed = quote + 'quote ' + slash + quote;
+    assert.equal(synClasses(unclosed, lang)[0], '');
+    const closed = quote + 'path ' + slash + slash + quote;
+    assert.ok(synClasses(closed, lang).every(c => c === 's'));
+  }
+  assert.ok(synClasses('`line' + slash, 'js').every(c => c === 's'));
+});
