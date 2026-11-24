@@ -1589,5 +1589,14 @@ test('弹窗遮罩：按下与点击都落在遮罩上才关闭，pointerdown �
     h.pointerdown({ target: dlg }); h.click({ target: child }); h.click({ target: dlg }); assert.equal(closed, 1, f);
     h.touchmove({ target: dlg, preventDefault: () => prevented++ }); h.touchmove({ target: child, preventDefault: () => prevented++ });
     assert.equal(prevented, 1, f); // 只拦截遮罩上的拖动，弹窗内部照常滚动
+    h.pointerdown({ target: dlg }); h.pointercancel({}); h.click({ target: dlg });
+    assert.equal(closed, 1, f); // pointercancel 清除按下状态
+    const shortModal = { scrollHeight: 200, clientHeight: 200 }, tallModal = { scrollHeight: 500, clientHeight: 200 };
+    const mkTarget = (box, ctrl = false) => ({ closest: s => (s === '.modal' ? box : ctrl ? {} : null) });
+    let blocked = 0;
+    h.touchmove({ target: mkTarget(shortModal), preventDefault: () => blocked++ });
+    h.touchmove({ target: mkTarget(shortModal, true), preventDefault: () => blocked++ });
+    h.touchmove({ target: mkTarget(tallModal), preventDefault: () => blocked++ });
+    assert.equal(blocked, 1, f); // 仅未溢出且非输入控件时拦截背景滚动
   }
 });
