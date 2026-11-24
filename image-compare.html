@@ -299,11 +299,12 @@ document.addEventListener('paste',e=>{
   e.preventDefault();loadFile(f,focused?focused.id.slice(-1):!S.A&&!pending.A?'A':!S.B&&!pending.B?'B':openTarget);
 });
 async function loadFile(f,side){
-  cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side];
-  pending[side]=true;notice(t('loading'));const url=URL.createObjectURL(f);
-  try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});if(current())setImage(side,img,f.name)}
-  catch(e){if(current()){console.error(e);notice(t(e.message==='imageTooLarge'?'imageTooLarge':'decodeFail',{name:f.name}))}}
-  finally{if(current())pending[side]=false;URL.revokeObjectURL(url)}
+  cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side],other=side==='A'?'B':'A';
+  pending[side]=true;const loadingMsg=t('loading'),lt=setTimeout(()=>{if(current())notice(loadingMsg)},120),url=URL.createObjectURL(f);
+  const clearLoading=()=>{clearTimeout(lt);const n=$('notice');if(!pending[other]&&n.textContent===loadingMsg){clearTimeout(n._t);n.classList.remove('show')}};
+  try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});if(current())pending[side]=false;clearLoading();if(current())setImage(side,img,f.name)}
+  catch(e){if(current())pending[side]=false;clearLoading();if(current()){console.error(e);notice(t(e.message==='imageTooLarge'?'imageTooLarge':'decodeFail',{name:f.name||t(side==='A'?'original':'changed')}))}}
+  finally{clearTimeout(lt);if(current())pending[side]=false;URL.revokeObjectURL(url)}
 }
 // iOS Safari 等浏览器的单张画布面积上限更小（约 1677 万像素），超出时不报错，只得到一张画不上任何内容的画布：
 // 先画一个不透明像素再读回来探测，不可用就按面积减半逐级缩小，避免载入后缩略图与对比结果全是空白。
