@@ -265,6 +265,8 @@ function comparisonFrame(a,b,al){
 let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0,highlightTimer=0,lastVpW=0;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 const dropCanvas=c=>{if(c){c.width=0;c.height=0}};
+// 差异列表每项带两张裁剪画布：重绘或清空时立即归零，不等垃圾回收（移动端的画布总内存有上限）。
+const clearList=el=>{for(const c of el.querySelectorAll('canvas'))dropCanvas(c);el.replaceChildren()};
 
 /* ===================== loading ===================== */
 let openTarget='A',alignJob=0;
@@ -281,7 +283,7 @@ function clearComparison(){
   S.W=S.H=0;lastVpW=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
   dropCanvas(baseA);dropCanvas(baseB);dropCanvas(overlay);dropCanvas(mainCanvas);
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
-  stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
+  stage.replaceChildren();clearList($('chgList'));$('result').classList.add('hidden');
   for(const id of ['alignA','alignB']){$(id).width=$(id).height=1}
 }
 const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
@@ -543,7 +545,7 @@ function renderPasses(){const el=$('passes');$('addPass').disabled=S.passes.leng
     d.querySelectorAll('input[type=range]').forEach(r=>{r.oninput=()=>{const k=r.dataset.k;p.options[k]=k==='maxBlobAreaFraction'?r.value/100:+r.value;p.linked=false;r.nextElementSibling.textContent=k==='maxBlobAreaFraction'?r.value+'%':r.value;d.querySelector('select').value='__custom__';clearTimeout(scanTimer);scanTimer=setTimeout(()=>scan(true),120)}});el.appendChild(d)});if(fq&&el.children[fi])el.children[fi].querySelector(fq).focus()}
 $('addPass').onclick=()=>{if(S.passes.length>=MAX_PASSES)return;S.passes.push(newPass(S.passes.length%2?'graphics-large-blocks':'tiny-specks'));scan()};
 function cropCanvas(src,r,maxW=112,maxH=84){const s=Math.min(maxW/r.w,maxH/r.h,4);const c=mk(Math.max(1,r.w*s),Math.max(1,r.h*s));const cx=c.getContext('2d');cx.imageSmoothingEnabled=s<1;cx.drawImage(src,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c}
-function renderList(){const el=$('chgList');el.innerHTML='';$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
+function renderList(){const el=$('chgList');clearList(el);$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
   if(!S.regions.length){el.innerHTML=`<div class="tip">${t(diffCount?'noMatchingRegions':'noChanges')}</div>`;return}
   if(S.truncated)el.innerHTML=`<div class="tip">${t('truncatedRegions')}</div>`;
   S.regions.forEach((r,i)=>{const d=document.createElement('div');d.className='chg-item'+(i===S.active?' active':'');d.title=t('focus');d.innerHTML=`<div class="info"><b>${t('change',{n:i+1})}</b><span>${r.w}×${r.h} @ ${r.x},${r.y} · ${r.px}px</span></div>`;d.prepend(cropCanvas(baseB,r));d.prepend(cropCanvas(baseA,r));
