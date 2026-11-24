@@ -502,7 +502,7 @@ document.addEventListener('keydown',e=>{if(e.repeat||S.mode!=='flicker'||!S.W||e
 document.addEventListener('keyup',e=>{if((e.key==='1'||e.key==='2')&&holdSide===+e.key)hold(0,false)});
 const releasePointers=()=>{clearVpPtrs();clearAlignPtrs()};
 window.addEventListener('blur',()=>{hold(0,false);releasePointers()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){hold(0,false);releasePointers()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){hold(0,false);releasePointers()}else if(printing&&!printMedia.matches)clearPrintReport()});
 const redrawHighlight=()=>{if(S.W&&S.mode==='highlight'){if(mainCanvas)compositeCanvas('highlight',baseA,baseB,mainCanvas);else renderStage()}};$('hlMode').onchange=e=>{S.hlMode=e.target.value;redrawHighlight()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(highlightTimer);highlightTimer=setTimeout(()=>{highlightTimer=0;redrawHighlight()},60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
 $('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('sbToggle');/* 收起后按钮仍写着“收起侧边栏”、aria-expanded 也不变，读屏与悬停提示都对不上当前状态 */b.setAttribute('aria-expanded',String(!c));b.dataset.i18nTitle=c?'sbTipOpen':'sbTip';b.title=t(b.dataset.i18nTitle);b.setAttribute('aria-label',b.title);b.textContent=c?'⇤':'⇥'};
@@ -750,7 +750,7 @@ function exportCanvas(native=false){
 }
 function pngUrl(canvas,release=false){try{const url=canvas.toDataURL('image/png');if(url==='data:,')throw new Error('PNG encoding failed');return url}finally{if(release)dropCanvas(canvas)}}
 function reportHtml(c){
-  const esc=s=>String(s).replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x])),al=S.align;
+  const esc=s=>String(s).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x])),al=S.align;
   const flips=[al.fh?t('flipH'):'',al.fv?t('flipV'):''].filter(Boolean).join(' · ');
   let h=`<h1>${t('rptTitle')}</h1><table><tr><th>${t('rptOrig')}</th><td>${esc(S.A.name)} (${S.A.w}×${S.A.h})</td></tr><tr><th>${t('rptChg')}</th><td>${esc(S.B.name)} (${S.B.w}×${S.B.h})</td></tr><tr><th>${t('rptMode')}</th><td>${esc(t('m.'+S.mode))}</td></tr><tr><th>${t('rptSummary')}</th><td>${t(S.regions.length===1?'summary1':'summary',{p:(100*diffCount/(S.W*S.H)).toFixed(2),n:S.regions.length})}</td></tr><tr><th>${t('rptAlign')}</th><td>dx ${al.dx.toFixed(1)}, dy ${al.dy.toFixed(1)}, rot ${al.rot.toFixed(2)}°, scale ${al.scale.toFixed(4)}${flips?' · '+esc(flips):''}</td></tr></table><h2>${t('rptCmp')}</h2><img alt="" src="${pngUrl(c,true)}">`;
   if($('expSrc').checked){const src=image=>pngUrl(cropCanvas(image.c,{x:0,y:0,w:image.w,h:image.h},1600,1600),true);
@@ -799,6 +799,7 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
 $('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:scrollBehavior()})};
 function clearPrintReport(){reportGen++;printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
 window.addEventListener('afterprint',()=>{if(printing)clearPrintReport()});
+window.addEventListener('focus',()=>{if(printing&&!printMedia.matches)clearPrintReport()});
 printMedia.addEventListener?.('change',e=>{if(!e.matches&&printing)clearPrintReport()});
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 window.addEventListener('resize',()=>{syncAlignLayout();
