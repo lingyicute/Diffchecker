@@ -414,7 +414,7 @@ function compositeCanvas(mode,sourceA=baseA,sourceB=baseB,target){const W=source
 }
 function flickShow(){return holdSide?holdSide-1:flickState}
 /* ===================== view / stage ===================== */
-const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null,sliderDragging=false,vpPtrCount=()=>0;
+const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null,sliderDragging=false,clearSliderDrag=()=>{sliderDragging=false},vpPtrCount=()=>0;
 const capture=(el,id)=>{try{el.setPointerCapture(id)}catch(e){}};
 function pinchTransform(start,p1,p2,q1,q2,minZ,maxZ){
   const d0=Math.hypot(p2.x-p1.x,p2.y-p1.y),d1=Math.hypot(q2.x-q1.x,q2.y-q1.y);
@@ -436,7 +436,8 @@ function renderStage(){clearTimeout(highlightTimer);cancelAnimationFrame(overlay
         if(dir||e.key==='Home'||e.key==='End'){e.preventDefault();move(dir?S.sliderPos+dir*(e.shiftKey ? .1 : .01):Number(e.key==='End'))}
       };
       handle.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||!e.isPrimary||vpPtrCount()>0)return;e.stopPropagation();sliderDragging=true;capture(handle,e.pointerId);
-        const stop=ev=>{if(ev.pointerId!==e.pointerId)return;sliderDragging=false;handle.onpointermove=handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=null};
+        const drop=()=>{sliderDragging=false;clearSliderDrag=()=>{sliderDragging=false};handle.onpointermove=handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=null};
+        const stop=ev=>{if(ev.pointerId!==e.pointerId)return;drop()};clearSliderDrag=drop;
         handle.onpointermove=ev=>{if(ev.pointerId!==e.pointerId||handle!==sliderEl)return;const r=stage.getBoundingClientRect();
           move((ev.clientX-r.left)/(W*S.zoom))};
         handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=stop;
@@ -481,7 +482,7 @@ let clearVpPtrs=()=>{};
  const startPinch=()=>{const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:S.px,y:S.py,z:S.zoom}};pan=null;viewport.classList.remove('panning')};
  const end=e=>{if(!ptrs.delete(e.pointerId))return;if(ptrs.size>=2){if(!pinch||!ptrs.has(pinch.a)||!ptrs.has(pinch.b))startPinch()}else if(ptrs.size===1){pinch=null;const [[id,p]]=[...ptrs];pan={id,ox:p.x-S.px,oy:p.y-S.py};viewport.classList.add('panning')}else{pan=pinch=null;viewport.classList.remove('panning')}};
  vpPtrCount=()=>ptrs.size;
- clearVpPtrs=()=>{ptrs.clear();pan=pinch=null;sliderDragging=false;viewport.classList.remove('panning')};
+ clearVpPtrs=()=>{ptrs.clear();pan=pinch=null;clearSliderDrag();viewport.classList.remove('panning')};
  viewport.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||sliderDragging||(ptrs.size===0&&e.target.closest('.sl-handle')))return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(viewport,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);if(ptrs.size===1){pan={id:e.pointerId,ox:p.x-S.px,oy:p.y-S.py};pinch=null;viewport.classList.add('panning')}else startPinch()};
  viewport.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.05,8);S.zoom=r.z;S.px=r.x;S.py=r.y;applyTransform();scheduleOverlay()}else if(pan&&pan.id===e.pointerId){S.px=p.x-pan.ox;S.py=p.y-pan.oy;applyTransform()}};
  viewport.onpointerup=viewport.onpointercancel=viewport.onlostpointercapture=end}
@@ -497,7 +498,9 @@ for(const [id,side] of [['holdA',1],['holdB',2]])$(id).onclick=()=>{S.flickPause
 document.addEventListener('keydown',e=>{if(e.repeat||S.mode!=='flicker'||!S.W||e.ctrlKey||e.metaKey||e.altKey||e.target.closest?.('dialog,input,textarea,select,[contenteditable]'))return;
   if((e.key==='1'||e.key==='2')&&holdSide!==+e.key)hold(+e.key,true)});
 document.addEventListener('keyup',e=>{if((e.key==='1'||e.key==='2')&&holdSide===+e.key)hold(0,false)});
-window.addEventListener('blur',()=>hold(0,false));
+const releasePointers=()=>{clearVpPtrs();clearAlignPtrs()};
+window.addEventListener('blur',()=>{hold(0,false);releasePointers()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){hold(0,false);releasePointers()}});
 const redrawHighlight=()=>{if(S.W&&S.mode==='highlight'){if(mainCanvas)compositeCanvas('highlight',baseA,baseB,mainCanvas);else renderStage()}};$('hlMode').onchange=e=>{S.hlMode=e.target.value;redrawHighlight()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(highlightTimer);highlightTimer=setTimeout(()=>{highlightTimer=0;redrawHighlight()},60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
 $('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('sbToggle');/* 收起后按钮仍写着“收起侧边栏”、aria-expanded 也不变，读屏与悬停提示都对不上当前状态 */b.setAttribute('aria-expanded',String(!c));b.dataset.i18nTitle=c?'sbTipOpen':'sbTip';b.title=t(b.dataset.i18nTitle);b.setAttribute('aria-label',b.title);b.textContent=c?'⇤':'⇥'};
