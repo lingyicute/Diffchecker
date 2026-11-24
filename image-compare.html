@@ -399,7 +399,7 @@ function compositeCanvas(mode,sourceA=baseA,sourceB=baseB,target){const W=source
 }
 function flickShow(){return holdSide?holdSide-1:flickState}
 /* ===================== view / stage ===================== */
-const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null;
+const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null,sliderDragging=false,vpPtrCount=()=>0;
 const capture=(el,id)=>{try{el.setPointerCapture(id)}catch(e){}};
 function pinchTransform(start,p1,p2,q1,q2,minZ,maxZ){
   const d0=Math.hypot(p2.x-p1.x,p2.y-p1.y),d1=Math.hypot(q2.x-q1.x,q2.y-q1.y);
@@ -407,7 +407,7 @@ function pinchTransform(start,p1,p2,q1,q2,minZ,maxZ){
   const z=d0>4?Math.max(minZ,Math.min(maxZ,start.z*(d1/d0))):start.z,k=z/start.z;
   return {z,x:mx1-(mx0-start.x)*k,y:my1-(my0-start.y)*k};
 }
-function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;dropCanvas(mainCanvas);dropCanvas(overlay);overlay=mainCanvas=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
+function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;sliderDragging=false;dropCanvas(mainCanvas);dropCanvas(overlay);overlay=mainCanvas=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
   if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap)}
   else{mainCanvas=compositeCanvas(S.mode);stage.appendChild(mainCanvas);overlay=mk(W,H);overlay.id='overlay';stage.appendChild(overlay);drawOverlay();
     if(S.mode==='slider'){
@@ -420,8 +420,8 @@ function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=nu
       handle.onkeydown=e=>{const dir={ArrowLeft:-1,ArrowDown:-1,ArrowRight:1,ArrowUp:1}[e.key];
         if(dir||e.key==='Home'||e.key==='End'){e.preventDefault();move(dir?S.sliderPos+dir*(e.shiftKey ? .1 : .01):Number(e.key==='End'))}
       };
-      handle.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||!e.isPrimary)return;e.stopPropagation();capture(handle,e.pointerId);
-        const stop=ev=>{if(ev.pointerId!==e.pointerId)return;handle.onpointermove=handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=null};
+      handle.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||!e.isPrimary||vpPtrCount()>0)return;e.stopPropagation();sliderDragging=true;capture(handle,e.pointerId);
+        const stop=ev=>{if(ev.pointerId!==e.pointerId)return;sliderDragging=false;handle.onpointermove=handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=null};
         handle.onpointermove=ev=>{if(ev.pointerId!==e.pointerId||handle!==sliderEl)return;const r=stage.getBoundingClientRect();
           move((ev.clientX-r.left)/(W*S.zoom))};
         handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=stop;
@@ -458,8 +458,9 @@ let clearVpPtrs=()=>{};
  const local=e=>{const r=viewport.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
  const startPinch=()=>{const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:S.px,y:S.py,z:S.zoom}};pan=null;viewport.classList.remove('panning')};
  const end=e=>{if(!ptrs.delete(e.pointerId))return;if(ptrs.size>=2){if(!pinch||!ptrs.has(pinch.a)||!ptrs.has(pinch.b))startPinch()}else if(ptrs.size===1){pinch=null;const [[id,p]]=[...ptrs];pan={id,ox:p.x-S.px,oy:p.y-S.py};viewport.classList.add('panning')}else{pan=pinch=null;viewport.classList.remove('panning')}};
- clearVpPtrs=()=>{ptrs.clear();pan=pinch=null;viewport.classList.remove('panning')};
- viewport.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||e.target.closest('.sl-handle'))return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(viewport,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);if(ptrs.size===1){pan={id:e.pointerId,ox:p.x-S.px,oy:p.y-S.py};pinch=null;viewport.classList.add('panning')}else startPinch()};
+ vpPtrCount=()=>ptrs.size;
+ clearVpPtrs=()=>{ptrs.clear();pan=pinch=null;sliderDragging=false;viewport.classList.remove('panning')};
+ viewport.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||sliderDragging||(ptrs.size===0&&e.target.closest('.sl-handle')))return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(viewport,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);if(ptrs.size===1){pan={id:e.pointerId,ox:p.x-S.px,oy:p.y-S.py};pinch=null;viewport.classList.add('panning')}else startPinch()};
  viewport.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.05,8);S.zoom=r.z;S.px=r.x;S.py=r.y;applyTransform();drawOverlay()}else if(pan&&pan.id===e.pointerId){S.px=p.x-pan.ox;S.py=p.y-pan.oy;applyTransform()}};
  viewport.onpointerup=viewport.onpointercancel=viewport.onlostpointercapture=end}
 /* toolbar */
