@@ -601,7 +601,7 @@ $('alignApply').onclick=()=>{
   try{comparisonFrame(S.A,S.B,alTmp)}catch(e){setAlignMsg(t('alignOutOfRange'));return}
   S.align={...alTmp};closeAlign();compare();
 };
-$('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
+$('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign(true)};
 function alignKeyboardOpen(){const vv=window.visualViewport,vh=vv?.height||window.innerHeight;return vh<540||(!!vv&&window.innerHeight-vh>120)}
 function syncAlignLayout(){if(!AL.open)return;AL.classList.toggle('kb',alignKeyboardOpen());const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}}
 function initAlignView(){
@@ -612,22 +612,23 @@ function initAlignView(){
   alView.x=(cw-w.w*alView.z)/2-f.x*alView.sx*alView.z;alView.y=(ch-w.h*alView.z)/2-f.y*alView.sy*alView.z;
   syncAlignInputs();drawAlign();
 }
-function drawAlign(){
+function drawAlign(onlyB=false){
   if(!S.A||!S.B||!alTmp)return;
   const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(!w||!h)return;
-  alView.w=w;alView.h=h;const k=Math.min(2,window.devicePixelRatio||1),sx=alView.sx*alView.z,sy=alView.sy*alView.z;
-  for(const side of ['A','B']){const canvas=$('align'+side),pw=Math.max(1,Math.round(w*k)),ph=Math.max(1,Math.round(h*k));
-    if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
+  alView.w=w;alView.h=h;const k=Math.min(2,window.devicePixelRatio||1),pw=Math.max(1,Math.round(w*k)),ph=Math.max(1,Math.round(h*k)),sx=alView.sx*alView.z,sy=alView.sy*alView.z;
+  for(const side of ['A','B']){const canvas=$('align'+side),resized=canvas.width!==pw||canvas.height!==ph;
+    if(onlyB&&side==='A'&&!resized)continue;
+    if(resized){canvas.width=pw;canvas.height=ph}
     const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,pw,ph);
     ctx.setTransform(k,0,0,k,alView.x*k,alView.y*k);
     if(side==='A')ctx.drawImage(S.A.c,0,0,S.A.w*sx,S.A.h*sy);else drawAligned(ctx,S.B.c,alTmp,sx,sy);
   }
   $('alignB').style.opacity=$('alOpacity').value/100;
 }
-function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=Number(alTmp.scale.toPrecision(8));$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
-for(const [id,k] of alignFields)$(id).oninput=e=>{stopAuto();const v=e.target.valueAsNumber;if(validAlignValue(k,v)){alTmp[k]=v;drawAlign()}};
+function syncAlignInputs(){$('alDx').value=(alTmp.dx||0).toFixed(1);$('alDy').value=(alTmp.dy||0).toFixed(1);$('alRot').value=(alTmp.rot||0).toFixed(2);$('alScale').value=Number(alTmp.scale.toPrecision(8));$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
+for(const [id,k] of alignFields)$(id).oninput=e=>{stopAuto();const v=e.target.valueAsNumber;if(validAlignValue(k,v)){alTmp[k]=v;drawAlign(true)}};
 for(const id of ['allowRot','allowScale'])$(id).onchange=()=>stopAuto();
-$('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=()=>{$('alignB').style.opacity=$('alOpacity').value/100};
+$('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign(true)};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign(true)};$('alOpacity').oninput=()=>{$('alignB').style.opacity=$('alOpacity').value/100};
 let clearAlignPtrs=()=>{};
 {const v=$('alignView'),ptrs=new Map();let drag=null,pinch=null,locked=false;
  const local=e=>{const r=v.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
@@ -635,10 +636,10 @@ let clearAlignPtrs=()=>{};
  clearAlignPtrs=()=>{ptrs.clear();drag=pinch=null;locked=false};
  v.onpointerdown=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(v,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);
    if(ptrs.size===1&&!locked){drag={id:e.pointerId,sx:p.x,sy:p.y,odx:alTmp.dx,ody:alTmp.dy,t:performance.now(),moved:false}}
-   else if(ptrs.size===2){if(drag){const f1=ptrs.get(drag.id);if(performance.now()-drag.t<300&&f1&&Math.hypot(f1.x-drag.sx,f1.y-drag.sy)<20){alTmp.dx=drag.odx;alTmp.dy=drag.ody;syncAlignInputs();drawAlign()}}const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:alView.x,y:alView.y,z:alView.z}};drag=null;locked=true}};
+   else if(ptrs.size===2){if(drag?.moved){const f1=ptrs.get(drag.id);if(performance.now()-drag.t<300&&f1&&Math.hypot(f1.x-drag.sx,f1.y-drag.sy)<20){alTmp.dx=drag.odx;alTmp.dy=drag.ody;syncAlignInputs();drawAlign(true)}}const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:alView.x,y:alView.y,z:alView.z}};drag=null;locked=true}};
  v.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);
    if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.02,10);alView.z=r.z;alView.x=r.x;alView.y=r.y;drawAlign()}
-   else if(drag&&drag.id===e.pointerId&&!locked){if(!drag.moved){if(Math.hypot(p.x-drag.sx,p.y-drag.sy)<2)return;drag.moved=true;stopAuto()}alTmp.dx=drag.odx+(p.x-drag.sx)/(alView.z*alView.sx);alTmp.dy=drag.ody+(p.y-drag.sy)/(alView.z*alView.sy);syncAlignInputs();drawAlign()}};
+   else if(drag&&drag.id===e.pointerId&&!locked){if(!drag.moved){if(Math.hypot(p.x-drag.sx,p.y-drag.sy)<2)return;drag.moved=true;stopAuto()}alTmp.dx=drag.odx+(p.x-drag.sx)/(alView.z*alView.sx);alTmp.dy=drag.ody+(p.y-drag.sy)/(alView.z*alView.sy);syncAlignInputs();drawAlign(true)}};
  v.onpointerup=v.onpointercancel=v.onlostpointercapture=end;
  v.addEventListener('wheel',e=>{e.preventDefault();const p=local(e);const z=Math.max(.02,Math.min(10,alView.z*(e.deltaY<0?1.12:1/1.12)));const k=z/alView.z;alView.x=p.x-(p.x-alView.x)*k;alView.y=p.y-(p.y-alView.y)*k;alView.z=z;drawAlign()},{passive:false})}
 $('autoAlignBtn').onclick=async()=>{
@@ -646,7 +647,7 @@ $('autoAlignBtn').onclick=async()=>{
   const allow={rot:$('allowRot').checked,scale:$('allowScale').checked,fh:alTmp.fh,fv:alTmp.fv,active:current};
   setAlignMsg('');$('autoAlignBtn').disabled=true;
   try{await new Promise(r=>setTimeout(r,20));if(!current())return;const r=await autoAlign(A,B,allow);if(!current())return;
-    if(!r)setAlignMsg(t('alignFail'));else{alTmp={...r};syncAlignInputs();drawAlign();setAlignMsg(alignText(r),true)}
+    if(!r)setAlignMsg(t('alignFail'));else{alTmp={...r};syncAlignInputs();drawAlign(true);setAlignMsg(alignText(r),true)}
   }catch(e){if(current()){console.error(e);setAlignMsg(t('alignFail'))}}finally{if(current())$('autoAlignBtn').disabled=false}
 };
 
@@ -699,7 +700,7 @@ async function autoAlign(A,B,allow){
   // 因此相关峰值是 B 中心相对 A 中心的位移，换算回 drawAligned 的 (dx, dy) 需加上中心差 (A - B)/2。
   // 不旋转也不缩放时把位移取整：这种情况（截图错位、裁剪、留白）真实位移几乎总是整数像素，而亚像素估计约 0.1px 的误差会让整张图被重采样，在边缘处冒出大量假差异
   const whole=fin.rot===0&&fin.sc===1,px=v=>whole?Math.round(v)||0:v;
-  return {dx:px((A.width-B.width)/2+fin.dx/f),dy:px((A.height-B.height)/2+fin.dy/f),rot:fin.rot,scale:fin.sc,fh,fv,conf:Math.min(1,fin.psr/40)};
+  return {dx:px((A.width-B.width)/2+fin.dx/f),dy:px((A.height-B.height)/2+fin.dy/f),rot:fin.rot||0,scale:fin.sc,fh,fv,conf:Math.min(1,fin.psr/40)};
 }
 function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(x),x);
   try{const ma=keep(cv.imread(A)),mb=keep(cv.imread(B)),ga=keep(new cv.Mat()),gb=keep(new cv.Mat());cv.cvtColor(ma,ga,cv.COLOR_RGBA2GRAY);cv.cvtColor(mb,gb,cv.COLOR_RGBA2GRAY);const orb=keep(new cv.ORB(4000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE,31,20));const k1=keep(new cv.KeyPointVector()),k2=keep(new cv.KeyPointVector()),d1=keep(new cv.Mat()),d2=keep(new cv.Mat()),nomask=keep(new cv.Mat());orb.detectAndCompute(ga,nomask,k1,d1);orb.detectAndCompute(gb,nomask,k2,d2);
