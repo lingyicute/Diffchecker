@@ -319,11 +319,14 @@ function sourceCanvas(img,w,h){
 function setImage(side,img,name,quiet,keepOld){
   const w=img.naturalWidth||img.width||1024,h=img.naturalHeight||img.height||768;
   if(!fitsCanvas(w,h,MAX_SOURCE_PIXELS))throw new Error('imageTooLarge');
-  const c=img instanceof HTMLCanvasElement?img:sourceCanvas(img,w,h);
-  const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);let thumb;
-  try{th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}finally{dropCanvas(th)}
-  if(thumb==='data:,'){if(c!==img)dropCanvas(c);throw new Error('Could not render the image thumbnail')}
-  const prev=S[side]?.c;clearComparison();if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
+  const prev=S[side]?.c,owned=!(img instanceof HTMLCanvasElement);
+  if(owned)clearComparison();
+  const c=owned?sourceCanvas(img,w,h):img;
+  const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);let thumb='';
+  try{if(canvasUsable(th)){th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}}finally{dropCanvas(th)}
+  if(!thumb||thumb==='data:,'){if(owned)dropCanvas(c);throw new Error('Could not render the image thumbnail')}
+  if(!owned)clearComparison();
+  if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
   S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
   d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
   d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name?name+' · ':''}${c.width}×${c.height}`;
