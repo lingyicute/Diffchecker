@@ -1600,3 +1600,14 @@ test('弹窗遮罩：按下与点击都落在遮罩上才关闭，pointerdown �
     assert.equal(blocked, 1, f); // 仅未溢出且非输入控件时拦截背景滚动
   }
 });
+
+test('文本页并排视图表头随表格输出，折叠条文字使用粘性容器', () => {
+  const s = script('text-compare.html'), d = text.computeDiff('a\nb\nc\nd\ne\nf\ng\nh\ni', 'a\nb\nc\nd\ne\nf\ng\nh\nX', { rules: [] });
+  d.input = { leftName: '<old>.txt', rightName: 'new.txt' };
+  const ctx = { d, opts: { type: 'split', level: 'smart', syntax: '', hideUnchanged: true }, inlineDiff: text.inlineDiff };
+  vm.createContext(ctx);
+  vm.runInContext(`const EQ=0,DEL=1,INS=2,t=k=>k,expanded=new Set();${between(s, 'const SYN=', '/* ===================== state')}${between(s, 'const CTX=', '/* 展开折叠块')}this.sp=diffView(d,'split',false);this.un=diffView(d,'unified',false);`, ctx);
+  assert.match(ctx.sp.html, /<thead><tr><th colspan="2"[^>]*>.*&lt;old&gt;\.txt.*<th colspan="2"[^>]*>.*new\.txt/);
+  assert.doesNotMatch(ctx.un.html, /<thead>/);
+  assert.match(ctx.sp.html, /<tr class="collapsed"[^>]*><td colspan="4"><span class="fold-lbl">/);
+});
