@@ -432,7 +432,7 @@ function renderSegs(segs,side,cls){let h='',pos=0;for(const s of segs){const txt
 
 /* ===================== state & rendering ===================== */
 const $=id=>document.getElementById(id);
-const opts={realtime:false,hideUnchanged:false,noWrap:false,hideWs:false,lower:false,sort:false,trim:false,joinLines:false,igQuotes:false,igDashes:false,rules:[],syntax:'',preset:'highlights',type:'split',level:'smart'};
+const opts={realtime:false,hideUnchanged:false,noWrap:false,hideWs:false,lower:false,sort:false,trim:false,joinLines:false,igQuotes:false,igDashes:false,rules:[],syntax:'',preset:'highlights',type:typeof matchMedia==='function'&&matchMedia('(max-width:640px)').matches?'unified':'split',level:'smart'};
 const OPT_ENUM={preset:['highlights','redline','accessible'],type:['split','unified'],level:['smart','word','char'],syntax:['','auto','json','js','py','xml','css','sql']};
 function mergeOpts(src){if(!src||typeof src!=='object')return;for(const k of Object.keys(opts)){if(!Object.prototype.hasOwnProperty.call(src,k))continue;const v=src[k];if(k==='rules'){if(Array.isArray(v))opts.rules=v.filter(x=>typeof x==='string')}else if(OPT_ENUM[k]){if(OPT_ENUM[k].includes(v))opts[k]=v}else if(typeof v===typeof opts[k])opts[k]=v}}
 function decodeBuf(buf){const u=new Uint8Array(buf);
