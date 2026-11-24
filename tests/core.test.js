@@ -1754,3 +1754,23 @@ test('image.buildBases: 画布不可用时释放失败画布并按比例降级�
   assert.equal(canvases[0].width, 0);
   assert.equal(canvases[0].height, 0);
 });
+
+test('image.hideLoading: 任一侧仍在载入时不隐藏提示，取消全部载入后不论语言均收起提示', () => {
+  const s = script('image-compare.html');
+  const code = between(s, 'function hideLoading', 'function cancelLoads');
+  const noticeEl = { textContent: 'Loading image...', _t: 1, shown: true, classList: { remove(c) { if (c === 'show') noticeEl.shown = false; } } };
+  const ctx = {
+    I18N: { en: { loading: 'Loading image...' }, zh: { loading: '正在加载图片…' } },
+    loadVersion: { A: 0, B: 0 },
+    pending: { A: true, B: true },
+    $: () => noticeEl,
+    clearTimeout() {},
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';this.hideLoading=hideLoading;this.cancelLoad=cancelLoad;', ctx);
+  ctx.cancelLoad('A');
+  assert.equal(noticeEl.shown, true);
+  noticeEl.textContent = '正在加载图片…';
+  ctx.cancelLoad('B');
+  assert.equal(noticeEl.shown, false);
+});
