@@ -210,8 +210,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px;border-top
     <button class="choice" data-fmt="png" aria-pressed="false"><b>PNG</b><small data-i18n="fmtPng">Rendered image of the comparison.</small></button>
     <button class="choice" data-fmt="diffchecker" aria-pressed="false"><b data-i18n="fmtDiff">Diffchecker file</b><small data-i18n="fmtDiffDesc">Save a .diffchecker file that reopens this diff later.</small></button>
   </div>
-  <label data-i18n="layout">Layout</label>
-  <div class="seg" id="exportLayout"><button data-l="split" aria-pressed="true" data-i18n="split">Split</button><button data-l="unified" aria-pressed="false" data-i18n="unified">Unified</button></div>
+  <div id="layoutOpt"><label data-i18n="layout">Layout</label>
+  <div class="seg" id="exportLayout"><button data-l="split" aria-pressed="true" data-i18n="split">Split</button><button data-l="unified" aria-pressed="false" data-i18n="unified">Unified</button></div></div>
   <div class="modal-actions"><button class="btn" id="exportCancel" data-i18n="cancel">Cancel</button><button class="btn primary" id="exportGo" data-i18n="export">Export</button></div>
 </div></dialog>
 <div class="offline-notice" id="notice" role="status" aria-live="polite"></div>
@@ -556,9 +556,10 @@ function syncUI(withRules){document.querySelectorAll('.switch[data-opt]').forEac
 
 /* ===================== export ===================== */
 let exportFmt='pdf',exportLayout='split';
-$('exportBtn').onclick=()=>{if(rt)run(true);exportLayout=opts.type;$('exportLayout').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===exportLayout)));$('exportModal').showModal()};
+const syncExportLayout=()=>$('layoutOpt').classList.toggle('hidden',exportFmt!=='pdf'&&exportFmt!=='png');
+$('exportBtn').onclick=()=>{if(rt)run(true);exportLayout=opts.type;$('exportLayout').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===exportLayout)));syncExportLayout();$('exportModal').showModal()};
 $('exportCancel').onclick=()=>$('exportModal').close();
-$('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
+$('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exportFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)));syncExportLayout()};
 $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;exportLayout=b.dataset.l;$('exportLayout').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 // 打印树与交互树隔离：浏览器异步打印时也不会暂时改动或保存当前布局、主题。
 function clearPrintResult(){$('printResult').replaceChildren();document.body.classList.remove('printing-text-result')}
