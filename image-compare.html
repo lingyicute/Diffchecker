@@ -260,6 +260,7 @@ function comparisonFrame(a,b,al){
 }
 let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0,highlightTimer=0,lastVpW=0;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
+const dropCanvas=c=>{if(c){c.width=0;c.height=0}};
 
 /* ===================== loading ===================== */
 let openTarget='A',alignJob=0;
@@ -274,6 +275,7 @@ function clearComparison(){
   $('pmGo').onclick=$('pmSkip').onclick=null;
   clearInterval(flickTimer);clearTimeout(scanTimer);clearTimeout(highlightTimer);scanTimer=highlightTimer=0;holdSide=0;flickState=0;
   S.W=S.H=0;lastVpW=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
+  dropCanvas(baseA);dropCanvas(baseB);dropCanvas(overlay);dropCanvas(mainCanvas);
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
   stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
   for(const id of ['alignA','alignB']){$(id).width=$(id).height=1}
@@ -296,17 +298,19 @@ async function loadFile(f,side){
   catch(e){if(current()){console.error(e);notice(t(e.message==='imageTooLarge'?'imageTooLarge':'decodeFail',{name:f.name}))}}
   finally{if(current())pending[side]=false;URL.revokeObjectURL(url)}
 }
-function setImage(side,img,name,quiet){
+function setImage(side,img,name,quiet,keepOld){
   const w=img.naturalWidth||img.width||1024,h=img.naturalHeight||img.height||768;
   if(!fitsCanvas(w,h,MAX_SOURCE_PIXELS))throw new Error('imageTooLarge');
   const c=img instanceof HTMLCanvasElement?img:mk(w,h);
   if(c!==img)c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-  const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);th.getContext('2d').drawImage(c,0,0,th.width,th.height);
-  const thumb=th.toDataURL('image/png');if(thumb==='data:,')throw new Error('Could not render the image thumbnail');
-  clearComparison();S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
+  const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);let thumb;
+  try{th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}finally{dropCanvas(th)}
+  if(thumb==='data:,'){if(c!==img)dropCanvas(c);throw new Error('Could not render the image thumbnail')}
+  const prev=S[side]?.c;clearComparison();if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
+  S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
   d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}">✕</button>`;
   d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name} · ${c.width}×${c.height}`;
-  d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);S[side]=null;clearComparison();d.classList.remove('has');
+  d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);const old=S[side]?.c;S[side]=null;clearComparison();dropCanvas(old);d.classList.remove('has');
     d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;d.focus()};
   S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign();
 }
@@ -328,7 +332,7 @@ $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$(
 // 无翻转或同时水平 + 垂直翻转（F = −I，与旋转可交换）时为 R(−θ)·F；只有一个方向翻转时 F·R(−θ) = R(θ)·F，旋转角保持不变。
 function invertAlign(al,a,b){const th=(al.rot%360)*Math.PI/180,c=Math.cos(th),s=Math.sin(th),k=1/al.scale,vx=a.w/2-b.w/2-al.dx,vy=a.h/2-b.h/2-al.dy,ux=k*(c*vx+s*vy)*(al.fh?-1:1),uy=k*(-s*vx+c*vy)*(al.fv?-1:1),one=!!al.fh!==!!al.fv;
   return {dx:b.w/2+ux-a.w/2,dy:b.h/2+uy-a.h/2,rot:(one?al.rot:-al.rot)||0,scale:k,fh:!!al.fh,fv:!!al.fv}}
-$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;const a=S.A,b=S.B,al=invertAlign(S.align,a,b);try{comparisonFrame(b,a,al)}catch(e){notice(t('alignOutOfRange'));return}cancelLoads();setImage('A',b.c,b.name,true);setImage('B',a.c,a.name,true);S.align=al;compare()};
+$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;const a=S.A,b=S.B,al=invertAlign(S.align,a,b);try{comparisonFrame(b,a,al)}catch(e){notice(t('alignOutOfRange'));return}cancelLoads();setImage('A',b.c,b.name,true,true);setImage('B',a.c,a.name,true,true);S.align=al;compare()};
 $('resetBtn').onclick=()=>{cancelLoads();clearComparison();S.align=defAlign();S.passes=[];S.seeded=false;S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
 
 /* ===================== compositing ===================== */
@@ -390,8 +394,8 @@ function pinchTransform(start,p1,p2,q1,q2,minZ,maxZ){
   const z=d0>4?Math.max(minZ,Math.min(maxZ,start.z*(d1/d0))):start.z,k=z/start.z;
   return {z,x:mx1-(mx0-start.x)*k,y:my1-(my0-start.y)*k};
 }
-function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
-  if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap);overlay=null;mainCanvas=null}
+function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;dropCanvas(mainCanvas);dropCanvas(overlay);overlay=mainCanvas=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
+  if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap)}
   else{mainCanvas=compositeCanvas(S.mode);stage.appendChild(mainCanvas);overlay=mk(W,H);overlay.id='overlay';stage.appendChild(overlay);drawOverlay();
     if(S.mode==='slider'){
       const handle=sliderEl=document.createElement('div'),canvas=mainCanvas;
@@ -674,27 +678,32 @@ const MAX_EXPORT_PIXELS=16*1024*1024;
 function exportCanvas(native=false){
   const w=native?S.frame.w:S.W,h=native?S.frame.h:S.H,split=S.mode==='split';
   if(!fitsCanvas(split?w*2+16:w,h,MAX_EXPORT_PIXELS))throw new Error('pngTooLarge');
-  const [a,b]=w===S.W&&h===S.H?[baseA,baseB]:makeBases(w,h);
-  if(split){const c=mk(w*2+16,h),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
-  const c=compositeCanvas(S.mode,a,b);if(overlay){const ov=mk(w,h),ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}return c;
+  const fresh=w!==S.W||h!==S.H,[a,b]=fresh?makeBases(w,h):[baseA,baseB];
+  try{
+    if(split){const c=mk(w*2+16,h),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
+    const c=compositeCanvas(S.mode,a,b);
+    if(overlay){const ov=mk(w,h);try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
+    return c;
+  }finally{if(fresh){dropCanvas(a);dropCanvas(b)}}
 }
-function pngUrl(canvas){const url=canvas.toDataURL('image/png');if(url==='data:,')throw new Error('PNG encoding failed');return url}
+function pngUrl(canvas,release=false){try{const url=canvas.toDataURL('image/png');if(url==='data:,')throw new Error('PNG encoding failed');return url}finally{if(release)dropCanvas(canvas)}}
 function reportHtml(c){
   const esc=s=>String(s).replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x])),al=S.align;
   const flips=[al.fh?t('flipH'):'',al.fv?t('flipV'):''].filter(Boolean).join(' · ');
-  let h=`<h1>${t('rptTitle')}</h1><table><tr><th>${t('rptOrig')}</th><td>${esc(S.A.name)} (${S.A.w}×${S.A.h})</td></tr><tr><th>${t('rptChg')}</th><td>${esc(S.B.name)} (${S.B.w}×${S.B.h})</td></tr><tr><th>${t('rptMode')}</th><td>${esc(t('m.'+S.mode))}</td></tr><tr><th>${t('rptSummary')}</th><td>${t(S.regions.length===1?'summary1':'summary',{p:(100*diffCount/(S.W*S.H)).toFixed(2),n:S.regions.length})}</td></tr><tr><th>${t('rptAlign')}</th><td>dx ${al.dx.toFixed(1)}, dy ${al.dy.toFixed(1)}, rot ${al.rot.toFixed(2)}°, scale ${al.scale.toFixed(4)}${flips?' · '+esc(flips):''}</td></tr></table><h2>${t('rptCmp')}</h2><img alt="" src="${pngUrl(c)}">`;
-  if($('expSrc').checked){const src=image=>pngUrl(cropCanvas(image.c,{x:0,y:0,w:image.w,h:image.h},1600,1600));
+  let h=`<h1>${t('rptTitle')}</h1><table><tr><th>${t('rptOrig')}</th><td>${esc(S.A.name)} (${S.A.w}×${S.A.h})</td></tr><tr><th>${t('rptChg')}</th><td>${esc(S.B.name)} (${S.B.w}×${S.B.h})</td></tr><tr><th>${t('rptMode')}</th><td>${esc(t('m.'+S.mode))}</td></tr><tr><th>${t('rptSummary')}</th><td>${t(S.regions.length===1?'summary1':'summary',{p:(100*diffCount/(S.W*S.H)).toFixed(2),n:S.regions.length})}</td></tr><tr><th>${t('rptAlign')}</th><td>dx ${al.dx.toFixed(1)}, dy ${al.dy.toFixed(1)}, rot ${al.rot.toFixed(2)}°, scale ${al.scale.toFixed(4)}${flips?' · '+esc(flips):''}</td></tr></table><h2>${t('rptCmp')}</h2><img alt="" src="${pngUrl(c,true)}">`;
+  if($('expSrc').checked){const src=image=>pngUrl(cropCanvas(image.c,{x:0,y:0,w:image.w,h:image.h},1600,1600),true);
     h+=`<h2>${t('srcImages')}</h2><div class="srcs"><div><img alt="" src="${src(S.A)}"><small>${t('fOriginal')}</small></div><div><img alt="" src="${src(S.B)}"><small>${t('fChanged')}</small></div></div>`;
   }
   if($('expList').checked&&S.regions.length){
     h+=`<h2>${t('chgList',{n:S.regions.length})}</h2>${S.truncated?`<p>${t('truncatedRegions')}</p>`:''}<div class="crops">`;
     const sub=expDiff==='subtract'?compositeCanvas('subtract'):null;
-    const max=Math.min(400,Math.floor(Math.sqrt(6000000/(S.regions.length*(sub?3:2)))));
-    for(const [i,r] of S.regions.entries()){const pad={x:Math.max(0,r.x-8),y:Math.max(0,r.y-8)};
-      pad.w=Math.min(S.W,r.x+r.w+8)-pad.x;pad.h=Math.min(S.H,r.y+r.h+8)-pad.y;
-      const crop=canvas=>pngUrl(cropCanvas(canvas,pad,max,max*.75));
-      h+=`<div class="crop"><b>${t('change',{n:i+1})}</b> — ${r.w}×${r.h} @ ${r.x},${r.y}<img alt="" src="${crop(baseA)}"><img alt="" src="${crop(baseB)}">${sub?`<img alt="" src="${crop(sub)}">`:''}</div>`;
-    }
+    try{const max=Math.min(400,Math.floor(Math.sqrt(6000000/(S.regions.length*(sub?3:2)))));
+      for(const [i,r] of S.regions.entries()){const pad={x:Math.max(0,r.x-8),y:Math.max(0,r.y-8)};
+        pad.w=Math.min(S.W,r.x+r.w+8)-pad.x;pad.h=Math.min(S.H,r.y+r.h+8)-pad.y;
+        const crop=canvas=>pngUrl(cropCanvas(canvas,pad,max,max*.75),true);
+        h+=`<div class="crop"><b>${t('change',{n:i+1})}</b> — ${r.w}×${r.h} @ ${r.x},${r.y}<img alt="" src="${crop(baseA)}"><img alt="" src="${crop(baseB)}">${sub?`<img alt="" src="${crop(sub)}">`:''}</div>`;
+      }
+    }finally{dropCanvas(sub)}
     h+='</div>';
   }
   return h;
@@ -706,7 +715,8 @@ $('exportGo').onclick=async()=>{
   $('exportModal').close();if(!S.W||exporting||printing)return;
   exporting=true;const rep=$('report');
   try{if(scanTimer)scan(true);if(expFmt==='png'){
-      const filename=baseName()+'.png',c=exportCanvas(!$('expWorking').checked),blob=await new Promise(r=>c.toBlob(r,'image/png'));
+      const filename=baseName()+'.png',c=exportCanvas(!$('expWorking').checked);let blob;
+      try{blob=await new Promise(r=>c.toBlob(r,'image/png'))}finally{dropCanvas(c)}
       if(!blob)throw new Error('PNG encoding failed');download(blob,filename);return;
     }
     rep.innerHTML=reportHtml(exportCanvas());await Promise.all([...rep.querySelectorAll('img')].map(decodeReportImage));
