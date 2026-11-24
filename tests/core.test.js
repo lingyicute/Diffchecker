@@ -1700,10 +1700,10 @@ test('image.cropThumb: 编码缩略图后立即归零释放临时画布，且忽
   const s = script('image-compare.html');
   const code = between(s, 'function cropCanvas', 'function renderList');
   const created = [];
-  let nextUrl = 'data:image/png;base64,AA==';
+  let nextUrl = 'data:image/png;base64,AA==', hasContext = true;
   const ctx = {
     mk: (w, h) => {
-      const c = { width: Math.round(w), height: Math.round(h), getContext: () => ({ drawImage() {} }), toDataURL: () => nextUrl };
+      const c = { width: Math.round(w), height: Math.round(h), getContext: () => hasContext ? ({ drawImage() {} }) : null, toDataURL: () => nextUrl };
       created.push(c);
       return c;
     },
@@ -1718,6 +1718,9 @@ test('image.cropThumb: 编码缩略图后立即归零释放临时画布，且忽
   assert.equal(ctx.cropThumb({}, { x: 0, y: 0, w: 40, h: 30 }), '');
   assert.equal(created[1].width, 0);
   assert.equal(created[1].height, 0);
+  hasContext = false;
+  assert.equal(ctx.cropThumb({}, { x: 0, y: 0, w: 40, h: 30 }), '');
+  assert.equal(created[2].width, 0);
 });
 
 test('image.buildBases: 画布不可用时释放失败画布并按比例降级，不再静默读出全零像素', () => {
@@ -1820,7 +1823,7 @@ test('image.exportCanvas: 原分辨率导出时在分配叠加画布前先释放
   const s = script('image-compare.html');
   const code = between(s, 'function exportCanvas', 'function pngUrl');
   const events = [];
-  let seq = 0;
+  let seq = 0, drawingFails = false;
   const ctx = {
     MAX_EXPORT_PIXELS: 16 * 1024 * 1024,
     S: { mode: 'highlight', frame: { x: 0, y: 0, w: 400, h: 300 }, W: 200, H: 150, A: { c: {}, w: 400, h: 300 }, B: { c: {} }, align: {}, regions: [{ x: 0, y: 0, w: 10, h: 10 }], boxes: true, darken: false },
@@ -1833,7 +1836,7 @@ test('image.exportCanvas: 原分辨率导出时在分配叠加画布前先释放
     mk(w, h) {
       const id = ++seq;
       events.push('mk:' + id);
-      return { id, width: w, height: h, getContext: () => ({ drawImage() {}, translate() {}, scale() {} }) };
+      return { id, width: w, height: h, getContext: () => ({ drawImage() { if (drawingFails) throw new Error('draw failed'); }, translate() {}, scale() {} }) };
     },
     dropCanvas(c) { if (c) { events.push('drop:' + c.id); c.width = 0; c.height = 0; } },
   };
@@ -1844,6 +1847,9 @@ test('image.exportCanvas: 原分辨率导出时在分配叠加画布前先释放
   assert.ok(events.indexOf('drop:1') < events.indexOf('mk:4'));
   assert.ok(events.indexOf('drop:2') < events.indexOf('mk:4'));
   assert.ok(events.includes('drop:4'));
+  drawingFails = true;
+  assert.throws(() => ctx.exportCanvas(true), /draw failed/);
+  assert.deepEqual(events.slice(-4), ['mk:5', 'mk:6', 'drop:5', 'drop:6']);
 });
 
 test('image.alignKeyboardOpen 与 drawAlign: 大屏软键盘弹出取消吸顶，仅改修改图时不重绘原图', () => {

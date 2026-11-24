@@ -320,7 +320,7 @@ async function loadFile(f,side){
 // 先画一个不透明像素再读回来探测，不可用就按面积减半逐级缩小，避免载入后缩略图与对比结果全是空白。
 function canvasUsable(c){try{const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,1,1);const ok=x.getImageData(0,0,1,1).data[3]===255;x.clearRect(0,0,1,1);return ok}catch(e){return false}}
 function sourceCanvas(img,w,h){
-  for(let k=1;k>.2;k*=Math.SQRT1_2){const c=mk(w*k,h*k);if(canvasUsable(c)){c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c}dropCanvas(c)}
+  for(let k=1;k>.2;k*=Math.SQRT1_2){const c=mk(w*k,h*k);if(canvasUsable(c)){try{c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c}catch(e){dropCanvas(c);throw e}}dropCanvas(c)}
   throw new Error('imageTooLarge');
 }
 function setImage(side,img,name,quiet,keepOld){
@@ -330,8 +330,10 @@ function setImage(side,img,name,quiet,keepOld){
   if(owned)clearComparison();
   const c=owned?sourceCanvas(img,w,h):img;
   const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);let thumb='';
-  try{if(canvasUsable(th)){th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}}finally{dropCanvas(th)}
-  if(!thumb||thumb==='data:,'){if(owned)dropCanvas(c);throw new Error('Could not render the image thumbnail')}
+  try{
+    if(canvasUsable(th)){th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}
+    if(!thumb||thumb==='data:,')throw new Error('Could not render the image thumbnail');
+  }catch(e){if(owned)dropCanvas(c);throw e}finally{dropCanvas(th)}
   if(!owned)clearComparison();
   if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
   S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
@@ -632,8 +634,15 @@ function renderPasses(){const el=$('passes');$('addPass').disabled=S.passes.leng
     d.querySelector('select').onchange=e=>{if(e.target.value==='__custom__'){p.linked=false}else{p.linked=true;p.presetId=e.target.value;p.options=presetOptions(p.presetId)}scan()};
     d.querySelectorAll('input[type=range]').forEach(r=>{r.oninput=()=>{const k=r.dataset.k;p.options[k]=k==='maxBlobAreaFraction'?r.value/100:+r.value;p.linked=false;r.nextElementSibling.textContent=k==='maxBlobAreaFraction'?r.value+'%':r.value;d.querySelector('select').value='__custom__';clearTimeout(scanTimer);scanTimer=setTimeout(()=>scan(true),120)}});el.appendChild(d)});if(fq&&el.children[fi])el.children[fi].querySelector(fq).focus()}
 $('addPass').onclick=()=>{if(S.passes.length>=MAX_PASSES)return;S.passes.push(newPass(S.passes.length%2?'graphics-large-blocks':'tiny-specks'));scan()};
-function cropCanvas(src,r,maxW=112,maxH=84){const s=Math.min(maxW/r.w,maxH/r.h,4);const c=mk(Math.max(1,r.w*s),Math.max(1,r.h*s));const cx=c.getContext('2d');cx.imageSmoothingEnabled=s<1;cx.drawImage(src,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c}
-function cropThumb(src,r){const c=cropCanvas(src,r);try{const u=c.toDataURL('image/png');return u==='data:,'?'':u}catch(e){return ''}finally{dropCanvas(c)}}
+function cropCanvas(src,r,maxW=112,maxH=84){
+  const s=Math.min(maxW/r.w,maxH/r.h,4),c=mk(Math.max(1,r.w*s),Math.max(1,r.h*s));
+  try{const cx=c.getContext('2d');cx.imageSmoothingEnabled=s<1;cx.drawImage(src,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c}
+  catch(e){dropCanvas(c);throw e}
+}
+function cropThumb(src,r){
+  let c;try{c=cropCanvas(src,r);const u=c.toDataURL('image/png');return u==='data:,'?'':u}
+  catch(e){return ''}finally{dropCanvas(c)}
+}
 function renderList(){const el=$('chgList');clearList(el);const gen=listGen;$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
   if(!S.regions.length){el.innerHTML=`<div class="tip">${t(diffCount?'noMatchingRegions':'noChanges')}</div>`;return}
   if(S.truncated)el.innerHTML=`<div class="tip">${t('truncatedRegions')}</div>`;
@@ -808,18 +817,19 @@ function exportCanvas(native=false){
   const w=native?S.frame.w:S.W,h=native?S.frame.h:S.H,split=S.mode==='split';
   if(!fitsCanvas(split?w*2+16:w,h,MAX_EXPORT_PIXELS))throw new Error('pngTooLarge');
   const need=c=>{if(!canvasUsable(c)){dropCanvas(c);throw new Error('pngTooLarge')}return c};
-  const fresh=w!==S.W||h!==S.H;let a=baseA,b=baseB;
-  if(fresh){a=need(mk(w,h));try{b=need(mk(w,h))}catch(e){dropCanvas(a);throw e}
-    const f=S.frame,sx=w/f.w,sy=h/f.h,bx=b.getContext('2d');a.getContext('2d').drawImage(S.A.c,-f.x*sx,-f.y*sy,S.A.w*sx,S.A.h*sy);bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy)}
+  const fresh=w!==S.W||h!==S.H;let a=fresh?null:baseA,b=fresh?null:baseB,c=null;
   try{
-    if(split){const c=need(mk(w*2+16,h)),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
-    const c=need(mk(w,h));
-    try{compositeCanvas(S.mode,a,b,c);
-      if(fresh){dropCanvas(a);dropCanvas(b);a=b=null}
-      if(S.regions.length&&(S.boxes||S.darken)){const ov=need(mk(w,h));try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
-      return c;
-    }catch(e){dropCanvas(c);throw e}
-  }finally{if(fresh){dropCanvas(a);dropCanvas(b)}}
+    if(fresh){a=need(mk(w,h));b=need(mk(w,h));
+      const f=S.frame,sx=w/f.w,sy=h/f.h,bx=b.getContext('2d');a.getContext('2d').drawImage(S.A.c,-f.x*sx,-f.y*sy,S.A.w*sx,S.A.h*sy);
+      bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy);
+    }
+    c=need(mk(split?w*2+16:w,h));
+    if(split){const cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
+    compositeCanvas(S.mode,a,b,c);
+    if(fresh){dropCanvas(a);dropCanvas(b);a=b=null}
+    if(S.regions.length&&(S.boxes||S.darken)){const ov=need(mk(w,h));try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
+    return c;
+  }catch(e){dropCanvas(c);throw e}finally{if(fresh){dropCanvas(a);dropCanvas(b)}}
 }
 function pngUrl(canvas,release=false){try{const url=canvas.toDataURL('image/png');if(url==='data:,')throw new Error('PNG encoding failed');return url}finally{if(release)dropCanvas(canvas)}}
 function reportHtml(c){
@@ -831,8 +841,10 @@ function reportHtml(c){
   }
   if($('expList').checked&&S.regions.length){
     h+=`<h2>${t('chgList',{n:S.regions.length})}</h2>${S.truncated?`<p>${t('truncatedRegions')}</p>`:''}<div class="crops">`;
-    let sub=null;if(expDiff==='subtract'){const sc=mk(S.W,S.H);if(!canvasUsable(sc)){dropCanvas(sc);throw new Error('exportFailed')}sub=compositeCanvas('subtract',baseA,baseB,sc)}
-    try{const max=Math.min(400,Math.floor(Math.sqrt(6000000/(S.regions.length*(sub?3:2)))));
+    let sub=null;
+    try{
+      if(expDiff==='subtract'){sub=mk(S.W,S.H);if(!canvasUsable(sub))throw new Error('exportFailed');compositeCanvas('subtract',baseA,baseB,sub)}
+      const max=Math.min(400,Math.floor(Math.sqrt(6000000/(S.regions.length*(sub?3:2)))));
       for(const [i,r] of S.regions.entries()){const pad={x:Math.max(0,r.x-8),y:Math.max(0,r.y-8)};
         pad.w=Math.min(S.W,r.x+r.w+8)-pad.x;pad.h=Math.min(S.H,r.y+r.h+8)-pad.y;
         const crop=canvas=>pngUrl(cropCanvas(canvas,pad,max,max*.75),true);
