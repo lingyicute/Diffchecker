@@ -298,7 +298,6 @@ document.addEventListener('paste',e=>{
 });
 async function loadFile(f,side){
   cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side];
-  if(!f.type.startsWith('image/')&&!/\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|tiff?)$/i.test(f.name)){notice(t('decodeFail',{name:f.name}));return}
   pending[side]=true;notice(t('loading'));const url=URL.createObjectURL(f);
   try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});if(current())setImage(side,img,f.name)}
   catch(e){if(current()){console.error(e);notice(t(e.message==='imageTooLarge'?'imageTooLarge':'decodeFail',{name:f.name}))}}
