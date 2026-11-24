@@ -234,8 +234,8 @@ I18N.en.alignOutOfRange='The aligned images span too large a frame. Reduce the s
 I18N.zh.alignOutOfRange='对齐后的画幅过大，请减小平移量或缩放比例。';
 I18N.en.invalidAlignment='Enter finite alignment values and a positive scale.';
 I18N.zh.invalidAlignment='请输入有效的对齐数值，缩放比例必须为正数。';
-Object.assign(I18N.en,{pauseFlicker:'Pause',resumeFlicker:'Resume',flickSpeed:'Flicker speed',shiftX:'Horizontal shift (pixels)',shiftY:'Vertical shift (pixels)'});
-Object.assign(I18N.zh,{pauseFlicker:'暂停',resumeFlicker:'继续',flickSpeed:'闪烁速度',shiftX:'水平平移（像素）',shiftY:'垂直平移（像素）'});
+Object.assign(I18N.en,{pauseFlicker:'Pause',resumeFlicker:'Resume',flickSpeed:'Flicker speed',shiftX:'Horizontal shift (pixels)',shiftY:'Vertical shift (pixels)',aligning:'Aligning images…'});
+Object.assign(I18N.zh,{pauseFlicker:'暂停',resumeFlicker:'继续',flickSpeed:'闪烁速度',shiftX:'水平平移（像素）',shiftY:'垂直平移（像素）',aligning:'正在自动对齐图片…'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme');if(theme!=='dark'&&theme!=='light')theme=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(lang!=='en'&&lang!=='zh')lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 if(matchMedia('(pointer:coarse)').matches){I18N.en.browse='or tap to choose an image';I18N.zh.browse='或点击选择图片'}// 触屏设备没有 Ctrl+V
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
@@ -280,7 +280,8 @@ function hideLoading(){if(pending.A||pending.B)return;const n=$('notice');if(n.t
 function cancelLoad(side){loadVersion[side]++;pending[side]=false;hideLoading()}
 function cancelLoads(){cancelLoad('A');cancelLoad('B')}
 const setAlignMsg=(m,ok=false)=>{const e=$('alignErr');e.textContent=m;e.classList.toggle('ok',ok&&!!m)};
-function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('')}
+function hideAligning(){const n=$('notice');if(n.textContent===I18N.en.aligning||n.textContent===I18N.zh.aligning){clearTimeout(n._t);n.classList.remove('show')}}
+function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('');hideAligning()}
 function closeAlign(){stopAuto();clearAlignPtrs();AL.classList.remove('kb');AL.close();for(const id of ['alignA','alignB'])dropCanvas($(id))}
 function clearComparison(){
   clearPrintReport();closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
@@ -340,9 +341,10 @@ function maybePromptAlign(){
   if(S.A.w===S.B.w&&S.A.h===S.B.h){compare();return}
   showPrompt(t('mismatchTitle'),t('mismatchMsg'),t('skip'),t('autoAlignGo'),async()=>{
     if(!compare())return;const job=++alignJob,current=()=>job===alignJob;
-    try{const r=await autoAlign(S.A.c,S.B.c,{rot:true,scale:true,active:current});if(!current())return;
+    const at=typeof setTimeout==='function'?setTimeout(()=>{if(current())notice(t('aligning'))},120):0;
+    try{const r=await autoAlign(S.A.c,S.B.c,{rot:true,scale:true,active:current});if(at)clearTimeout(at);if(typeof hideAligning==='function')hideAligning();if(!current())return;
       if(r){S.align=r;if(compare())alignNotice(r)}else notice(t('alignFail'));
-    }catch(e){if(current()){console.error(e);notice(t('alignFail'))}}
+    }catch(e){if(at)clearTimeout(at);if(current()){if(typeof hideAligning==='function')hideAligning();console.error(e);notice(t('alignFail'))}}
   },()=>compare());
 }
 function showPrompt(title,msg,skip,go,onGo,onSkip){$('pmTitle').textContent=title;$('pmMsg').textContent=msg;$('pmSkip').textContent=skip;$('pmGo').textContent=go;$('promptModal').showModal();$('pmSkip').onclick=()=>{$('promptModal').close();onSkip&&onSkip()};$('pmGo').onclick=()=>{$('promptModal').close();onGo()}}
@@ -645,7 +647,7 @@ let clearAlignPtrs=()=>{};
 $('autoAlignBtn').onclick=async()=>{
   const job=++alignJob,current=()=>job===alignJob,A=S.A.c,B=S.B.c;
   const allow={rot:$('allowRot').checked,scale:$('allowScale').checked,fh:alTmp.fh,fv:alTmp.fv,active:current};
-  setAlignMsg('');$('autoAlignBtn').disabled=true;
+  setAlignMsg(t('aligning'));$('autoAlignBtn').disabled=true;
   try{await new Promise(r=>setTimeout(r,20));if(!current())return;const r=await autoAlign(A,B,allow);if(!current())return;
     if(!r)setAlignMsg(t('alignFail'));else{alTmp={...r};syncAlignInputs();drawAlign(true);setAlignMsg(alignText(r),true)}
   }catch(e){if(current()){console.error(e);setAlignMsg(t('alignFail'))}}finally{if(current())$('autoAlignBtn').disabled=false}
