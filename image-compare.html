@@ -430,9 +430,24 @@ function pinchTransform(start,p1,p2,q1,q2,minZ,maxZ){
   const z=d0>4?Math.max(minZ,Math.min(maxZ,start.z*(d1/d0))):start.z,k=z/start.z;
   return {z,x:mx1-(mx0-start.x)*k,y:my1-(my0-start.y)*k};
 }
-function renderStage(){clearTimeout(highlightTimer);cancelAnimationFrame(overlayRaf);highlightTimer=overlayRaf=0;sliderEl=null;sliderDragging=false;dropCanvas(mainCanvas);dropCanvas(overlay);overlay=mainCanvas=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
-  if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap)}
-  else{const mc=mk(W,H);if(!canvasUsable(mc)){dropCanvas(mc);throw new Error('compareFailed')}mainCanvas=compositeCanvas(S.mode,baseA,baseB,mc);stage.appendChild(mainCanvas);drawOverlay();
+function renderStage(){
+  const W=S.W,H=S.H,split=S.mode==='split';let next=mainCanvas,content;
+  // 从并排模式切出时，先确认新画布能画，再拆除仍然可用的旧视图。
+  if(!split){
+    if(!next)next=mk(W,H);
+    try{if(next!==mainCanvas&&!canvasUsable(next))throw new Error('compareFailed');compositeCanvas(S.mode,baseA,baseB,next)}
+    catch(e){if(next!==mainCanvas)dropCanvas(next);throw e}
+    content=next;
+  }else{
+    const wrap=document.createElement('div');wrap.className='split-pair';
+    for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){
+      const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d);
+    }
+    content=wrap;dropCanvas(mainCanvas);dropCanvas(overlay);next=overlay=null;
+  }
+  clearTimeout(highlightTimer);cancelAnimationFrame(overlayRaf);highlightTimer=overlayRaf=0;
+  clearVpPtrs();sliderEl=null;mainCanvas=next;stage.replaceChildren(content,...(overlay?[overlay]:[]));
+  if(!split){drawOverlay();
     if(S.mode==='slider'){
       const handle=sliderEl=document.createElement('div'),canvas=mainCanvas;
       handle.className='sl-handle';handle.style.height=H+'px';handle.tabIndex=0;handle.setAttribute('role','slider');
@@ -507,7 +522,15 @@ $('touchPan').onclick=()=>setTouchPan(!viewport.classList.contains('touch-pan'))
  viewport.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.05,8);viewFitted=false;S.zoom=r.z;S.px=r.x;S.py=r.y;applyTransform();scheduleOverlay()}else if(pan&&pan.id===e.pointerId){viewFitted=false;S.px=p.x-pan.ox;S.py=p.y-pan.oy;applyTransform()}};
  viewport.onpointerup=viewport.onpointercancel=viewport.onlostpointercapture=end}
 /* toolbar */
-$('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;const prev=S.mode,sp=prev==='split';if(prev!==b.dataset.mode)holdSide=0;S.mode=b.dataset.mode;$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));try{renderStage();if(sp||S.mode==='split')fit()}catch(err){console.error(err);S.mode=prev;$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode===prev)));notice(t('compareFailed'))}};// 只有进出并排模式时舞台尺寸才会变；其余模式之间切换保留当前的缩放与位置，便于对着同一处细节来回比较
+function selectMode(mode){
+  const prev=S.mode,held=holdSide;if(mode===prev)return true;
+  S.mode=mode;holdSide=0;
+  try{renderStage()}catch(e){S.mode=prev;holdSide=held;console.error(e);notice(t('compareFailed'));return false}
+  $('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  if(prev==='split'||mode==='split')fit(); // 进出并排改变舞台尺寸；其他模式间保留缩放与位置。
+  return true;
+}
+$('modeSeg').onclick=e=>{const b=e.target.closest('button');if(b)selectMode(b.dataset.mode)};
 $('fadeRange').oninput=e=>{S.fade=e.target.value/100;$('fadeVal').textContent=e.target.value+'%';if(mainCanvas)paintBaseMode(mainCanvas.getContext('2d'),'fade',baseA,baseB)};
 // 至少 200ms 才切换一次，且尊重系统的减少动态效果设置。
 $('flickRange').oninput=e=>{S.flick=Math.max(200,2100-+e.target.value);restartFlicker()};
@@ -607,7 +630,7 @@ function renderList(){const el=$('chgList');clearList(el);const gen=listGen;$('c
     d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};
     d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d);
     if(i<12||!listObserver)fill(d,r);else{jobs.set(d,r);listObserver.observe(d)}})}
-function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));try{renderStage()}catch(e){console.error(e);S.mode='split';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='split')));notice(t('compareFailed'));return}}const vw=viewport.clientWidth,vh=viewport.clientHeight;if(!vw||!vh)return;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));viewFitted=false;S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.top<0||b.bottom>window.innerHeight)viewport.scrollIntoView({behavior:scrollBehavior(),block:'nearest'})}
+function focusRegion(r){if(S.mode==='split'&&!selectMode('highlight'))return;const vw=viewport.clientWidth,vh=viewport.clientHeight;if(!vw||!vh)return;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));viewFitted=false;S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.top<0||b.bottom>window.innerHeight)viewport.scrollIntoView({behavior:scrollBehavior(),block:'nearest'})}
 
 /* ===================== alignment ===================== */
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0,w:0,h:0};

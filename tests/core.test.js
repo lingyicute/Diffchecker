@@ -2006,3 +2006,20 @@ test('图片视口：只有高度改变时也重新适应，手动放大后保�
   assert.equal(S.zoom, 2);
   assert.deepEqual([(270 - S.px) / S.zoom, (125 - S.py) / S.zoom], center);
 });
+
+test('图片切换模式：主画布分配失败时释放新画布，但不清空现有舞台', () => {
+  const code = between(script('image-compare.html'), 'function renderStage()', 'function syncFlickerButton');
+  let replacements = 0;
+  const canvas = { width: 100, height: 80 };
+  const ctx = {
+    S: { W: 100, H: 80, mode: 'highlight' }, mainCanvas: null,
+    stage: { replaceChildren() { replacements++; } }, mk: () => canvas, canvasUsable: () => false,
+    dropCanvas(c) { c.width = c.height = 0; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  assert.throws(() => ctx.renderStage(), /compareFailed/);
+  assert.equal(replacements, 0);
+  assert.equal(canvas.width, 0);
+  assert.equal(canvas.height, 0);
+});
