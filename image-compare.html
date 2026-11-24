@@ -249,6 +249,7 @@ const notice=m=>{const n=$('notice');n.textContent=m;n.classList.add('show');cle
 
 /* ===================== state ===================== */
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+const scrollBehavior=()=>reducedMotion.matches?'auto':'smooth';
 const S={A:null,B:null,align:null,mode:'highlight',fade:.5,flick:1400,flickPaused:reducedMotion.matches,hlMode:'context',hlThr:25,zoom:1,px:0,py:0,sliderPos:.5,boxes:true,darken:false,passes:[],regions:[],active:-1,W:0,H:0,scale:1,frame:null};
 const defAlign=()=>({dx:0,dy:0,rot:0,scale:1,fh:false,fv:false});S.align=defAlign();
 const MAXDIM=2600,MAX_SOURCE_PIXELS=32*1024*1024,MAX_CANVAS_DIM=16384;
@@ -340,7 +341,7 @@ function maybePromptAlign(){
   },()=>compare());
 }
 function showPrompt(title,msg,skip,go,onGo,onSkip){$('pmTitle').textContent=title;$('pmMsg').textContent=msg;$('pmSkip').textContent=skip;$('pmGo').textContent=go;$('promptModal').showModal();$('pmSkip').onclick=()=>{$('promptModal').close();onSkip&&onSkip()};$('pmGo').onclick=()=>{$('promptModal').close();onGo()}}
-$('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$('result').scrollIntoView({behavior:'smooth'})};
+$('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$('result').scrollIntoView({behavior:scrollBehavior()})};
 // 交换两张图时同步求逆对齐参数，保持已对齐的效果。
 // drawAligned 的线性部分是 L = s·R(θ)·F（F 为翻转对角阵），L⁻¹ = (1/s)·F·R(−θ)：
 // 无翻转或同时水平 + 垂直翻转（F = −I，与旋转可交换）时为 R(−θ)·F；只有一个方向翻转时 F·R(−θ) = R(θ)·F，旋转角保持不变。
@@ -559,7 +560,7 @@ function renderList(){const el=$('chgList');clearList(el);$('chgCount').textCont
   S.regions.forEach((r,i)=>{const d=document.createElement('div');d.className='chg-item'+(i===S.active?' active':'');d.title=t('focus');d.innerHTML=`<div class="info"><b>${t('change',{n:i+1})}</b><span>${r.w}×${r.h} @ ${r.x},${r.y} · ${r.px}px</span></div>`;d.prepend(cropCanvas(baseB,r));d.prepend(cropCanvas(baseA,r));
     d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};
     d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d)})}
-function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.bottom<=0||b.top>=window.innerHeight||b.top<0)viewport.scrollIntoView({behavior:'smooth',block:'nearest'})}
+function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.bottom<=0||b.top>=window.innerHeight||b.top<0)viewport.scrollIntoView({behavior:scrollBehavior(),block:'nearest'})}
 
 /* ===================== alignment ===================== */
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0,w:0,h:0};
@@ -761,7 +762,7 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
   x.fillStyle='#345';x.fillRect(40,400,variant?380:300,22);x.fillStyle='#777';x.font='12px system-ui';x.fillText(variant?'Budget forecast +12% → re-approval':'Budget forecast +10% → re-approval',40,445);
   if(variant){x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor (second person, pressure systems)',40,560)}else{x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor',40,560)}
   x.strokeStyle='#bbb';x.strokeRect(40,480,420,60);x.fillStyle='#000';x.font='13px monospace';x.fillText(variant?'CHK 8f31c2a9 · build 1122':'CHK 7a9e01bd · build 1047',52,515);return c}
-$('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:'smooth'})};
+$('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:scrollBehavior()})};
 function clearPrintReport(){printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
 window.addEventListener('afterprint',()=>{if(printing)clearPrintReport()});
 printMedia.addEventListener?.('change',e=>{if(!e.matches&&printing)clearPrintReport()});
