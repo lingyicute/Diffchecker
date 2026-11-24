@@ -55,11 +55,12 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 50px}
 .stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 .stage canvas{display:block;image-rendering:auto}
 .stage.pix canvas{image-rendering:pixelated}
-.split-pair{display:flex;gap:16px}
-.split-pair>div{position:relative}.split-pair .tag{position:absolute;top:-22px;left:0;font-size:12px;font-weight:600;color:var(--fg2);white-space:nowrap}
+.split-pair{display:flex;gap:16px;padding-top:calc(24px * var(--iz,1))}
+.split-pair>div{position:relative}.split-pair .tag{position:absolute;bottom:100%;left:0;margin-bottom:calc(6px * var(--iz,1));transform:scale(var(--iz,1));transform-origin:0 100%;font-size:12px;line-height:1.2;font-weight:600;color:var(--fg2);white-space:nowrap}
 #overlay{position:absolute;left:0;top:0;pointer-events:none}
-.sl-handle{position:absolute;top:0;width:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);cursor:ew-resize;pointer-events:auto}
-.sl-handle::after{content:"◂ ▸";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:#fff;color:#333;box-shadow:0 1px 6px rgba(0,0,0,.35);display:grid;place-items:center;font-size:11px;letter-spacing:-2px}
+.sl-handle{position:absolute;top:0;width:calc(44px * var(--iz,1));margin-left:calc(-22px * var(--iz,1));cursor:ew-resize;pointer-events:auto;touch-action:none}
+.sl-handle::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:calc(2px * var(--iz,1));transform:translateX(-50%);background:#fff;box-shadow:0 0 0 calc(1px * var(--iz,1)) rgba(0,0,0,.35)}
+.sl-handle::after{content:"◂ ▸";position:absolute;top:var(--ky,50%);left:50%;transform:translate(-50%,-50%) scale(var(--iz,1));width:36px;height:36px;border-radius:50%;background:#fff;color:#333;box-shadow:0 1px 6px rgba(0,0,0,.35);display:grid;place-items:center;font-size:11px;letter-spacing:-2px}
 .hud{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;background:rgba(0,0,0,.55);color:#fff;border-radius:8px;padding:4px 8px;font-size:12px;font-family:var(--mono);pointer-events:none}
 .flicker-tag{position:absolute;right:10px;top:10px;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:600;pointer-events:none}
 .sidebar{border:1px solid var(--border);border-radius:12px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;height:calc(100vh - 230px);min-height:480px}
@@ -379,22 +380,23 @@ function flickShow(){return holdSide?holdSide-1:flickState}
 /* ===================== view / stage ===================== */
 const stage=$('stage'),viewport=$('viewport');let overlay=null,sliderEl=null,mainCanvas=null;
 function renderStage(){clearTimeout(highlightTimer);highlightTimer=0;sliderEl=null;stage.replaceChildren();stage.classList.toggle('pix',S.zoom>=3);const W=S.W,H=S.H;
-  if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';wrap.style.paddingTop='24px';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap);overlay=null;mainCanvas=null}
+  if(S.mode==='split'){const wrap=document.createElement('div');wrap.className='split-pair';for(const [c,k] of [[baseA,'original'],[baseB,'changed']]){const d=document.createElement('div');d.innerHTML=`<span class="tag" data-i18n="${k}">${t(k)}</span>`;d.appendChild(c);wrap.appendChild(d)}stage.appendChild(wrap);overlay=null;mainCanvas=null}
   else{mainCanvas=compositeCanvas(S.mode);stage.appendChild(mainCanvas);overlay=mk(W,H);overlay.id='overlay';stage.appendChild(overlay);drawOverlay();
     if(S.mode==='slider'){
       const handle=sliderEl=document.createElement('div'),canvas=mainCanvas;
       handle.className='sl-handle';handle.style.height=H+'px';handle.tabIndex=0;handle.setAttribute('role','slider');
       handle.setAttribute('aria-label',t('m.slider'));handle.setAttribute('aria-valuemin','0');handle.setAttribute('aria-valuemax','100');
-      const sync=()=>{handle.style.left=(W*S.sliderPos-1)+'px';handle.setAttribute('aria-valuenow',String(Math.round(100*S.sliderPos)))};
+      const sync=()=>{handle.style.left=(W*S.sliderPos)+'px';handle.setAttribute('aria-valuenow',String(Math.round(100*S.sliderPos)))};
       const move=p=>{S.sliderPos=Math.max(0,Math.min(1,p));sync();paintBaseMode(canvas.getContext('2d'),'slider',baseA,baseB)};
       sync();stage.appendChild(handle);
       handle.onkeydown=e=>{const dir={ArrowLeft:-1,ArrowDown:-1,ArrowRight:1,ArrowUp:1}[e.key];
         if(dir||e.key==='Home'||e.key==='End'){e.preventDefault();move(dir?S.sliderPos+dir*(e.shiftKey ? .1 : .01):Number(e.key==='End'))}
       };
-      handle.onpointerdown=e=>{if(e.button!==0||!e.isPrimary)return;e.stopPropagation();handle.setPointerCapture(e.pointerId);
+      handle.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||!e.isPrimary)return;e.stopPropagation();try{handle.setPointerCapture(e.pointerId)}catch(err){}
+        const stop=ev=>{if(ev.pointerId!==e.pointerId)return;handle.onpointermove=handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=null};
         handle.onpointermove=ev=>{if(ev.pointerId!==e.pointerId||handle!==sliderEl)return;const r=stage.getBoundingClientRect();
           move((ev.clientX-r.left)/(W*S.zoom))};
-        handle.onlostpointercapture=()=>{handle.onpointermove=null};
+        handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=stop;
       };
     }
   }
@@ -413,8 +415,8 @@ function drawOverlay(){if(overlay)paintOverlay(overlay.getContext('2d'),S.zoom)}
 function paintOverlay(cx,zoom){cx.clearRect(0,0,S.W,S.H);if(!S.regions.length)return;
   if(S.darken){cx.fillStyle='rgba(0,0,0,.5)';cx.fillRect(0,0,S.W,S.H);cx.globalCompositeOperation='destination-out';cx.fillStyle='#000';for(const r of S.regions){cx.fillRect(r.x,r.y,r.w,r.h)}cx.globalCompositeOperation='source-over'}
   if(S.boxes){const lw=Math.max(1,2/zoom);S.regions.forEach((r,i)=>{cx.lineWidth=i===S.active?lw*2:lw;cx.strokeStyle=i===S.active?'#ffb400':'#ff3b30';cx.strokeRect(r.x-lw,r.y-lw,r.w+2*lw,r.h+2*lw);cx.font=`${Math.max(10,14/zoom)}px system-ui`;const lbl=String(i+1);const tw=cx.measureText(lbl).width+6/zoom;const th=Math.max(12,16/zoom),ly=Math.max(0,r.y-lw-th);cx.fillStyle=i===S.active?'#ffb400':'#ff3b30';cx.fillRect(r.x-lw,ly,tw,th);cx.fillStyle='#fff';cx.fillText(lbl,r.x-lw+3/zoom,ly+th*0.78)})}}
-function applyTransform(){stage.classList.toggle('pix',S.zoom>=3);stage.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`;$('zoomRange').value=Math.round(S.zoom*100);$('zoomVal').textContent=Math.round(S.zoom*100)+'%';$('hud').textContent=`${S.W}×${S.H}${S.scale<1?t('hudScale',{s:S.scale.toFixed(2)}):''} · ${t('hudDiff',{p:(100*diffCount/(S.W*S.H)).toFixed(2)})}`}
-function fit(){const vw=viewport.clientWidth,vh=viewport.clientHeight;const sw=S.mode==='split'?S.W*2+16:S.W,sh=S.mode==='split'?S.H+24:S.H;S.zoom=Math.min(1,Math.max(.05,Math.min((vw-24)/sw,(vh-24)/sh)));S.px=(vw-sw*S.zoom)/2;S.py=(vh-sh*S.zoom)/2;applyTransform();drawOverlay()}
+function applyTransform(){stage.classList.toggle('pix',S.zoom>=3);stage.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`;stage.style.setProperty('--iz',String(1/S.zoom));const pad=Math.min(S.H/2,24/S.zoom),midY=(viewport.clientHeight/2-S.py)/S.zoom;stage.style.setProperty('--ky',Math.max(pad,Math.min(S.H-pad,midY))+'px');$('zoomRange').value=Math.round(S.zoom*100);$('zoomVal').textContent=Math.round(S.zoom*100)+'%';$('hud').textContent=`${S.W}×${S.H}${S.scale<1?t('hudScale',{s:S.scale.toFixed(2)}):''} · ${t('hudDiff',{p:(100*diffCount/(S.W*S.H)).toFixed(2)})}`}
+function fit(){const vw=viewport.clientWidth,vh=viewport.clientHeight;if(!vw||!vh||!S.W||!S.H)return;const sp=S.mode==='split',sw=sp?S.W*2+16:S.W,tag=sp?24:0;S.zoom=Math.min(1,Math.max(.05,Math.min(Math.max(1,vw-24)/sw,Math.max(1,vh-24-tag)/S.H)));S.px=(vw-sw*S.zoom)/2;S.py=(vh-(S.H*S.zoom+tag))/2;applyTransform();drawOverlay()}
 $('fitBtn').onclick=fit;
 $('zoomRange').oninput=e=>{setZoom(e.target.value/100,viewport.clientWidth/2,viewport.clientHeight/2)};
 function setZoom(z,cx,cy){z=Math.max(.05,Math.min(8,z));const k=z/S.zoom;S.px=cx-(cx-S.px)*k;S.py=cy-(cy-S.py)*k;S.zoom=z;applyTransform();stage.classList.toggle('pix',S.zoom>=3);drawOverlay()}
