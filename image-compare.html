@@ -80,7 +80,7 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(
 .pass .ph{display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:12px;margin-bottom:4px}
 .chg-item{display:flex;gap:8px;align-items:center;padding:6px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--bg)}
 .chg-item:hover,.chg-item.active{border-color:var(--accent);background:var(--accent-bg)}
-.chg-item canvas{width:56px;height:42px;flex:none;object-fit:contain;background:var(--checker);border-radius:4px;border:1px solid var(--border)}
+.chg-item canvas,.chg-item img{width:56px;height:42px;flex:none;object-fit:contain;background:var(--checker);border-radius:4px;border:1px solid var(--border)}
 .chg-item .info{flex:1;min-width:0;font-size:12px;overflow-wrap:anywhere}.chg-item .info b{display:block}.chg-item .info span{color:var(--fg2);font-family:var(--mono);font-size:11px}
 .tip{color:var(--fg2);font-size:12px;padding:8px 0}
 .modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
@@ -270,7 +270,8 @@ let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=nu
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 const dropCanvas=c=>{if(c){c.width=0;c.height=0}};
 // 差异列表每项带两张裁剪画布：重绘或清空时立即归零，不等垃圾回收（移动端的画布总内存有上限）。
-const clearList=el=>{for(const c of el.querySelectorAll('canvas'))dropCanvas(c);el.replaceChildren()};
+let listObserver=null,listGen=0;
+const clearList=el=>{listGen++;listObserver?.disconnect();listObserver=null;for(const c of el.querySelectorAll('canvas'))dropCanvas(c);el.replaceChildren()};
 
 /* ===================== loading ===================== */
 let openTarget='A',alignJob=0;
@@ -554,12 +555,17 @@ function renderPasses(){const el=$('passes');$('addPass').disabled=S.passes.leng
     d.querySelectorAll('input[type=range]').forEach(r=>{r.oninput=()=>{const k=r.dataset.k;p.options[k]=k==='maxBlobAreaFraction'?r.value/100:+r.value;p.linked=false;r.nextElementSibling.textContent=k==='maxBlobAreaFraction'?r.value+'%':r.value;d.querySelector('select').value='__custom__';clearTimeout(scanTimer);scanTimer=setTimeout(()=>scan(true),120)}});el.appendChild(d)});if(fq&&el.children[fi])el.children[fi].querySelector(fq).focus()}
 $('addPass').onclick=()=>{if(S.passes.length>=MAX_PASSES)return;S.passes.push(newPass(S.passes.length%2?'graphics-large-blocks':'tiny-specks'));scan()};
 function cropCanvas(src,r,maxW=112,maxH=84){const s=Math.min(maxW/r.w,maxH/r.h,4);const c=mk(Math.max(1,r.w*s),Math.max(1,r.h*s));const cx=c.getContext('2d');cx.imageSmoothingEnabled=s<1;cx.drawImage(src,r.x,r.y,r.w,r.h,0,0,c.width,c.height);return c}
-function renderList(){const el=$('chgList');clearList(el);$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
+function cropThumb(src,r){const c=cropCanvas(src,r);try{const u=c.toDataURL('image/png');return u==='data:,'?'':u}catch(e){return ''}finally{dropCanvas(c)}}
+function renderList(){const el=$('chgList');clearList(el);const gen=listGen;$('chgCount').textContent=S.regions.length;$('expListLbl').textContent=t('chgList',{n:S.regions.length});if(!S.W)return;
   if(!S.regions.length){el.innerHTML=`<div class="tip">${t(diffCount?'noMatchingRegions':'noChanges')}</div>`;return}
   if(S.truncated)el.innerHTML=`<div class="tip">${t('truncatedRegions')}</div>`;
-  S.regions.forEach((r,i)=>{const d=document.createElement('div');d.className='chg-item'+(i===S.active?' active':'');d.title=t('focus');d.innerHTML=`<div class="info"><b>${t('change',{n:i+1})}</b><span>${r.w}×${r.h} @ ${r.x},${r.y} · ${r.px}px</span></div>`;d.prepend(cropCanvas(baseB,r));d.prepend(cropCanvas(baseA,r));
+  const fill=(d,r)=>{if(gen!==listGen||d._drawn||!baseA||!baseB)return;d._drawn=true;const [imA,imB]=d.querySelectorAll('img'),uA=cropThumb(baseA,r),uB=cropThumb(baseB,r);if(uA)imA.src=uA;if(uB)imB.src=uB};
+  const jobs=new WeakMap();
+  if(typeof IntersectionObserver==='function')listObserver=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){const r=jobs.get(e.target);if(r){fill(e.target,r);listObserver?.unobserve(e.target)}}},{rootMargin:'200px'});
+  S.regions.forEach((r,i)=>{const d=document.createElement('div');d.className='chg-item'+(i===S.active?' active':'');d.title=t('focus');d.innerHTML=`<img alt=""><img alt=""><div class="info"><b>${t('change',{n:i+1})}</b><span>${r.w}×${r.h} @ ${r.x},${r.y} · ${r.px}px</span></div>`;
     d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};
-    d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d)})}
+    d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d);
+    if(i<12||!listObserver)fill(d,r);else{jobs.set(d,r);listObserver.observe(d)}})}
 function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.bottom<=0||b.top>=window.innerHeight||b.top<0)viewport.scrollIntoView({behavior:scrollBehavior(),block:'nearest'})}
 
 /* ===================== alignment ===================== */
