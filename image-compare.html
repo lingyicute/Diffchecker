@@ -755,7 +755,7 @@ function reportHtml(c){
 }
 function decodeReportImage(img){if(img.decode)return img.decode();if(img.complete)return img.naturalWidth?Promise.resolve():Promise.reject(new Error('Image failed to load'));
   return new Promise((r,j)=>{img.addEventListener('load',r,{once:true});img.addEventListener('error',j,{once:true})})}
-let exporting=false,printing=false;
+let exporting=false,printing=false,reportGen=0;
 $('exportGo').onclick=async()=>{
   $('exportModal').close();if(printing&&!printMedia.matches)clearPrintReport();if(!S.W||exporting||printing)return;
   exporting=true;const rep=$('report');
@@ -764,8 +764,8 @@ $('exportGo').onclick=async()=>{
       try{blob=await new Promise(r=>c.toBlob(r,'image/png'))}finally{dropCanvas(c)}
       if(!blob)throw new Error('PNG encoding failed');download(blob,filename);return;
     }
-    rep.innerHTML=reportHtml(exportCanvas());await Promise.all([...rep.querySelectorAll('img')].map(decodeReportImage));
-    if(!S.W){clearPrintReport();return}
+    const gen=reportGen;rep.innerHTML=reportHtml(exportCanvas());await Promise.all([...rep.querySelectorAll('img')].map(decodeReportImage));
+    if(gen!==reportGen||!S.W){clearPrintReport();return}
     printing=true;document.body.classList.add('printing-image-report');window.print();
   }catch(e){clearPrintReport();console.error(e);notice(t(e.message==='pngTooLarge'?'pngTooLarge':'exportFailed'))}
   finally{exporting=false}
@@ -780,7 +780,7 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
   if(variant){x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor (second person, pressure systems)',40,560)}else{x.fillStyle='#000';x.font='italic 14px system-ui';x.fillText('Verified by: R. Okafor',40,560)}
   x.strokeStyle='#bbb';x.strokeRect(40,480,420,60);x.fillStyle='#000';x.font='13px monospace';x.fillText(variant?'CHK 8f31c2a9 · build 1122':'CHK 7a9e01bd · build 1047',52,515);return c}
 $('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:scrollBehavior()})};
-function clearPrintReport(){printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
+function clearPrintReport(){reportGen++;printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
 window.addEventListener('afterprint',()=>{if(printing)clearPrintReport()});
 printMedia.addEventListener?.('change',e=>{if(!e.matches&&printing)clearPrintReport()});
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
