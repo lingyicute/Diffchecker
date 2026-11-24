@@ -71,6 +71,12 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(
 .diff-head.unified{grid-template-columns:1fr}.diff-head.unified>div+div{border-left:0;border-top:1px solid var(--border)}
 .diff-scroll{overflow:auto;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px)}
 table.diff{border-collapse:collapse;width:100%;font:12.5px/1.6 var(--mono);table-layout:fixed;tab-size:4}
+table.diff thead th{position:sticky;top:0;z-index:2;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border);box-shadow:inset 0 -1px 0 var(--border);font:13px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:left;font-weight:400;vertical-align:middle}
+html[lang="zh"] table.diff thead th{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
+table.diff thead th+th{border-left:1px solid var(--border)}
+table.diff thead .th-in{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-width:0;overflow-wrap:anywhere}
+table.diff thead .title{font-weight:600;margin-right:auto}
+table.diff thead .fname{color:var(--fg2)}
 table.diff td{vertical-align:top;padding:0 10px 0 6px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 table.diff.nowrap{table-layout:auto;width:max-content;min-width:100%}
 table.diff.nowrap td.code{white-space:pre;overflow-wrap:normal;word-break:normal}
@@ -134,10 +140,10 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 #printResult{display:none;color:var(--fg);background:var(--bg)}
 @media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{min-height:52px;gap:8px 14px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));flex-wrap:wrap}.offline-tools{gap:14px}.offline-tools a{min-height:44px}.offline-actions{gap:8px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px max(14px,env(safe-area-inset-right)) 32px max(14px,env(safe-area-inset-left))}}
 @media (max-width:480px){.offline-navigation{gap:4px 10px;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left))}.offline-tools{gap:10px}.offline-actions{gap:6px}.offline-language{padding:5px 8px;font-size:12px}.choices{grid-template-columns:1fr}}
-@media (max-width:640px){.hero{margin:2px 0 12px}.hero h1{font-size:24px}.input-card textarea{min-height:160px;font-size:16px}.row select,.row input[type=text],.rule input{font-size:16px}.toolbar{position:static}.stats{margin-left:0;width:100%}.diff-head{font-size:12px}.diff-head>div{padding:6px 8px}.diff-scroll{max-height:70vh;max-height:70dvh}table.diff{font-size:12px}table.diff td{padding:0 6px 0 4px}table.diff td.num{width:36px;min-width:36px;padding:0 5px 0 3px;font-size:11px}table.diff col.cn{width:36px}table.diff td.sign,table.diff col.cs{width:14px;min-width:14px;padding-left:3px}table.diff.is-split:not(.nowrap){min-width:580px}.modal{padding:16px}}
+@media (max-width:640px){.hero{margin:2px 0 12px}.hero h1{font-size:24px}.input-card textarea{min-height:160px;font-size:16px}.row select,.row input[type=text],.rule input{font-size:16px}.toolbar{position:static}.stats{margin-left:0;width:100%}.diff-head{font-size:12px}.diff-head>div{padding:6px 8px}table.diff thead th{padding:6px 8px;font-size:12px}.diff-scroll{max-height:70vh;max-height:70dvh}table.diff{font-size:12px}table.diff td{padding:0 6px 0 4px}table.diff td.num{width:36px;min-width:36px;padding:0 5px 0 3px;font-size:11px}table.diff col.cn{width:36px}table.diff td.sign,table.diff col.cs{width:14px;min-width:14px;padding-left:3px}table.diff.is-split:not(.nowrap){min-width:580px}.modal{padding:16px}}
 @media (max-height:520px){.toolbar{position:static}}
 @media (pointer:coarse){.btn.sm{min-height:36px;padding:5px 12px}.seg button{min-height:36px}.offline-language{min-height:36px}.row{padding:8px 0}.switch::before{content:"";position:absolute;inset:-6px -10px}.input-card textarea,.row select,.row input[type=text],.rule input{font-size:16px}tr.collapsed td{padding:9px 4px}}
-@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar,.panel,.panel-bg,footer,.modal-bg,.offline-notice,.no-print,.hero{display:none!important}main{padding:0;max-width:none}.diff-scroll{max-height:none;overflow:visible}.diff-wrap{border:0}body{font-size:11px;display:block;height:auto;background:#fff}.printing-text-result #result{display:none!important}.printing-text-result #printResult{display:block}#printResult .preset-redline mark.d{color:#d13415}#printResult .preset-redline mark.i{color:#0f7a4a}table.diff{font-size:10.5px}table.diff tr{break-inside:avoid}table.diff.is-split,table.diff.nowrap{table-layout:fixed;width:100%;min-width:0}table.diff.nowrap td.code{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}table.diff.nowrap tr.split td.code{width:50%}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar,.panel,.panel-bg,footer,.modal-bg,.offline-notice,.no-print,.hero{display:none!important}main{padding:0;max-width:none}.diff-scroll{max-height:none;overflow:visible}.diff-wrap{border:0}body{font-size:11px;display:block;height:auto;background:#fff}.printing-text-result #result{display:none!important}.printing-text-result #printResult{display:block}#printResult .preset-redline mark.d{color:#d13415}#printResult .preset-redline mark.i{color:#0f7a4a}table.diff{font-size:10.5px}table.diff thead{display:table-header-group}table.diff thead th{position:static;box-shadow:none}table.diff tr{break-inside:avoid}table.diff.is-split,table.diff.nowrap{table-layout:fixed;width:100%;min-width:0}table.diff.nowrap td.code{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}table.diff.nowrap tr.split td.code{width:50%}}
 </style>
 </head>
 <body>
@@ -465,7 +471,7 @@ function render(){
   const d=lastDiff;if(!d)return;const scroll=$('diffScroll');
   $('statDel').textContent=d.nDel;$('statIns').textContent=d.nIns;$('statDelL').textContent=t(d.nDel===1?'removal':'removals');$('statInsL').textContent=t(d.nIns===1?'addition':'additions');
   $('headA').textContent=d.input.leftName;$('headB').textContent=d.input.rightName;
-  $('diffWrap').className='diff-wrap preset-'+opts.preset;$('diffHead').classList.toggle('unified',opts.type==='unified');
+  const identical=d.nDel===0&&d.nIns===0;$('diffWrap').className='diff-wrap preset-'+opts.preset;$('diffHead').classList.toggle('unified',opts.type==='unified');$('diffHead').classList.toggle('hidden',opts.type==='split'&&!identical);
   const {html,changes}=diffView(d,opts.type);scroll.innerHTML=html;scroll.dataset.changes=changes;
   const fe=focusIdx>=0&&$('focus-'+focusIdx);if(fe)fe.classList.add('focus');
   scroll.querySelectorAll('tr.collapsed').forEach(tr=>{const open=()=>{const i=tr.rowIndex;expanded.add(+tr.dataset.bi);render();focusRow(scroll,i)};tr.onclick=open;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}});
@@ -498,7 +504,9 @@ function diffView(d,layout,interactive=true){
   // table-layout:fixed 只按第一行的单元格定列宽：开启“隐藏未修改的行”且表格以折叠条（colspan=4）开头时，四列会被均分、行号列和代码列一样宽，所以用 <colgroup> 显式给出各列宽度
   // 行号列默认 48px，只放得下 4 位数：行数上万时按位数加宽（1ch 即等宽字体里一个数字的宽度），否则行号会被折成两行，把每一行都撑高一倍
   const nd=String(Math.max(d.A.length,d.B.length)).length,cn=`<col class="cn"${nd>4?` style="width:calc(${nd}ch + 16px)"`:''}>`;
-  let h=`<table class="diff${unified?'':' is-split'}${opts.noWrap?' nowrap':''}"><colgroup>${unified?cn+cn+'<col class="cs"><col>':cn+'<col>'+cn+'<col>'}</colgroup>`;
+  const ln=d.input?.leftName||'',rn=d.input?.rightName||'';
+  const thead=unified?'':`<thead><tr><th colspan="2" scope="colgroup"><div class="th-in"><span class="title">${esc(t('original'))}</span>${ln?`<span class="fname">${esc(ln)}</span>`:''}</div></th><th colspan="2" scope="colgroup"><div class="th-in"><span class="title">${esc(t('changed'))}</span>${rn?`<span class="fname">${esc(rn)}</span>`:''}</div></th></tr></thead>`;
+  let h=`<table class="diff${unified?'':' is-split'}${opts.noWrap?' nowrap':''}"><colgroup>${unified?cn+cn+'<col class="cs"><col>':cn+'<col>'+cn+'<col>'}</colgroup>${thead}<tbody>`;
   const cell=(side,idx,segs)=>{const txt=side==='l'?d.A[idx]:d.B[idx],c=(side==='l'?hlA:hlB)?.[idx]||null;return (segs?renderSegs(segs,side,c):renderText(txt,c,0))||'&#8203;'};
   for(const r of rows){
     if(r.kind==='collapsed'){h+=`<tr class="collapsed" data-bi="${r.bi}" tabindex="0" role="button"><td colspan="4">⋯ ${esc(t('unchangedLines',{n:r.n}))}<span class="no-print">${esc(t('clickExpand'))}</span></td></tr>`;continue}
@@ -514,7 +522,7 @@ function diffView(d,layout,interactive=true){
       h+=`<tr class="split chg" ${fc}><td class="num ${left!=null?'del':''}">${left!=null?r.l+1:''}</td><td class="code ${left!=null?'del':'empty'}">${left!=null?(r.segs?left:`<mark class="d">${left}</mark>`):''}</td><td class="num ${right!=null?'ins':''}">${right!=null?r.r+1:''}</td><td class="code ${right!=null?'ins':'empty'}">${right!=null?(r.segs?right:`<mark class="i">${right}</mark>`):''}</td></tr>`;
     }
   }
-  return {html:h+'</table>',changes:changeNo};
+  return {html:h+'</tbody></table>',changes:changeNo};
 }
 /* 展开折叠块会把整张表重绘，带焦点的折叠条随之消失，焦点掉回 <body>：Firefox / Safari 里下一次 Tab 又从页面开头数起，
    有很多折叠块时每展开一个都得重新 Tab 过来。重绘后折叠条原来的位置正好是展开出来的第一行，把焦点放到这一行，Tab 就从这里继续 */
@@ -573,10 +581,10 @@ $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;ex
 function clearPrintResult(){$('printResult').replaceChildren();document.body.classList.remove('printing-text-result')}
 window.addEventListener('afterprint',clearPrintResult);
 function printComparison(layout){
-  const wrap=document.createElement('div'),head=$('diffHead').cloneNode(true),scroll=document.createElement('div');
-  wrap.className='diff-wrap preset-'+opts.preset;head.removeAttribute('id');head.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));
-  head.classList.toggle('unified',layout==='unified');scroll.className='diff-scroll';scroll.innerHTML=diffView(lastDiff,layout,false).html;
-  wrap.append(head,scroll);$('printResult').replaceChildren(wrap);document.body.classList.add('printing-text-result');
+  const wrap=document.createElement('div'),scroll=document.createElement('div'),identical=lastDiff.nDel===0&&lastDiff.nIns===0;
+  wrap.className='diff-wrap preset-'+opts.preset;scroll.className='diff-scroll';scroll.innerHTML=diffView(lastDiff,layout,false).html;
+  if(layout==='unified'||identical){const head=$('diffHead').cloneNode(true);head.removeAttribute('id');head.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));head.classList.remove('hidden');head.classList.toggle('unified',layout==='unified');wrap.append(head)}
+  wrap.append(scroll);$('printResult').replaceChildren(wrap);document.body.classList.add('printing-text-result');
   try{window.print()}catch(e){clearPrintResult();throw e}
 }
 $('exportGo').onclick=async()=>{$('exportModal').close();if(rt)run(true);if(!lastDiff)return;
