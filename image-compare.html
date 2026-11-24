@@ -383,7 +383,7 @@ function paintBaseMode(ctx,mode,a,b){const W=a.width,H=a.height;ctx.clearRect(0,
     if(x<W)ctx.drawImage(b,x,0,W-x,H,x,0,W-x,H);
   }else ctx.drawImage(flickShow()===0?a:b,0,0);
 }
-function compositeCanvas(mode,sourceA=baseA,sourceB=baseB){const W=sourceA.width,H=sourceA.height,c=mk(W,H),ctx=c.getContext('2d');
+function compositeCanvas(mode,sourceA=baseA,sourceB=baseB,target){const W=sourceA.width,H=sourceA.height,c=target||mk(W,H),ctx=c.getContext('2d');
   if(mode==='fade'||mode==='slider'||mode==='flicker'){paintBaseMode(ctx,mode,sourceA,sourceB);return c}
   const cached=sourceA===baseA&&sourceB===baseB;
   const a=cached?dataA.data:sourceA.getContext('2d').getImageData(0,0,W,H).data,b=cached?dataB.data:sourceB.getContext('2d').getImageData(0,0,W,H).data;
@@ -697,12 +697,17 @@ const MAX_EXPORT_PIXELS=16*1024*1024;
 function exportCanvas(native=false){
   const w=native?S.frame.w:S.W,h=native?S.frame.h:S.H,split=S.mode==='split';
   if(!fitsCanvas(split?w*2+16:w,h,MAX_EXPORT_PIXELS))throw new Error('pngTooLarge');
-  const fresh=w!==S.W||h!==S.H,[a,b]=fresh?makeBases(w,h):[baseA,baseB];
+  const need=c=>{if(!canvasUsable(c)){dropCanvas(c);throw new Error('pngTooLarge')}return c};
+  const fresh=w!==S.W||h!==S.H;let a=baseA,b=baseB;
+  if(fresh){a=need(mk(w,h));try{b=need(mk(w,h))}catch(e){dropCanvas(a);throw e}
+    const f=S.frame,sx=w/f.w,sy=h/f.h,bx=b.getContext('2d');a.getContext('2d').drawImage(S.A.c,-f.x*sx,-f.y*sy,S.A.w*sx,S.A.h*sy);bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy)}
   try{
-    if(split){const c=mk(w*2+16,h),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
-    const c=compositeCanvas(S.mode,a,b);
-    if(overlay){const ov=mk(w,h);try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
-    return c;
+    if(split){const c=need(mk(w*2+16,h)),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
+    const c=need(mk(w,h));
+    try{compositeCanvas(S.mode,a,b,c);
+      if(overlay){const ov=need(mk(w,h));try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
+      return c;
+    }catch(e){dropCanvas(c);throw e}
   }finally{if(fresh){dropCanvas(a);dropCanvas(b)}}
 }
 function pngUrl(canvas,release=false){try{const url=canvas.toDataURL('image/png');if(url==='data:,')throw new Error('PNG encoding failed');return url}finally{if(release)dropCanvas(canvas)}}
