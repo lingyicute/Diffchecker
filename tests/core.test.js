@@ -1542,3 +1542,16 @@ test('text.synClasses: Python 三引号字符串正确处理转义引号且不�
   const unclosed = '"""abc\\';
   assert.equal(synClasses(unclosed, 'py').every(c => c === 's'), true);
 });
+
+test('text.synClasses: 支持 JS/Python 字符串续行转义与 JS 大写科学计数法', () => {
+  const { synClasses } = run(between(script('text-compare.html'), 'const SYN={', '/* ===================== state'), 'synClasses');
+  const tpl = '`a \\\nb` + 1E5 + 2.5E-3';
+  const jc = synClasses(tpl, 'js');
+  assert.ok(jc.slice(0, 7).every(c => c === 's'));
+  assert.ok(jc.slice(tpl.indexOf('1E5'), tpl.indexOf('1E5') + 3).every(c => c === 'n'));
+  assert.ok(jc.slice(tpl.indexOf('2.5E-3')).every(c => c === 'n'));
+  const jsStr = '"hi \\\nthere" + 1';
+  assert.ok(synClasses(jsStr, 'js').slice(0, 12).every(c => c === 's'));
+  const pyStr = "'a \\\nb' + 1";
+  assert.ok(synClasses(pyStr, 'py').slice(0, 7).every(c => c === 's'));
+});
