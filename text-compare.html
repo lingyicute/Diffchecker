@@ -469,7 +469,7 @@ function updateMeta(side){for(const [s,id,ta] of [['A','metaA',txtA],['B','metaB
 function run(keep){clearPrintResult();clearTimeout(rt);rt=0;const input={left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B},d=computeDiff(input.left,input.right,opts);d.input=input;lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:scrollBehavior(),block:'start'})}
 const CTX=3;// 隐藏未修改行时，每个折叠块首尾各保留的行数（页面、PNG 导出共用）
 function render(){
-  const d=lastDiff;if(!d)return;const scroll=$('diffScroll');
+  const d=lastDiff;if(!d)return;if(!printMedia.matches)clearPrintResult();const scroll=$('diffScroll');
   $('statDel').textContent=d.nDel;$('statIns').textContent=d.nIns;$('statDelL').textContent=t(d.nDel===1?'removal':'removals');$('statInsL').textContent=t(d.nIns===1?'addition':'additions');
   $('headA').textContent=d.input.leftName;$('headB').textContent=d.input.rightName;
   const identical=d.nDel===0&&d.nIns===0;$('diffWrap').className='diff-wrap preset-'+opts.preset;$('diffHead').classList.toggle('unified',opts.type==='unified');$('diffHead').classList.toggle('hidden',opts.type==='split'&&!identical);
@@ -582,8 +582,9 @@ $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;exp
 $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;exportLayout=b.dataset.l;$('exportLayout').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 // 打印树与交互树隔离：浏览器异步打印时也不会暂时改动或保存当前布局、主题。
 function clearPrintResult(){$('printResult').replaceChildren();document.body.classList.remove('printing-text-result')}
+const printMedia=matchMedia('print');
 window.addEventListener('afterprint',clearPrintResult);
-matchMedia('print').addEventListener?.('change',e=>{if(!e.matches)clearPrintResult()});
+printMedia.addEventListener?.('change',e=>{if(!e.matches)clearPrintResult()});
 function printComparison(layout){
   const wrap=document.createElement('div'),scroll=document.createElement('div'),identical=lastDiff.nDel===0&&lastDiff.nIns===0;
   wrap.className='diff-wrap preset-'+opts.preset;scroll.className='diff-scroll';scroll.innerHTML=diffView(lastDiff,layout,false).html;
