@@ -72,12 +72,11 @@ tr.focus td,th.focus{box-shadow:inset 0 -2px 0 var(--accent)}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
 .identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
 .identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
-.panel-bg{position:fixed;inset:0;touch-action:none;background:rgba(0,0,0,.3);opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s linear .2s;z-index:49}
-.panel-bg.open{opacity:1;visibility:visible;transition-delay:0s}
-.panel{position:fixed;top:0;right:0;height:100%;width:min(320px,100vw);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);visibility:hidden;transition:transform .2s,visibility 0s linear .2s;z-index:50;display:flex;flex-direction:column}
-.panel.open{transform:none;visibility:visible;transition-delay:0s}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px 16px;border-bottom:1px solid var(--border);font-weight:600}
-.panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) 16px}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
+@media screen{html:has(dialog[open]){overflow:hidden;scrollbar-gutter:stable}}
+.modal-bg.drawer{justify-content:flex-end;padding:0}
+.panel{height:100%;width:min(320px,100%);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.panel-head{flex:none;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--border);font-weight:600}
+.panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px}
 .switch{position:relative;width:34px;height:20px;flex:none;border-radius:20px;background:var(--border2);border:0;transition:.15s}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:.15s}
@@ -102,7 +101,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 @media (max-width:640px){.hero{margin:2px 0 12px}.hero h1{font-size:24px}.drop{min-height:120px;margin:8px;padding:12px}.preview{margin:0 8px 8px;max-height:180px}.details select,.details input[type=number]{font-size:16px}.details input[type=number]{width:84px}.toolbar{position:static}.stats{margin-left:0;width:100%}.grid-wrap{max-height:70vh;max-height:70dvh}table.grid{--nw:36px;font-size:12px}table.grid th,table.grid td{padding:2px 6px;min-width:7ch;max-width:min(240px,68vw)}table.grid th.num,table.grid td.num{padding:2px 4px}.modal{padding:16px}}
 @media (max-height:520px){.toolbar{position:static}}
 @media (pointer:coarse){.btn.sm{min-height:36px;padding:5px 12px}.seg button{min-height:36px}.offline-language{min-height:36px}.row{padding:8px 0}.switch::before{content:"";position:absolute;inset:-6px -10px}.details select,.details input[type=number]{font-size:16px}.details input[type=number]{width:84px}table.grid tr.collapsed td{padding:9px 4px}}
-@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,.panel-bg,footer,.modal-bg,.offline-notice,.hero,.no-print{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;min-height:0;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;min-width:0;max-width:none;overflow-wrap:anywhere;padding:1px 4px}table.grid tr{break-inside:avoid}tr.collapsed .fold-lbl{position:static;max-width:none}table.grid thead{display:table-header-group}body{font-size:11px;display:block;height:auto}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar .btn,.toolbar .seg,.panel,footer,.modal-bg,.offline-notice,.hero,.no-print{display:none!important}main{padding:0;max-width:none}.toolbar{position:static;border:0;padding:0 0 8px}.grid-wrap{max-height:none;min-height:0;overflow:visible;border:0}table.grid{font-size:10px;width:100%}table.grid th,table.grid td{position:static!important;min-width:0;max-width:none;overflow-wrap:anywhere;padding:1px 4px}table.grid tr{break-inside:avoid}tr.collapsed .fold-lbl{position:static;max-width:none}table.grid thead{display:table-header-group}body{font-size:11px;display:block;height:auto}}
 </style>
 </head>
 <body>
@@ -126,7 +125,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
     <button class="btn primary" id="findBtn" data-i18n="find">Find difference</button>
     <button class="btn" id="exampleBtn" data-i18n="tryExample">Try example</button>
     <button class="btn" id="swapBtn" data-i18n="swap">Swap</button>
-    <button class="btn" id="toolsBtn" aria-controls="panel" aria-expanded="false">⚙ <span data-i18n="tools">Tools</span></button>
+    <button class="btn" id="toolsBtn" aria-controls="panel" aria-haspopup="dialog" aria-expanded="false">⚙ <span data-i18n="tools">Tools</span></button>
     <div class="seg" id="modeSeg"><button data-mode="table" aria-pressed="true" data-i18n-title="tipTable" title="Match up rows and columns using the header row, best for structured tables" data-i18n="table">Table</button><button data-mode="rows" aria-pressed="false" data-i18n-title="tipRows" title="Compare row by row in order, works with any layout" data-i18n="rows">Rows</button></div>
     <div class="seg" id="valSeg"><button data-val="standard" aria-pressed="true" data-i18n="standard">Standard</button><button data-val="formulas" aria-pressed="false" data-i18n="formulas">Formulas</button></div>
   </div>
@@ -141,8 +140,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 </main>
 <footer>Diffchecker · <span data-i18n="footer">rewritten as a dependency-free single page — all processing happens locally in your browser</span></footer>
 
-<div class="panel-bg" id="panelBg" aria-hidden="true"></div>
-<aside class="panel" id="panel" inert><div class="panel-head"><span data-i18n="tools">Tools</span><button class="btn sm ghost" id="panelClose">✕</button></div>
+<dialog class="modal-bg drawer" id="panel" aria-labelledby="panelTitle"><div class="panel">
+  <div class="panel-head"><span id="panelTitle" data-i18n="tools">Tools</span><button class="btn sm ghost" id="panelClose" autofocus>✕</button></div>
   <div class="panel-body">
     <h4 data-i18n="compOptions">Comparison options</h4>
     <div class="row"><span data-i18n="matchHeaders">Match columns by headers</span><button class="switch" data-opt="matchHeaders" role="switch"></button></div>
@@ -155,7 +154,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
     <div class="row"><span data-i18n="hideRows">Hide unchanged rows</span><button class="switch" data-opt="hideRows" role="switch"></button></div>
     <div class="row"><span data-i18n="hideCols">Hide unchanged columns</span><button class="switch" data-opt="hideCols" role="switch"></button></div>
     <div class="row"><span data-i18n="showOld">Show old value in changed cells</span><button class="switch" data-opt="showOld" role="switch"></button></div>
-  </div></aside>
+  </div></div></dialog>
 
 <dialog class="modal-bg" id="exportModal" aria-labelledby="exportModalTitle"><div class="modal"><h3 id="exportModalTitle" data-i18n="export">Export</h3><label data-i18n="format">Format</label>
   <div class="choices" id="fmtChoices"><button class="choice" data-fmt="xlsx" aria-pressed="true"><b>Excel</b><small data-i18n="fmtXlsx">Merged comparison sheet with coloured rows and cells.</small></button><button class="choice" data-fmt="csv" aria-pressed="false"><b>CSV</b><small data-i18n="fmtCsv">Plain comparison table.</small></button><button class="choice" data-fmt="pdf" aria-pressed="false"><b>PDF</b><small data-i18n="fmtPdf">Print the comparison via your browser's PDF printer.</small></button><button class="choice" data-fmt="diffchecker" aria-pressed="false"><b data-i18n="fmtDiff">Diffchecker file</b><small data-i18n="fmtDiffDesc">Save a .diffchecker file that reopens this diff later.</small></button></div>
@@ -189,7 +188,7 @@ I18N.zh.exportXlsxLimit='结果超出 Excel 规格的行数、列数或单元格
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme');if(theme!=='dark'&&theme!=='light')theme=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(lang!=='en'&&lang!=='zh')lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{const s=I18N[lang][k]??I18N.en[k]??k;return v?s.replace(/\{(\w+)\}/g,(m,x)=>Object.hasOwn(v,x)?String(v[x]):m):s};
 const $=id=>document.getElementById(id);
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)render()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});$('panelClose').setAttribute('aria-label',t('cancel'));for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)render()}
 function applyTheme(){document.documentElement.dataset.theme=theme;$('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 $('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-theme',theme);applyTheme()};
@@ -704,8 +703,12 @@ function scrollToEl(box,el){const br=box.getBoundingClientRect(),er=el.getBoundi
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.mode=b.dataset.mode;saveOpts();syncUI();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
 $('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();syncUI();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
-function setPanel(open){const panel=$('panel'),bg=$('panelBg'),el=$(open?'panelClose':'toolsBtn');panel.inert=!open;panel.classList.toggle('open',open);if(bg)bg.classList.toggle('open',open);$('toolsBtn').setAttribute('aria-expanded',String(open));try{el.focus({preventScroll:true})}catch(e){el.focus()}}
-$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);
+function setPanel(open){const panel=$('panel'),button=$('toolsBtn');
+  if(open===panel.open)return;
+  if(open){button.focus({preventScroll:true});panel.showModal()}else panel.close();
+  button.setAttribute('aria-expanded',String(open));
+}
+$('toolsBtn').onclick=()=>setPanel(true);$('panelClose').onclick=()=>setPanel(false);
 document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{const k=sw.dataset.opt;opts[k]=!opts[k];saveOpts();syncUI();if(!RES)return;if(k==='hideRows'){expanded=new Set();render()}else if(k==='hideCols'||k==='showOld')render();else run()});
 function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));$('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)))}
 
@@ -760,13 +763,12 @@ function exampleWb(v){const H=['Order ID','Site','Severity','Assigned within (h)
   const cols=Math.max(...rows.map(r=>r.length));return {type:'json',sheets:[{name:'Work orders',grid:{rows:rows.map(r=>r.map(x=>({v:String(x),f:null,d:false}))),cols}}],load:s=>s.grid}}
 $('exampleBtn').onclick=()=>{cancelLoads();setWorkbook('A',exampleWb(0),'work-orders-v1.xlsx');setWorkbook('B',exampleWb(1),'work-orders-v2.xlsx');run();$('result').scrollIntoView({behavior:scrollBehavior(),block:'start'})};
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
-/* Esc 关闭侧栏与弹窗 */
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open&&$('panel').classList.contains('open')){e.preventDefault();setPanel(false)}});
+$('panel').addEventListener('cancel',e=>{e.preventDefault();setPanel(false)});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
 /* 按下时就关闭会让触屏随后合成的 click 落到遮罩下面的页面上：按下与点击都落在遮罩上才关闭；在遮罩上拖动也不去滚动背后的页面 */
 function closeOnBackdrop(dlg,close){let down=false;dlg.addEventListener('pointerdown',e=>{down=e.target===dlg});dlg.addEventListener('pointercancel',()=>{down=false});dlg.addEventListener('click',e=>{const hit=down&&e.target===dlg;down=false;if(hit)close()});dlg.addEventListener('touchmove',e=>{if(e.target===dlg){e.preventDefault();return}const el=e.target?.nodeType===3?e.target.parentElement:e.target,box=el?.closest?.('.modal');if(box&&box.scrollHeight<=box.clientHeight&&!el.closest('input,textarea,select'))e.preventDefault()},{passive:false})}
 closeOnBackdrop($('exportModal'),()=>$('exportModal').close());
-closeOnBackdrop($('panelBg'),()=>setPanel(false));
+closeOnBackdrop($('panel'),()=>setPanel(false));
 $('panel').addEventListener('touchmove',e=>{const el=e.target?.nodeType===3?e.target.parentElement:e.target,b=el?.closest?.('.panel-body');if(!b||(b.scrollHeight<=b.clientHeight&&!el?.closest?.('input,textarea,select')))e.preventDefault()},{passive:false});
 applyTheme();syncUI();applyLang();
 </script>

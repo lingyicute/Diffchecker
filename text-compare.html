@@ -106,12 +106,11 @@ tr.focus td.code{box-shadow:inset 3px 0 0 var(--accent)}
 .identical{display:flex;flex-direction:column;align-items:center;gap:6px;padding:54px 20px;text-align:center}
 .identical .ic{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);color:var(--accent2);display:grid;place-items:center;font-size:22px}
 .identical h3{margin:6px 0 0;font-size:18px}.identical p{margin:0;color:var(--fg2)}
-.panel-bg{position:fixed;inset:0;touch-action:none;background:rgba(0,0,0,.3);opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s linear .2s;z-index:49}
-.panel-bg.open{opacity:1;visibility:visible;transition-delay:0s}
-.panel{position:fixed;top:0;right:0;height:100%;width:min(320px,100vw);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);visibility:hidden;transition:transform .2s,visibility 0s linear .2s;z-index:50;display:flex;flex-direction:column}
-.panel.open{transform:none;visibility:visible;transition-delay:0s}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px 16px;border-bottom:1px solid var(--border);font-weight:600}
-.panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) 16px}
+@media screen{html:has(dialog[open]){overflow:hidden;scrollbar-gutter:stable}}
+.modal-bg.drawer{justify-content:flex-end;padding:0}
+.panel{height:100%;width:min(320px,100%);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.panel-head{flex:none;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--border);font-weight:600}
+.panel-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 .panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px}
 .row select,.row input[type=text]{border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--bg);max-width:160px;min-width:0}
@@ -144,7 +143,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 @media (max-width:640px){.hero{margin:2px 0 12px}.hero h1{font-size:24px}.input-card textarea{min-height:160px;font-size:16px}.row select,.row input[type=text],.rule input{font-size:16px}.toolbar{position:static}.stats{margin-left:0;width:100%}.diff-head{font-size:12px}.diff-head>div{padding:6px 8px}table.diff thead th{padding:6px 8px;font-size:12px}.diff-scroll{max-height:70vh;max-height:70dvh}table.diff{font-size:12px}table.diff td{padding:0 6px 0 4px}table.diff td.num{width:36px;min-width:36px;padding:0 5px 0 3px;font-size:11px}table.diff col.cn{width:36px}table.diff td.sign,table.diff col.cs{width:14px;min-width:14px;padding-left:3px}table.diff.is-split:not(.nowrap){min-width:580px}.modal{padding:16px}}
 @media (max-height:520px){.toolbar{position:static}}
 @media (pointer:coarse){.btn.sm{min-height:36px;padding:5px 12px}.seg button{min-height:36px}.offline-language{min-height:36px}.row{padding:8px 0}.switch::before{content:"";position:absolute;inset:-6px -10px}.input-card textarea,.row select,.row input[type=text],.rule input{font-size:16px}table.diff tr.collapsed td{padding:9px 4px}}
-@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar,.panel,.panel-bg,footer,.modal-bg,.offline-notice,.no-print,.hero{display:none!important}main{padding:0;max-width:none}.diff-scroll{max-height:none;overflow:visible}.diff-wrap{border:0}body{font-size:11px;display:block;height:auto;background:#fff}.printing-text-result #result{display:none!important}.printing-text-result #printResult{display:block}#printResult .preset-redline mark.d{color:#d13415}#printResult .preset-redline mark.i{color:#0f7a4a}table.diff{font-size:10.5px}table.diff thead{display:table-header-group}table.diff thead th{position:static;box-shadow:none}table.diff tr{break-inside:avoid}tr.collapsed .fold-lbl{position:static;max-width:none}table.diff.is-split,table.diff.nowrap{table-layout:fixed;width:100%;min-width:0}table.diff.nowrap td.code{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}table.diff.nowrap tr.split td.code{width:50%}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.offline-header,.inputs,.actions,.toolbar,.panel,footer,.modal-bg,.offline-notice,.no-print,.hero{display:none!important}main{padding:0;max-width:none}.diff-scroll{max-height:none;overflow:visible}.diff-wrap{border:0}body{font-size:11px;display:block;height:auto;background:#fff}.printing-text-result #result{display:none!important}.printing-text-result #printResult{display:block}#printResult .preset-redline mark.d{color:#d13415}#printResult .preset-redline mark.i{color:#0f7a4a}table.diff{font-size:10.5px}table.diff thead{display:table-header-group}table.diff thead th{position:static;box-shadow:none}table.diff tr{break-inside:avoid}tr.collapsed .fold-lbl{position:static;max-width:none}table.diff.is-split,table.diff.nowrap{table-layout:fixed;width:100%;min-width:0}table.diff.nowrap td.code{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}table.diff.nowrap tr.split td.code{width:50%}}
 </style>
 </head>
 <body>
@@ -171,7 +170,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
     <button class="btn" id="exampleBtn" data-i18n="tryExample">Try example</button>
     <button class="btn" id="swapBtn" data-i18n="swap">Swap diffs</button>
     <button class="btn" id="clearAllBtn" data-i18n="clear">Clear</button>
-    <button class="btn" id="toolsBtn" aria-controls="panel" aria-expanded="false">⚙ <span data-i18n="tools">Tools</span></button>
+    <button class="btn" id="toolsBtn" aria-controls="panel" aria-haspopup="dialog" aria-expanded="false">⚙ <span data-i18n="tools">Tools</span></button>
   </div>
   <section id="result" class="hidden">
     <div class="toolbar">
@@ -191,9 +190,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 </main>
 <footer>Diffchecker · <span data-i18n="footer">rewritten as a dependency-free single page — all processing happens locally in your browser</span></footer>
 
-<div class="panel-bg" id="panelBg" aria-hidden="true"></div>
-<aside class="panel" id="panel" inert aria-label="Tools">
-  <div class="panel-head"><span data-i18n="tools">Tools</span><button class="btn sm ghost" id="panelClose">✕</button></div>
+<dialog class="modal-bg drawer" id="panel" aria-labelledby="panelTitle"><div class="panel">
+  <div class="panel-head"><span id="panelTitle" data-i18n="tools">Tools</span><button class="btn sm ghost" id="panelClose" autofocus>✕</button></div>
   <div class="panel-body">
     <h4 data-i18n="display">Display</h4>
     <div class="row"><span data-i18n="realtime">Real-time editor</span><button class="switch" data-opt="realtime" role="switch" aria-checked="false"></button></div>
@@ -214,7 +212,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
     <div class="rules" id="rules"></div>
     <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" id="addRule" data-i18n="addRule">Add rule</button><button class="btn sm primary" id="applyRules" data-i18n="apply">Apply changes</button></div>
   </div>
-</aside>
+</div></dialog>
 
 <dialog class="modal-bg" id="exportModal" aria-labelledby="exportModalTitle"><div class="modal">
   <h3 id="exportModalTitle" data-i18n="export">Export</h3>
@@ -243,7 +241,7 @@ I18N.en.exportXlsxLimit='Excel cannot store this many rows or columns, or a cell
 I18N.zh.exportXlsxLimit='结果超出 Excel 规格的行数、列数或单元格 32767 字符上限。请改用其他格式。';
 let lang=lsGet('offline-lang');if(lang!=='en'&&lang!=='zh')lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 const t=(k,v)=>{const s=I18N[lang][k]??I18N.en[k]??k;return v?s.replace(/\{(\w+)\}/g,(m,x)=>Object.hasOwn(v,x)?String(v[x]):m):s};
-function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n)});document.getElementById('langBtn').textContent=lang==='en'?'中文':'English';document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.getElementById('rules').querySelectorAll('input').forEach(i=>{i.placeholder=t('rulePh');i.setAttribute('aria-label',i.placeholder)});document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);e.setAttribute('aria-label',e.placeholder)});document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.getElementById('rules').querySelectorAll('button').forEach(b=>{b.title=t('remove');b.setAttribute('aria-label',b.title)});document.title=t('hero.title')+' — Diffchecker';updateMeta();document.querySelectorAll('.switch,select[data-sel]').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});{const p=document.getElementById('panel'),c=document.getElementById('panelClose');if(p)p.setAttribute('aria-label',t('tools'));if(c)c.setAttribute('aria-label',t('cancel'))}if(lastDiff)render()}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n)});document.getElementById('langBtn').textContent=lang==='en'?'中文':'English';document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.getElementById('rules').querySelectorAll('input').forEach(i=>{i.placeholder=t('rulePh');i.setAttribute('aria-label',i.placeholder)});document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);e.setAttribute('aria-label',e.placeholder)});document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.getElementById('rules').querySelectorAll('button').forEach(b=>{b.title=t('remove');b.setAttribute('aria-label',b.title)});document.title=t('hero.title')+' — Diffchecker';updateMeta();document.querySelectorAll('.switch,select[data-sel]').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});document.getElementById('panelClose').setAttribute('aria-label',t('cancel'));if(lastDiff)render()}
 let theme=lsGet('offline-theme');if(theme!=='dark'&&theme!=='light')theme=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
 function applyTheme(){document.documentElement.dataset.theme=theme;document.getElementById('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 document.getElementById('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
@@ -562,8 +560,12 @@ for(const [card,side] of [[$('cardA'),'A'],[$('cardB'),'B']]){card.addEventListe
 $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.type=b.dataset.type;saveOpts();syncUI();render()};
 $('levelSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.level=b.dataset.level;saveOpts();syncUI();render()};
 /* tools panel */
-function setPanel(open){const panel=$('panel'),bg=$('panelBg'),el=$(open?'panelClose':'toolsBtn');panel.inert=!open;panel.classList.toggle('open',open);if(bg)bg.classList.toggle('open',open);$('toolsBtn').setAttribute('aria-expanded',String(open));try{el.focus({preventScroll:true})}catch(e){el.focus()}}
-$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);
+function setPanel(open){const panel=$('panel'),button=$('toolsBtn');
+  if(open===panel.open)return;
+  if(open){button.focus({preventScroll:true});panel.showModal()}else panel.close();
+  button.setAttribute('aria-expanded',String(open));
+}
+$('toolsBtn').onclick=()=>setPanel(true);$('panelClose').onclick=()=>setPanel(false);
 document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{opts[sw.dataset.opt]=!opts[sw.dataset.opt];saveOpts();syncUI();const k=sw.dataset.opt;if(k==='hideUnchanged'){expanded=new Set();if(lastDiff)render()}else if(k==='noWrap'){if(lastDiff)render()}else if(k==='realtime'){if(opts.realtime||rt)run(true)}else if(lastDiff||opts.realtime)run(true)});
 document.querySelectorAll('select[data-sel]').forEach(s=>s.onchange=()=>{opts[s.dataset.sel]=s.value;saveOpts();if(lastDiff)render()});
 function ruleRow(v){const div=document.createElement('div');div.className='rule';div.innerHTML=`<input type="text" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" value="${esc(v||'')}" placeholder="${esc(t('rulePh'))}" aria-label="${esc(t('rulePh'))}"><button class="btn sm ghost" title="${esc(t('remove'))}" aria-label="${esc(t('remove'))}">✕</button>`;div.querySelector('button').onclick=()=>{div.remove()};return div}
@@ -731,13 +733,12 @@ $('exampleBtn').onclick=()=>{cancelLoads();txtA.value=EX_A;txtB.value=EX_B;fileN
 
 /* init */
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));// 拖入文件时不让浏览器直接打开它而丢掉当前内容
-/* Esc 关闭侧栏与弹窗 */
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open&&$('panel').classList.contains('open')){e.preventDefault();setPanel(false)}});
+$('panel').addEventListener('cancel',e=>{e.preventDefault();setPanel(false)});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
 /* 按下时就关闭会让触屏随后合成的 click 落到遮罩下面的页面上：按下与点击都落在遮罩上才关闭；在遮罩上拖动也不去滚动背后的页面 */
 function closeOnBackdrop(dlg,close){let down=false;dlg.addEventListener('pointerdown',e=>{down=e.target===dlg});dlg.addEventListener('pointercancel',()=>{down=false});dlg.addEventListener('click',e=>{const hit=down&&e.target===dlg;down=false;if(hit)close()});dlg.addEventListener('touchmove',e=>{if(e.target===dlg){e.preventDefault();return}const el=e.target?.nodeType===3?e.target.parentElement:e.target,box=el?.closest?.('.modal');if(box&&box.scrollHeight<=box.clientHeight&&!el.closest('input,textarea,select'))e.preventDefault()},{passive:false})}
 closeOnBackdrop($('exportModal'),()=>$('exportModal').close());
-closeOnBackdrop($('panelBg'),()=>setPanel(false));
+closeOnBackdrop($('panel'),()=>setPanel(false));
 $('panel').addEventListener('touchmove',e=>{const el=e.target?.nodeType===3?e.target.parentElement:e.target,b=el?.closest?.('.panel-body');if(!b||(b.scrollHeight<=b.clientHeight&&!el?.closest?.('input,textarea,select')))e.preventDefault()},{passive:false});
 applyTheme();syncUI(true);applyLang();updateMeta();
 </script>
