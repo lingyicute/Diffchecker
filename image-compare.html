@@ -446,7 +446,7 @@ let clearVpPtrs=()=>{};
  viewport.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.05,8);S.zoom=r.z;S.px=r.x;S.py=r.y;applyTransform();drawOverlay()}else if(pan&&pan.id===e.pointerId){S.px=p.x-pan.ox;S.py=p.y-pan.oy;applyTransform()}};
  viewport.onpointerup=viewport.onpointercancel=viewport.onlostpointercapture=end}
 /* toolbar */
-$('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;const sp=S.mode==='split';S.mode=b.dataset.mode;$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderStage();if(sp||S.mode==='split')fit()};// 只有进出并排模式时舞台尺寸才会变；其余模式之间切换保留当前的缩放与位置，便于对着同一处细节来回比较
+$('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;const sp=S.mode==='split';if(S.mode!==b.dataset.mode)holdSide=0;S.mode=b.dataset.mode;$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderStage();if(sp||S.mode==='split')fit()};// 只有进出并排模式时舞台尺寸才会变；其余模式之间切换保留当前的缩放与位置，便于对着同一处细节来回比较
 $('fadeRange').oninput=e=>{S.fade=e.target.value/100;$('fadeVal').textContent=e.target.value+'%';if(mainCanvas)paintBaseMode(mainCanvas.getContext('2d'),'fade',baseA,baseB)};
 // 至少 200ms 才切换一次，且尊重系统的减少动态效果设置。
 $('flickRange').oninput=e=>{S.flick=Math.max(200,2100-+e.target.value);restartFlicker()};
@@ -454,8 +454,8 @@ $('flickPause').onclick=()=>{S.flickPaused=!S.flickPaused;restartFlicker()};
 reducedMotion.addEventListener?.('change',e=>{if(e.matches){S.flickPaused=true;restartFlicker()}});
 const hold=(side,on)=>{holdSide=on?side:0;redrawFlicker()};
 for(const [id,side] of [['holdA',1],['holdB',2]])$(id).onclick=()=>{S.flickPaused=true;holdSide=0;flickState=side-1;restartFlicker()};
-document.addEventListener('keydown',e=>{if(S.mode!=='flicker'||!S.W||e.ctrlKey||e.metaKey||e.altKey||e.target.closest?.('dialog,input,textarea,select,[contenteditable]'))return;
-  if(e.key==='1'||e.key==='2')hold(+e.key,true)});
+document.addEventListener('keydown',e=>{if(e.repeat||S.mode!=='flicker'||!S.W||e.ctrlKey||e.metaKey||e.altKey||e.target.closest?.('dialog,input,textarea,select,[contenteditable]'))return;
+  if((e.key==='1'||e.key==='2')&&holdSide!==+e.key)hold(+e.key,true)});
 document.addEventListener('keyup',e=>{if((e.key==='1'||e.key==='2')&&holdSide===+e.key)hold(0,false)});
 window.addEventListener('blur',()=>hold(0,false));
 $('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(highlightTimer);highlightTimer=setTimeout(()=>{highlightTimer=0;if(S.W&&S.mode==='highlight')renderStage()},60)};
