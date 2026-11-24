@@ -31,6 +31,7 @@ The interface language follows your browser by default. Use the buttons at the t
 ### Image comparison
 
 - Six modes: split, fade, flicker, slider, highlight and subtract. Flicker can be paused and starts paused when reduced motion is preferred. Use the arrow keys or Home / End to move a focused slider.
+- On touch screens, swipe vertically over the comparison to scroll the page. Tap **Pan & zoom** in the viewer to drag or pinch the image; tap it again to return to page scrolling.
 - Automatic or manual alignment (shift, rotate, scale, flip). If the two images differ in size you are offered automatic alignment. The comparison frame includes both images after transforming them, without clipping pixels outside the original frame.
 - Differing regions are detected and listed; click one to jump to it. Sensitivity is adjustable and several scans can be combined.
 - Paste images from the clipboard (`Ctrl` / `⌘` + `V`). The focused image input takes precedence.

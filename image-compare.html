@@ -51,7 +51,10 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(
 .spacer{flex:1}
 .work{display:grid;grid-template-columns:1fr 320px;gap:14px;margin-top:14px;min-height:520px}
 .work.collapsed{grid-template-columns:1fr 44px}
-.viewport{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--checker);background-image:linear-gradient(45deg,rgba(128,128,128,.12) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.12) 75%),linear-gradient(45deg,rgba(128,128,128,.12) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.12) 75%);background-size:20px 20px;background-position:0 0,10px 10px;height:calc(100vh - 230px);height:calc(100dvh - 230px);min-height:480px;cursor:grab;-webkit-user-select:none;user-select:none;touch-action:none}
+.viewport{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--checker);background-image:linear-gradient(45deg,rgba(128,128,128,.12) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.12) 75%),linear-gradient(45deg,rgba(128,128,128,.12) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.12) 75%);background-size:20px 20px;background-position:0 0,10px 10px;height:calc(100vh - 230px);height:calc(100dvh - 230px);min-height:480px;cursor:grab;-webkit-user-select:none;user-select:none;touch-action:pan-y pinch-zoom}
+.viewport.touch-pan{touch-action:none}
+.btn.pan-toggle{display:none;position:absolute;top:10px;left:10px;box-shadow:var(--shadow)}
+@media (any-pointer:coarse){.btn.pan-toggle{display:inline-flex}}
 .viewport.panning{cursor:grabbing}
 .stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 .stage canvas{display:block;image-rendering:auto}
@@ -60,7 +63,7 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(
 .split-pair.v{flex-direction:column;gap:calc(30px * var(--iz,1))}
 .split-pair>div{position:relative}.split-pair .tag{position:absolute;bottom:100%;left:0;margin-bottom:calc(6px * var(--iz,1));transform:scale(var(--iz,1));transform-origin:0 100%;font-size:12px;line-height:1.2;font-weight:600;color:var(--fg2);white-space:nowrap}
 #overlay{position:absolute;left:0;top:0;pointer-events:none}
-.sl-handle{position:absolute;top:0;width:calc(44px * var(--iz,1));margin-left:calc(-22px * var(--iz,1));cursor:ew-resize;pointer-events:auto;touch-action:none}
+.sl-handle{position:absolute;top:0;width:calc(44px * var(--iz,1));margin-left:calc(-22px * var(--iz,1));cursor:ew-resize;pointer-events:auto;touch-action:pan-y pinch-zoom}
 .sl-handle::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:calc(2px * var(--iz,1));transform:translateX(-50%);background:#fff;box-shadow:0 0 0 calc(1px * var(--iz,1)) rgba(0,0,0,.35)}
 .sl-handle::after{content:"◂ ▸";position:absolute;top:var(--ky,50%);left:50%;transform:translate(-50%,-50%) scale(var(--iz,1));width:36px;height:36px;border-radius:50%;background:#fff;color:#333;box-shadow:0 1px 6px rgba(0,0,0,.35);display:grid;place-items:center;font-size:11px;letter-spacing:-2px}
 .hud{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 20px);display:flex;flex-wrap:wrap;gap:4px 6px;background:rgba(0,0,0,.55);color:#fff;border-radius:8px;padding:4px 8px;font-size:12px;font-family:var(--mono);pointer-events:none;overflow-wrap:anywhere}
@@ -155,6 +158,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
         <div class="stage" id="stage"></div>
         <div class="hud" id="hud"></div>
         <div class="flicker-tag hidden" id="flickTag"></div>
+        <button class="btn sm pan-toggle" id="touchPan" type="button" aria-pressed="false" data-i18n="touchPan">Pan &amp; zoom</button>
       </div>
       <aside class="sidebar sb" id="sidebar">
         <div class="sb-head"><span data-i18n="changeList">Change list</span><button class="btn sm ghost" id="sbToggle" data-i18n-title="sbTip" title="Collapse sidebar" aria-expanded="true" aria-controls="sidebar">⇥</button></div>
@@ -236,8 +240,8 @@ I18N.en.alignOutOfRange='The aligned images span too large a frame. Reduce the s
 I18N.zh.alignOutOfRange='对齐后的画幅过大，请减小平移量或缩放比例。';
 I18N.en.invalidAlignment='Enter finite alignment values and a positive scale.';
 I18N.zh.invalidAlignment='请输入有效的对齐数值，缩放比例必须为正数。';
-Object.assign(I18N.en,{pauseFlicker:'Pause',resumeFlicker:'Resume',flickSpeed:'Flicker speed',shiftX:'Horizontal shift (pixels)',shiftY:'Vertical shift (pixels)',aligning:'Aligning images…'});
-Object.assign(I18N.zh,{pauseFlicker:'暂停',resumeFlicker:'继续',flickSpeed:'闪烁速度',shiftX:'水平平移（像素）',shiftY:'垂直平移（像素）',aligning:'正在自动对齐图片…'});
+Object.assign(I18N.en,{pauseFlicker:'Pause',resumeFlicker:'Resume',flickSpeed:'Flicker speed',shiftX:'Horizontal shift (pixels)',shiftY:'Vertical shift (pixels)',aligning:'Aligning images…',touchPan:'Pan & zoom'});
+Object.assign(I18N.zh,{pauseFlicker:'暂停',resumeFlicker:'继续',flickSpeed:'闪烁速度',shiftX:'水平平移（像素）',shiftY:'垂直平移（像素）',aligning:'正在自动对齐图片…',touchPan:'平移和缩放'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme');if(theme!=='dark'&&theme!=='light')theme=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(lang!=='en'&&lang!=='zh')lang=/^zh/i.test(navigator.language||'')?'zh':'en';
 if(matchMedia('(pointer:coarse)').matches){I18N.en.browse='or tap to choose an image';I18N.zh.browse='或点击选择图片'}// 触屏设备没有 Ctrl+V
 const t=(k,v)=>{const s=I18N[lang][k]??I18N.en[k]??k;return v?s.replace(/\{(\w+)\}/g,(m,x)=>Object.hasOwn(v,x)?String(v[x]):m):s};
@@ -286,7 +290,7 @@ function hideAligning(){const n=$('notice');if(n.textContent===I18N.en.aligning|
 function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('');hideAligning()}
 function closeAlign(){stopAuto();clearAlignPtrs();AL.classList.remove('kb');AL.close();for(const id of ['alignA','alignB'])dropCanvas($(id))}
 function clearComparison(){
-  clearPrintReport();closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
+  clearPrintReport();closeAlign();$('promptModal').close();$('exportModal').close();setTouchPan(false);
   $('pmGo').onclick=$('pmSkip').onclick=null;
   clearInterval(flickTimer);clearTimeout(scanTimer);clearTimeout(highlightTimer);cancelAnimationFrame(overlayRaf);scanTimer=highlightTimer=overlayRaf=0;holdSide=0;flickState=0;
   S.W=S.H=0;lastVpW=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
@@ -481,13 +485,18 @@ $('zoomRange').oninput=e=>{setZoom(e.target.value/100,viewport.clientWidth/2,vie
 function setZoom(z,cx,cy){z=Math.max(.05,Math.min(8,z));const k=z/S.zoom;S.px=cx-(cx-S.px)*k;S.py=cy-(cy-S.py)*k;S.zoom=z;applyTransform();scheduleOverlay()}
 viewport.addEventListener('wheel',e=>{e.preventDefault();const r=viewport.getBoundingClientRect();setZoom(S.zoom*(e.deltaY<0?1.12:1/1.12),e.clientX-r.left,e.clientY-r.top)},{passive:false});
 let clearVpPtrs=()=>{};
+// 单指默认滚动页面，滑块仍能横拖；打开平移模式才由画布接管触屏手势。
+function setTouchPan(on){
+  clearVpPtrs();viewport.classList.toggle('touch-pan',on);$('touchPan').setAttribute('aria-pressed',String(on));
+}
+$('touchPan').onclick=()=>setTouchPan(!viewport.classList.contains('touch-pan'));
 {const ptrs=new Map();let pan=null,pinch=null;
  const local=e=>{const r=viewport.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
  const startPinch=()=>{const [[a,p1],[b,p2]]=[...ptrs];pinch={a,b,p1:{...p1},p2:{...p2},start:{x:S.px,y:S.py,z:S.zoom}};pan=null;viewport.classList.remove('panning')};
  const end=e=>{if(!ptrs.delete(e.pointerId))return;if(ptrs.size>=2){if(!pinch||!ptrs.has(pinch.a)||!ptrs.has(pinch.b))startPinch()}else if(ptrs.size===1){pinch=null;const [[id,p]]=[...ptrs];pan={id,ox:p.x-S.px,oy:p.y-S.py};viewport.classList.add('panning')}else{pan=pinch=null;viewport.classList.remove('panning')}};
  vpPtrCount=()=>ptrs.size;
  clearVpPtrs=()=>{ptrs.clear();pan=pinch=null;clearSliderDrag();viewport.classList.remove('panning')};
- viewport.onpointerdown=e=>{if((e.pointerType==='mouse'&&e.button!==0)||sliderDragging||(ptrs.size===0&&e.target.closest('.sl-handle')))return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(viewport,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);if(ptrs.size===1){pan={id:e.pointerId,ox:p.x-S.px,oy:p.y-S.py};pinch=null;viewport.classList.add('panning')}else startPinch()};
+ viewport.onpointerdown=e=>{if(e.target.closest('button')||(e.pointerType==='touch'&&!viewport.classList.contains('touch-pan'))||(e.pointerType==='mouse'&&e.button!==0)||sliderDragging||(ptrs.size===0&&e.target.closest('.sl-handle')))return;if(ptrs.size>=2&&!ptrs.has(e.pointerId))return;capture(viewport,e.pointerId);const p=local(e);ptrs.set(e.pointerId,p);if(ptrs.size===1){pan={id:e.pointerId,ox:p.x-S.px,oy:p.y-S.py};pinch=null;viewport.classList.add('panning')}else startPinch()};
  viewport.onpointermove=e=>{if(!ptrs.has(e.pointerId))return;const p=local(e);ptrs.set(e.pointerId,p);if(pinch){const q1=ptrs.get(pinch.a),q2=ptrs.get(pinch.b);if(!q1||!q2)return;const r=pinchTransform(pinch.start,pinch.p1,pinch.p2,q1,q2,.05,8);S.zoom=r.z;S.px=r.x;S.py=r.y;applyTransform();scheduleOverlay()}else if(pan&&pan.id===e.pointerId){S.px=p.x-pan.ox;S.py=p.y-pan.oy;applyTransform()}};
  viewport.onpointerup=viewport.onpointercancel=viewport.onlostpointercapture=end}
 /* toolbar */
