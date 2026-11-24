@@ -323,7 +323,7 @@ function setImage(side,img,name,quiet,keepOld){
   const prev=S[side]?.c;clearComparison();if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
   S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
   d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
-  d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name} · ${c.width}×${c.height}`;
+  d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name?name+' · ':''}${c.width}×${c.height}`;
   d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);const old=S[side]?.c;S[side]=null;clearComparison();dropCanvas(old);d.classList.remove('has');
     d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;d.focus()};
   S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign();
