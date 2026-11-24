@@ -1920,3 +1920,20 @@ test('翻译插值与导出文件名: 单遍替换不误改文件名中的占位
     assert.equal(ctx.baseName(), exp, f);
   }
 });
+
+test('文本页：实时模式只在后台刷新时保留输入焦点和滚动位置', () => {
+  const code = between(script('text-compare.html'), 'function run(keep)', '\nconst CTX=');
+  let jumps = 0, blurs = 0;
+  const editor = { value: 'a', blur() { blurs++; } };
+  const ctx = {
+    rt: 0, opts: { realtime: true }, fileNames: {}, txtA: editor, txtB: { value: 'b' },
+    lastDiff: null, expanded: null, focusIdx: -1, document: { activeElement: editor },
+    clearPrintResult() {}, clearTimeout() {}, computeDiff: () => ({}), render() {}, scrollBehavior: () => 'auto',
+    $: () => ({ classList: { remove() {} }, scrollIntoView() { jumps++; } }),
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';run(true);', ctx);
+  assert.deepEqual([jumps, blurs], [0, 0]);
+  vm.runInContext('run();', ctx);
+  assert.deepEqual([jumps, blurs], [1, 1]);
+});
