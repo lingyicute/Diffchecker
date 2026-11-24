@@ -1656,3 +1656,17 @@ test('scrollToEl: 在结果容器内定位差异时不拖动外层页面，表�
     if (f.startsWith('excel')) assert.equal(got.left, 528);
   }
 });
+
+test('弹窗遮罩：触控目标为文本节点时仍可识别未溢出弹窗并阻止滚动背景页', () => {
+  for (const f of ['text-compare.html', 'image-compare.html', 'excel-compare.html']) {
+    const { closeOnBackdrop } = run(between(script(f), 'function closeOnBackdrop', '\ncloseOnBackdrop('), 'closeOnBackdrop');
+    const h = {}, dlg = { addEventListener: (n, fn) => { h[n] = fn; } };
+    closeOnBackdrop(dlg, () => {});
+    const shortModal = { scrollHeight: 200, clientHeight: 200 };
+    const parentEl = { closest: s => (s === '.modal' ? shortModal : null) };
+    const textNode = { nodeType: 3, parentElement: parentEl };
+    let blocked = 0;
+    h.touchmove({ target: textNode, preventDefault: () => blocked++ });
+    assert.equal(blocked, 1, f);
+  }
+});
