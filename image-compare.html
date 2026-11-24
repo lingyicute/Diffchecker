@@ -323,7 +323,7 @@ function sourceCanvas(img,w,h){
   for(let k=1;k>.2;k*=Math.SQRT1_2){const c=mk(w*k,h*k);if(canvasUsable(c)){try{c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c}catch(e){dropCanvas(c);throw e}}dropCanvas(c)}
   throw new Error('imageTooLarge');
 }
-function setImage(side,img,name,quiet,keepOld){
+function setImage(side,img,name,quiet){
   const w=img.naturalWidth||img.width||1024,h=img.naturalHeight||img.height||768;
   if(!fitsCanvas(w,h,MAX_SOURCE_PIXELS))throw new Error('imageTooLarge');
   const prev=S[side]?.c,owned=!(img instanceof HTMLCanvasElement);
@@ -335,13 +335,19 @@ function setImage(side,img,name,quiet,keepOld){
     if(!thumb||thumb==='data:,')throw new Error('Could not render the image thumbnail');
   }catch(e){if(owned)dropCanvas(c);throw e}finally{dropCanvas(th)}
   if(!owned)clearComparison();
-  if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
-  S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
-  d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
-  d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name?name+' · ':''}${c.width}×${c.height}`;
-  d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);const old=S[side]?.c;S[side]=null;clearComparison();dropCanvas(old);d.classList.remove('has');
-    d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;d.focus()};
+  if(prev&&prev!==c)dropCanvas(prev);
+  S[side]={c,name,w:c.width,h:c.height,thumb};renderInput(side);
   S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign();
+}
+function renderInput(side){
+  const image=S[side],d=$('drop'+side),key=side==='A'?'original':'changed';
+  const label=`<span class="lbl" data-i18n="${key}">${t(key)}</span>`;
+  d.classList.toggle('has',!!image);
+  if(!image){d.innerHTML=label+`<div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;return}
+  const {name,w,h,thumb}=image;
+  d.innerHTML=label+`<img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
+  d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name?name+' · ':''}${w}×${h}`;
+  d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);S[side]=null;clearComparison();dropCanvas(image.c);renderInput(side);d.focus()};
 }
 const alignText=r=>t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)});
 function alignNotice(r){notice(alignText(r))}
@@ -362,7 +368,13 @@ $('findBtn').onclick=()=>{if(!S.A||!S.B)return notice(t('needTwo'));compare();$(
 // 无翻转或同时水平 + 垂直翻转（F = −I，与旋转可交换）时为 R(−θ)·F；只有一个方向翻转时 F·R(−θ) = R(θ)·F，旋转角保持不变。
 function invertAlign(al,a,b){const th=(al.rot%360)*Math.PI/180,c=Math.cos(th),s=Math.sin(th),k=1/al.scale,vx=a.w/2-b.w/2-al.dx,vy=a.h/2-b.h/2-al.dy,ux=k*(c*vx+s*vy)*(al.fh?-1:1),uy=k*(-s*vx+c*vy)*(al.fv?-1:1),one=!!al.fh!==!!al.fv;
   return {dx:b.w/2+ux-a.w/2,dy:b.h/2+uy-a.h/2,rot:(one?al.rot:-al.rot)||0,scale:k,fh:!!al.fh,fv:!!al.fv}}
-$('swapBtn').onclick=()=>{if(!S.A||!S.B)return;const a=S.A,b=S.B,al=invertAlign(S.align,a,b);try{comparisonFrame(b,a,al)}catch(e){notice(t('alignOutOfRange'));return}cancelLoads();setImage('A',b.c,b.name,true,true);setImage('B',a.c,a.name,true,true);S.align=al;compare()};
+$('swapBtn').onclick=()=>{
+  if(!S.A||!S.B)return;
+  const a=S.A,b=S.B,al=invertAlign(S.align,a,b);
+  try{comparisonFrame(b,a,al)}catch(e){notice(t('alignOutOfRange'));return}
+  cancelLoads();clearComparison();S.A=b;S.B=a;S.align=al;
+  renderInput('A');renderInput('B');compare();
+};
 $('resetBtn').onclick=()=>{cancelLoads();clearComparison();S.align=defAlign();S.passes=[];S.seeded=false;S.regions=[];S.active=-1;if(S.A&&S.B)compare()};
 
 /* ===================== compositing ===================== */

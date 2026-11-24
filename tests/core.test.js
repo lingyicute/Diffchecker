@@ -2033,3 +2033,19 @@ test('图片切换模式：主画布分配失败时释放新画布，但不清�
   assert.equal(canvas.width, 0);
   assert.equal(canvas.height, 0);
 });
+
+test('交换图片时复用两张源图和已生成的缩略图', () => {
+  const code = between(script('image-compare.html'), "$('swapBtn').onclick=", "$('resetBtn').onclick=");
+  const btn = {}, shown = [], a = { c: {}, thumb: 'one' }, b = { c: {}, thumb: 'two' }, inverse = {};
+  const S = { A: a, B: b }, ctx = {
+    S, $: () => btn, invertAlign: () => inverse, comparisonFrame() {}, cancelLoads() {}, clearComparison() {},
+    renderInput(side) { shown.push(S[side].thumb); }, compare() {},
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  btn.onclick();
+  assert.equal(S.A, b);
+  assert.equal(S.B, a);
+  assert.equal(S.align, inverse);
+  assert.deepEqual(shown, ['two', 'one']);
+});
