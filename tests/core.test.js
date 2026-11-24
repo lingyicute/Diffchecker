@@ -1774,3 +1774,71 @@ test('image.hideLoading: 任一侧仍在载入时不隐藏提示，取消全部�
   ctx.cancelLoad('B');
   assert.equal(noticeEl.shown, false);
 });
+
+test('image.ensureOverlay: 仅在需要绘制边框或压暗背景时分配，关闭后立即归零释放', () => {
+  const s = script('image-compare.html');
+  const code = between(s, 'function ensureOverlay', 'function scheduleOverlay');
+  const children = [], created = [];
+  const slider = { parentNode: null };
+  const stage = {
+    appendChild(n) { n.parentNode = stage; children.push(n); },
+    insertBefore(n, ref) { n.parentNode = stage; const i = children.indexOf(ref); children.splice(i < 0 ? children.length : i, 0, n); },
+  };
+  slider.parentNode = stage;
+  children.push(slider);
+  const ctx = {
+    S: { mode: 'slider', W: 200, H: 100, regions: [{ x: 0, y: 0, w: 10, h: 10 }], boxes: false, darken: false, zoom: 1 },
+    overlay: null, overlayRaf: 0, sliderEl: slider, stage,
+    cancelAnimationFrame() {},
+    paintOverlay() {},
+    dropCanvas(c) { if (c) { c.width = 0; c.height = 0; } },
+    canvasUsable: () => true,
+    mk(w, h) {
+      const c = { width: w, height: h, parentNode: null, getContext: () => ({}), remove() { const i = children.indexOf(c); if (i >= 0) children.splice(i, 1); c.parentNode = null; } };
+      created.push(c); return c;
+    },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';this.drawOverlay=drawOverlay;this.getOv=()=>overlay;', ctx);
+  ctx.drawOverlay();
+  assert.equal(created.length, 0);
+  ctx.S.boxes = true;
+  ctx.drawOverlay();
+  assert.equal(created.length, 1);
+  assert.equal(children.indexOf(created[0]) < children.indexOf(slider), true);
+  ctx.S.boxes = false;
+  ctx.drawOverlay();
+  assert.equal(ctx.getOv(), null);
+  assert.equal(created[0].width, 0);
+  assert.equal(children.includes(created[0]), false);
+});
+
+test('image.exportCanvas: 原分辨率导出时在分配叠加画布前先释放源副本画布', () => {
+  const s = script('image-compare.html');
+  const code = between(s, 'function exportCanvas', 'function pngUrl');
+  const events = [];
+  let seq = 0;
+  const ctx = {
+    MAX_EXPORT_PIXELS: 16 * 1024 * 1024,
+    S: { mode: 'highlight', frame: { x: 0, y: 0, w: 400, h: 300 }, W: 200, H: 150, A: { c: {}, w: 400, h: 300 }, B: { c: {} }, align: {}, regions: [{ x: 0, y: 0, w: 10, h: 10 }], boxes: true, darken: false },
+    baseA: {}, baseB: {},
+    fitsCanvas: () => true,
+    canvasUsable: () => true,
+    drawAligned() {},
+    paintOverlay() {},
+    compositeCanvas() { events.push('composite'); },
+    mk(w, h) {
+      const id = ++seq;
+      events.push('mk:' + id);
+      return { id, width: w, height: h, getContext: () => ({ drawImage() {}, translate() {}, scale() {} }) };
+    },
+    dropCanvas(c) { if (c) { events.push('drop:' + c.id); c.width = 0; c.height = 0; } },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';this.exportCanvas=exportCanvas;', ctx);
+  const out = ctx.exportCanvas(true);
+  assert.equal(out.id, 3);
+  assert.ok(events.indexOf('drop:1') < events.indexOf('mk:4'));
+  assert.ok(events.indexOf('drop:2') < events.indexOf('mk:4'));
+  assert.ok(events.includes('drop:4'));
+});
