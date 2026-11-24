@@ -277,7 +277,7 @@ function cancelLoad(side){loadVersion[side]++;pending[side]=false}
 function cancelLoads(){cancelLoad('A');cancelLoad('B')}
 const setAlignMsg=(m,ok=false)=>{const e=$('alignErr');e.textContent=m;e.classList.toggle('ok',ok&&!!m)};
 function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('')}
-function closeAlign(){stopAuto();clearAlignPtrs();$('alignModal').close()}
+function closeAlign(){stopAuto();clearAlignPtrs();$('alignModal').close();for(const id of ['alignA','alignB'])dropCanvas($(id))}
 function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
   $('pmGo').onclick=$('pmSkip').onclick=null;
@@ -286,7 +286,6 @@ function clearComparison(){
   dropCanvas(baseA);dropCanvas(baseB);dropCanvas(overlay);dropCanvas(mainCanvas);
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
   stage.replaceChildren();clearList($('chgList'));$('result').classList.add('hidden');
-  for(const id of ['alignA','alignB']){$(id).width=$(id).height=1}
 }
 const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
 for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.target!==d||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();d.click()};
@@ -355,8 +354,9 @@ function makeBases(w,h){
   bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy);
   return [a,b];
 }
-function buildBases(){S.frame=comparisonFrame(S.A,S.B,S.align);const frame=workingFrame(S.frame.w,S.frame.h);S.W=frame.w;S.H=frame.h;S.scale=frame.scale;
-  [baseA,baseB]=makeBases(S.W,S.H);
+function buildBases(){const nextFrame=comparisonFrame(S.A,S.B,S.align),frame=workingFrame(nextFrame.w,nextFrame.h);
+  dropCanvas(baseA);dropCanvas(baseB);dropCanvas(mainCanvas);dropCanvas(overlay);baseA=baseB=mainCanvas=overlay=dataA=dataB=diffMap=signMap=null;stage.replaceChildren();clearList($('chgList'));
+  S.frame=nextFrame;S.W=frame.w;S.H=frame.h;S.scale=frame.scale;[baseA,baseB]=makeBases(S.W,S.H);
   dataA=baseA.getContext('2d').getImageData(0,0,S.W,S.H);dataB=baseB.getContext('2d').getImageData(0,0,S.W,S.H);computeDiffMap()}
 function drawAligned(ctx,img,al,sx,sy=sx){ctx.save();ctx.scale(sx,sy);const w=img.width,h=img.height;ctx.translate(w/2+al.dx,h/2+al.dy);ctx.rotate((al.rot%360)*Math.PI/180);ctx.scale(al.scale*(al.fh?-1:1),al.scale*(al.fv?-1:1));ctx.drawImage(img,-w/2,-h/2);ctx.restore()}
 function diffPixels(a,b,map,sign,rgba){
