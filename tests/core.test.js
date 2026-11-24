@@ -1637,19 +1637,19 @@ test('image.grayPatch: 采样读取像素后立即归零释放临时画布', () 
 test('scrollToEl: 在结果容器内定位差异时不拖动外层页面，表格页同时横向滚到改动单元格', () => {
   for (const [f, end] of [['text-compare.html', '\nfunction goChange'], ['excel-compare.html', "\n$('prevBtn')"]]) {
     const code = between(script(f), 'const scrollBehavior=', end);
-    const ctx = { matchMedia: () => ({ matches: false }), window: { innerHeight: 800 } };
+    let outer = 0, got = null;
+    const ctx = { matchMedia: () => ({ matches: false }), window: { innerHeight: 800, scrollBy: () => outer++ } };
     vm.createContext(ctx);
     vm.runInContext(code + ';this.scrollToEl=scrollToEl;', ctx);
-    let outer = 0, got = null;
     const box = {
-      scrollTop: 0, scrollLeft: 0, clientHeight: 400, clientWidth: 360,
+      scrollTop: 0, scrollLeft: 0, clientHeight: 400, scrollHeight: 1800, clientWidth: 360, closest: () => null,
       getBoundingClientRect: () => ({ top: 100, bottom: 500, left: 0, right: 360 }),
       querySelector: s => s === 'thead' ? { getBoundingClientRect: () => ({ height: 36 }) } : s === 'th.num.b' ? { getBoundingClientRect: () => ({ right: 80 }) } : null,
       scrollTo: o => { got = o; },
-      scrollIntoView: () => { outer++; },
+
     };
     const cell = { getBoundingClientRect: () => ({ left: 620, right: 700 }) };
-    const row = { tagName: 'TR', getBoundingClientRect: () => ({ top: 900, height: 20 }), querySelector: () => cell };
+    const row = { tagName: 'TR', classList: { contains: () => false }, getBoundingClientRect: () => ({ top: 900, height: 20 }), querySelector: () => cell };
     ctx.scrollToEl(box, row);
     assert.equal(outer, 0, f);
     assert.equal(got.top, 592, f);
@@ -1678,11 +1678,10 @@ test('文本页 scrollToEl: 并排视图横向溢出时定位到纯新增或纯�
   vm.runInContext(code + ';this.scrollToEl=scrollToEl;', ctx);
   let got = null;
   const mkBox = scrollLeft => ({
-    scrollTop: 0, scrollLeft, clientHeight: 400, clientWidth: 360, scrollWidth: 640,
+    scrollTop: 0, scrollLeft, clientHeight: 400, scrollHeight: 1800, clientWidth: 360, scrollWidth: 640, closest: () => null,
     getBoundingClientRect: () => ({ top: 100, bottom: 500, left: 0, right: 360 }),
     querySelector: () => ({ getBoundingClientRect: () => ({ height: 32 }) }),
     scrollTo: o => { got = o; },
-    scrollIntoView: () => {},
   });
   const mkRow = (delRect, insRect) => ({
     classList: { contains: c => c === 'split' },
@@ -1874,27 +1873,33 @@ test('image.alignKeyboardOpen 与 drawAlign: 大屏软键盘弹出取消吸顶�
   assert.deepEqual(drawn, ['B']);
 });
 
-test('scrollToEl: 仅顶部或底部窄条可见时滚入视口，短容器完整可见时不额外滚动', () => {
+test('scrollToEl: 按滚动后的差异行判定是否超出可视视口或被工具条遮住', () => {
   for (const [f, end] of [['text-compare.html', '\nfunction goChange'], ['excel-compare.html', "\n$('prevBtn')"]]) {
     const code = between(script(f), 'const scrollBehavior=', end);
-    const ctx = { matchMedia: () => ({ matches: false }), window: { innerHeight: 667 } };
+    let outer = [];
+    const win = { innerHeight: 667, scrollBy: opt => outer.push(opt.top) };
+    const ctx = { matchMedia: () => ({ matches: true }), window: win, getComputedStyle: () => ({ position: 'sticky', top: '0px' }) };
     vm.createContext(ctx);
     vm.runInContext(code + ';this.scrollToEl=scrollToEl;', ctx);
-    const runWith = (top, bottom) => {
-      let outer = 0;
+    const runWith = (top, rowTop, max = 1400, sticky = false) => {
+      outer = [];
       const box = {
-        scrollTop: 0, scrollLeft: 0, clientHeight: bottom - top, clientWidth: 360, scrollWidth: 360,
-        getBoundingClientRect: () => ({ top, bottom, left: 0, right: 360 }),
-        querySelector: () => null, scrollTo() {}, scrollIntoView() { outer++; },
+        scrollTop: 0, scrollLeft: 0, clientHeight: 400, scrollHeight: 400 + max, clientWidth: 360, scrollWidth: 360,
+        getBoundingClientRect: () => ({ top, bottom: top + 400, left: 0, right: 360 }),
+        closest: () => sticky ? { querySelector: () => ({ offsetHeight: 60 }) } : null,
+        querySelector: () => null, scrollTo() {},
       };
-      const row = { tagName: 'TR', getBoundingClientRect: () => ({ top: top + 20, height: 20 }), querySelector: () => null };
+      const row = { tagName: 'TR', classList: { contains: () => false }, getBoundingClientRect: () => ({ top: rowTop, height: 20 }), querySelector: () => null };
       ctx.scrollToEl(box, row);
       return outer;
     };
-    assert.equal(runWith(600, 1000), 1, f);
-    assert.equal(runWith(-340, 60), 1, f);
-    assert.equal(runWith(100, 180), 0, f);
-    assert.equal(runWith(0, 600), 0, f);
+    assert.deepEqual(runWith(475, 1250), [26], f); // 相当一段容器可见，居中的目标仍在屏外
+    assert.deepEqual(runWith(475, 495), [], f); // 不需要移动已可见的差异
+    assert.deepEqual(runWith(100, 490, 0), [], f); // 容器不能再向下滚动
+    assert.deepEqual(runWith(-100, 200, 0), [], f); // 不把实际留在容器底部的差异拉回中心
+    assert.deepEqual(runWith(-100, 45, 1400, true), [-23], f); // 被吸顶工具条挡住
+    win.visualViewport = { offsetTop: 80, height: 270 };
+    assert.deepEqual(runWith(250, 750), [118], f);
   }
 });
 
