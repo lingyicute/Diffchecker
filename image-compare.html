@@ -611,7 +611,7 @@ function drawAlign(){
 function syncAlignInputs(){$('alDx').value=alTmp.dx.toFixed(1);$('alDy').value=alTmp.dy.toFixed(1);$('alRot').value=alTmp.rot.toFixed(2);$('alScale').value=Number(alTmp.scale.toPrecision(8));$('flipH').setAttribute('aria-pressed',alTmp.fh);$('flipV').setAttribute('aria-pressed',alTmp.fv)}
 for(const [id,k] of alignFields)$(id).oninput=e=>{stopAuto();const v=e.target.valueAsNumber;if(validAlignValue(k,v)){alTmp[k]=v;drawAlign()}};
 for(const id of ['allowRot','allowScale'])$(id).onchange=()=>stopAuto();
-$('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=drawAlign;
+$('flipH').onclick=()=>{stopAuto();alTmp.fh=!alTmp.fh;syncAlignInputs();drawAlign()};$('flipV').onclick=()=>{stopAuto();alTmp.fv=!alTmp.fv;syncAlignInputs();drawAlign()};$('alOpacity').oninput=()=>{$('alignB').style.opacity=$('alOpacity').value/100};
 let clearAlignPtrs=()=>{};
 {const v=$('alignView'),ptrs=new Map();let drag=null,pinch=null,locked=false;
  const local=e=>{const r=v.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
