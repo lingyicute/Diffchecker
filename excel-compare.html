@@ -56,7 +56,7 @@ main{flex:1;width:100%;max-width:1700px;margin:0 auto;padding:22px max(28px,env(
 table.grid{border-collapse:separate;border-spacing:0;font:12.5px/1.45 var(--mono);min-width:100%}
 table.grid th,table.grid td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 8px;vertical-align:top;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;min-width:10ch;max-width:360px;text-align:left}
 table.grid th{position:sticky;top:0;background:var(--bg2);font-weight:600;z-index:2;color:var(--fg)}
-table.grid th.num,table.grid td.num{width:var(--nw,46px);min-width:var(--nw,46px);text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;-webkit-user-select:none;user-select:none;font-size:11px}
+table.grid th.num,table.grid td.num{width:var(--nw,46px);min-width:var(--nw,46px);max-width:var(--nw,46px);white-space:nowrap;text-align:right;color:var(--fg3);background:var(--bg2);position:sticky;z-index:1;-webkit-user-select:none;user-select:none;font-size:11px}
 table.grid th.num{z-index:3}
 td.num.a,th.num.a{left:0}td.num.b,th.num.b{left:var(--nw,46px);border-right:2px solid var(--border2)}
 table.grid th.col-ins{background:linear-gradient(var(--ins-block),var(--ins-block)),var(--bg);color:var(--ins-fg)}table.grid th.col-del{background:linear-gradient(var(--del-block),var(--del-block)),var(--bg);color:var(--del-fg);text-decoration:line-through}table.grid th.col-mov{background:linear-gradient(var(--mov-block),var(--mov-block)),var(--bg)}table.grid th.col-chg{background:linear-gradient(var(--chg-block),var(--chg-block)),var(--bg)}
@@ -688,7 +688,7 @@ function render(){const R=RES,wrap=$('gridWrap');const s=R.stats,L=(n,k)=>t(n===
   const th=c=>{const st=c.hdrChg?'chg':c.st,key={ins:'inserted',del:'deleted',mov:'moved',chg:'headerChanged'}[st];
     return `<th scope="col" class="col-${st}"${key?` id="focus-${changeNo++}" title="${esc(t(key))}"`:''}>${esc(c.name)}${c.st==='mov'?' ⇄':''}</th>`;
   };
-  let h=`<table class="grid"${nd>4?` style="--nw:calc(${nd}ch + 19px)"`:''}><thead><tr><th class="num a" scope="col">#A</th><th class="num b" scope="col">#B</th>${cols.map(th).join('')}</tr></thead><tbody>`;
+  let h=`<table class="grid"${nd>=4?` style="--nw:calc(${nd}ch + 19px)"`:''}><thead><tr><th class="num a" scope="col">#A</th><th class="num b" scope="col">#B</th>${cols.map(th).join('')}</tr></thead><tbody>`;
   let i=0;const rows=R.rows,CTX=2;
   while(i<rows.length){const r=rows[i];
     if(r.type==='eq'&&!r.hasColData&&opts.hideRows){let j=i;while(j<rows.length&&rows[j].type==='eq'&&!rows[j].hasColData)j++;const run=j-i;const head=i===0?0:CTX,tail=j===rows.length?0:CTX;if(run-head-tail>1&&!expanded.has(i)){for(let k=i;k<i+head;k++)h+=rowHtml(rows[k],cols);h+=`<tr class="collapsed" data-i="${i}" tabindex="0" role="button"><td colspan="${cols.length+2}"><span class="fold-lbl">⋯ ${esc(t('unchangedRows',{n:run-head-tail}))}<span class="no-print">${esc(t('clickExpand'))}</span></span></td></tr>`;for(let k=j-tail;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}for(let k=i;k<j;k++)h+=rowHtml(rows[k],cols);i=j;continue}
