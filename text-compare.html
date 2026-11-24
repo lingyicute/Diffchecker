@@ -583,7 +583,10 @@ $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;ex
 // 打印树与交互树隔离：浏览器异步打印时也不会暂时改动或保存当前布局、主题。
 function clearPrintResult(){$('printResult').replaceChildren();document.body.classList.remove('printing-text-result')}
 const printMedia=matchMedia('print');
+const clearStalePrint=()=>{if(!printMedia.matches&&document.body.classList.contains('printing-text-result'))clearPrintResult()};
 window.addEventListener('afterprint',clearPrintResult);
+window.addEventListener('focus',clearStalePrint);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)clearStalePrint()});
 printMedia.addEventListener?.('change',e=>{if(!e.matches)clearPrintResult()});
 function printComparison(layout){
   const wrap=document.createElement('div'),scroll=document.createElement('div'),identical=lastDiff.nDel===0&&lastDiff.nIns===0;
