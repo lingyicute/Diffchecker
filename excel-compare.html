@@ -758,7 +758,7 @@ $('exampleBtn').onclick=()=>{cancelLoads();setWorkbook('A',exampleWb(0),'work-or
 /* Esc 关闭侧栏与弹窗 */
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open&&$('panel').classList.contains('open')){e.preventDefault();setPanel(false)}});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
+$('exportModal').addEventListener('pointerdown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 applyTheme();syncUI();applyLang();
 </script>
 </body>

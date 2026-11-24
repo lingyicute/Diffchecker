@@ -748,9 +748,9 @@ window.addEventListener('resize',()=>{if(AL.open){const v=$('alignView'),w=v.cli
 // 原生对话框处理焦点与 Esc；对齐取消和跳过提示仍走各自的业务逻辑。
 AL.addEventListener('cancel',e=>{e.preventDefault();closeAlign()});
 $('promptModal').addEventListener('cancel',e=>{e.preventDefault();$('pmSkip').click()});
-$('exportModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
-AL.addEventListener('mousedown',e=>{if(e.target===e.currentTarget)closeAlign()});
-$('promptModal').addEventListener('mousedown',e=>{if(e.target===e.currentTarget)$('pmSkip').click()});
+$('exportModal').addEventListener('pointerdown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
+AL.addEventListener('pointerdown',e=>{if(e.target===e.currentTarget)closeAlign()});
+$('promptModal').addEventListener('pointerdown',e=>{if(e.target===e.currentTarget)$('pmSkip').click()});
 applyTheme();applyLang();
 </script>
 </body>
