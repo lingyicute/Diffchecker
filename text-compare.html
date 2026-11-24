@@ -542,7 +542,7 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Ente
 $('swapBtn').onclick=()=>{cancelLoads();const v=txtA.value;txtA.value=txtB.value;txtB.value=v;fileNames={A:fileNames.B,B:fileNames.A};updateMeta();if(lastDiff||opts.realtime)run(true)};
 $('clearAllBtn').onclick=()=>{cancelLoads();txtA.value='';txtB.value='';fileNames={A:'',B:''};updateMeta();clearResult()};
 document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const s=b.dataset.clear;loadVersion[s]++;(s==='A'?txtA:txtB).value='';fileNames[s]='';updateMeta(s);if(lastDiff||opts.realtime)run(true)});
-document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const ta=b.dataset.copy==='A'?txtA:txtB;let ok=true;try{await navigator.clipboard.writeText(ta.value)}catch(e){ta.focus();ta.select();ta.setSelectionRange?.(0,ta.value.length);try{ok=document.execCommand('copy')}catch(e2){ok=false}}notice(t(ok?'copied':'copyFailed'))});/* 两种方式都失败时不能谎报“已复制” */
+document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const ta=b.dataset.copy==='A'?txtA:txtB;let ok=true;try{await navigator.clipboard.writeText(ta.value)}catch(e){const prev=document.activeElement;try{ta.focus({preventScroll:true})}catch(e1){ta.focus()}ta.select();ta.setSelectionRange?.(0,ta.value.length);try{ok=document.execCommand('copy')}catch(e2){ok=false}if(prev!==ta){ta.setSelectionRange?.(0,0);ta.blur();try{prev?.focus?.({preventScroll:true})}catch(e3){}}}notice(t(ok?'copied':'copyFailed'))});/* 两种方式都失败时不能谎报“已复制” */
 /* file open & drag/drop */
 let openTarget='A';
 document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{openTarget=b.dataset.open;$('fileInput').value='';$('fileInput').click()});
