@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src blob: data:; form-action 'none'; base-uri 'none'" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Compare Excel — Diffchecker</title>
@@ -16,7 +16,7 @@ body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,
 html[lang="zh"] body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
 button,select,input{font:inherit;color:inherit}button,a,select,label{touch-action:manipulation}button{cursor:pointer}
 .offline-header{flex:none;width:100%;background:var(--bg);border-bottom:1px solid var(--border)}
-.offline-navigation{display:flex;align-items:center;min-height:64px;gap:32px;padding:0 28px}
+.offline-navigation{display:flex;align-items:center;min-height:64px;gap:32px;padding:0 max(28px,env(safe-area-inset-right)) 0 max(28px,env(safe-area-inset-left))}
 .offline-brand{display:inline-flex;align-items:center;gap:9px;color:inherit;text-decoration:none;font-size:20px;font-weight:700;letter-spacing:-.65px;white-space:nowrap}
 .offline-tools{display:flex;align-self:stretch;gap:28px}
 .offline-tools a{display:inline-flex;align-items:center;padding:0 2px;border-bottom:2px solid transparent;color:var(--fg2);font-size:14px;font-weight:500;text-decoration:none}
@@ -25,7 +25,7 @@ button,select,input{font:inherit;color:inherit}button,a,select,label{touch-actio
 .offline-badge{display:inline-flex;align-items:center;gap:6px;color:var(--fg2);font-size:12px;white-space:nowrap}.offline-badge>span:first-child{color:#22a06b;font-size:9px}
 .offline-language{min-height:32px;padding:5px 11px;border:1px solid var(--border2);border-radius:7px;background:transparent;font-size:13px;white-space:nowrap}.offline-language:hover{background:var(--bg2)}
 :focus-visible{outline:2px solid #159b58;outline-offset:2px}
-main{flex:1;width:100%;max-width:1700px;margin:0 auto;padding:22px 28px 50px}
+main{flex:1;width:100%;max-width:1700px;margin:0 auto;padding:22px max(28px,env(safe-area-inset-right)) 50px max(28px,env(safe-area-inset-left))}
 .hero{text-align:center;margin:6px 0 20px}.hero h1{font-size:30px;margin:0 0 4px;letter-spacing:-.5px}.hero p{margin:0;color:var(--fg2)}
 .inputs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .card{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
@@ -75,13 +75,13 @@ tr.focus td,th.focus{box-shadow:inset 0 -2px 0 var(--accent)}
 .panel-bg.open{opacity:1;visibility:visible;transition-delay:0s}
 .panel{position:fixed;top:0;right:0;height:100%;width:min(320px,100vw);background:var(--bg);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(100%);visibility:hidden;transition:transform .2s,visibility 0s linear .2s;z-index:50;display:flex;flex-direction:column}
 .panel.open{transform:none;visibility:visible;transition-delay:0s}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600}
-.panel-body{overflow:auto;overscroll-behavior:contain;padding:8px 16px calc(24px + env(safe-area-inset-bottom))}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 14px 16px;border-bottom:1px solid var(--border);font-weight:600}
+.panel-body{overflow:auto;overscroll-behavior:contain;padding:8px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) 16px}.panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin:18px 0 8px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px}
 .switch{position:relative;width:34px;height:20px;flex:none;border-radius:20px;background:var(--border2);border:0;transition:.15s}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:.15s}
 .switch[aria-checked="true"]{background:var(--accent)}.switch[aria-checked="true"]::after{left:16px}
-.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
+.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
 .modal-bg::backdrop{background:rgba(0,0,0,.35)}
 .modal-bg[open]{display:flex}
 .modal{background:var(--bg);border-radius:14px;width:440px;max-width:94vw;max-height:92vh;max-height:92dvh;overflow:auto;overscroll-behavior:contain;box-shadow:var(--shadow);padding:20px 22px}.modal h3{margin:0 0 12px;font-size:17px}

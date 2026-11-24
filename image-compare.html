@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' 'self' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src blob: data:; worker-src blob:; form-action 'none'; base-uri 'none'" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Compare images — Diffchecker</title>
@@ -15,7 +15,7 @@ body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,
 html[lang="zh"] body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
 button,select,input{font:inherit;color:inherit}button,a,select,label{touch-action:manipulation}button{cursor:pointer}
 .offline-header{flex:none;width:100%;background:var(--bg);border-bottom:1px solid var(--border)}
-.offline-navigation{display:flex;align-items:center;min-height:64px;gap:32px;padding:0 28px}
+.offline-navigation{display:flex;align-items:center;min-height:64px;gap:32px;padding:0 max(28px,env(safe-area-inset-right)) 0 max(28px,env(safe-area-inset-left))}
 .offline-brand{display:inline-flex;align-items:center;gap:9px;color:inherit;text-decoration:none;font-size:20px;font-weight:700;letter-spacing:-.65px;white-space:nowrap}
 .offline-tools{display:flex;align-self:stretch;gap:28px}
 .offline-tools a{display:inline-flex;align-items:center;padding:0 2px;border-bottom:2px solid transparent;color:var(--fg2);font-size:14px;font-weight:500;text-decoration:none}
@@ -24,7 +24,7 @@ button,select,input{font:inherit;color:inherit}button,a,select,label{touch-actio
 .offline-badge{display:inline-flex;align-items:center;gap:6px;color:var(--fg2);font-size:12px;white-space:nowrap}.offline-badge>span:first-child{color:#22a06b;font-size:9px}
 .offline-language{min-height:32px;padding:5px 11px;border:1px solid var(--border2);border-radius:7px;background:transparent;font-size:13px;white-space:nowrap}.offline-language:hover{background:var(--bg2)}
 :focus-visible{outline:2px solid #159b58;outline-offset:2px}
-main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 50px}
+main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(safe-area-inset-right)) 50px max(28px,env(safe-area-inset-left))}
 .hero{text-align:center;margin:6px 0 20px}.hero h1{font-size:30px;margin:0 0 4px;letter-spacing:-.5px}.hero p{margin:0;color:var(--fg2)}
 .inputs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .inputs>*,.work>*,.align-grid>*{min-width:0}
@@ -83,7 +83,7 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px 28px 50px}
 .chg-item canvas{width:56px;height:42px;flex:none;object-fit:contain;background:var(--checker);border-radius:4px;border:1px solid var(--border)}
 .chg-item .info{flex:1;min-width:0;font-size:12px;overflow-wrap:anywhere}.chg-item .info b{display:block}.chg-item .info span{color:var(--fg2);font-family:var(--mono);font-size:11px}
 .tip{color:var(--fg2);font-size:12px;padding:8px 0}
-.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
+.modal-bg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);border:0;background:transparent;color:inherit;display:none;align-items:center;justify-content:center}
 .modal-bg::backdrop{background:rgba(0,0,0,.4)}
 .modal-bg[open]{display:flex}
 .modal{background:var(--bg);border-radius:14px;width:460px;max-width:94vw;max-height:92vh;max-height:92dvh;overflow:auto;overscroll-behavior:contain;box-shadow:var(--shadow);padding:20px 22px}
