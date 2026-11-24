@@ -575,7 +575,7 @@ function renderList(){const el=$('chgList');clearList(el);const gen=listGen;$('c
     d.onclick=()=>{S.active=i;el.querySelectorAll('.chg-item').forEach((x,j)=>x.classList.toggle('active',j===i));focusRegion(r)};
     d.tabIndex=0;d.setAttribute('role','button');d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};/* 差异列表项同样可用键盘聚焦并定位 */el.appendChild(d);
     if(i<12||!listObserver)fill(d,r);else{jobs.set(d,r);listObserver.observe(d)}})}
-function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.bottom<=0||b.top>=window.innerHeight||b.top<0)viewport.scrollIntoView({behavior:scrollBehavior(),block:'nearest'})}
+function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay();const b=viewport.getBoundingClientRect();if(b.top<0||b.bottom>window.innerHeight)viewport.scrollIntoView({behavior:scrollBehavior(),block:'nearest'})}
 
 /* ===================== alignment ===================== */
 const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0,w:0,h:0};
