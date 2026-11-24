@@ -1937,3 +1937,32 @@ test('文本页：实时模式只在后台刷新时保留输入焦点和滚动�
   vm.runInContext('run();', ctx);
   assert.deepEqual([jumps, blurs], [1, 1]);
 });
+
+test('文本页：输入法组词暂停排队的对比，提交后恢复而快捷键不抢占组词或模态框', () => {
+  const code = between(script('text-compare.html'), 'let rt=0;', "\n$('swapBtn')");
+  const handlers = {}, editor = side => ({ addEventListener(n, fn) { handlers[side + n] = fn; } });
+  let next = 0, dialog = false, comparisons = 0;
+  const timers = new Map();
+  const ctx = {
+    txtA: editor('A'), txtB: editor('B'), opts: { realtime: true },
+    document: { addEventListener(n, fn) { handlers[n] = fn; }, querySelector: () => dialog },
+    clearTimeout(id) { timers.delete(id); }, setTimeout(fn, ms) { timers.set(++next, { fn, ms }); return next; },
+    updateMeta() {}, run() { comparisons++; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  const key = (extra = {}) => handlers.keydown({ ctrlKey: true, key: 'Enter', preventDefault() {}, ...extra });
+  handlers.Ainput({});
+  assert.equal(timers.size, 2);
+  handlers.Acompositionstart(); handlers.Ainput({}); key();
+  assert.equal(timers.size, 0);
+  assert.equal(comparisons, 0);
+  handlers.Acompositionend();
+  const job = [...timers.values()].find(t => t.ms === 250);
+  assert.ok(job);
+  job.fn(); key({ isComposing: true }); key({ keyCode: 229 });
+  dialog = true; key(); dialog = false;
+  assert.equal(comparisons, 1);
+  key();
+  assert.equal(comparisons, 2);
+});
