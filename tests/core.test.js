@@ -1696,3 +1696,27 @@ test('文本页 scrollToEl: 并排视图横向溢出时定位到纯新增或纯�
   ctx.scrollToEl(mkBox(100), mkRow({ left: -60, right: 200 }, { left: 240, right: 500 }));
   assert.equal(got.left, undefined);
 });
+
+test('image.cropThumb: 编码缩略图后立即归零释放临时画布，且忽略无效的空数据 URL', () => {
+  const s = script('image-compare.html');
+  const code = between(s, 'function cropCanvas', 'function renderList');
+  const created = [];
+  let nextUrl = 'data:image/png;base64,AA==';
+  const ctx = {
+    mk: (w, h) => {
+      const c = { width: Math.round(w), height: Math.round(h), getContext: () => ({ drawImage() {} }), toDataURL: () => nextUrl };
+      created.push(c);
+      return c;
+    },
+    dropCanvas: c => { if (c) { c.width = 0; c.height = 0; } },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';this.cropThumb=cropThumb;', ctx);
+  assert.equal(ctx.cropThumb({}, { x: 0, y: 0, w: 40, h: 30 }), 'data:image/png;base64,AA==');
+  assert.equal(created[0].width, 0);
+  assert.equal(created[0].height, 0);
+  nextUrl = 'data:,';
+  assert.equal(ctx.cropThumb({}, { x: 0, y: 0, w: 40, h: 30 }), '');
+  assert.equal(created[1].width, 0);
+  assert.equal(created[1].height, 0);
+});
