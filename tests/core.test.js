@@ -1611,3 +1611,25 @@ test('文本页并排视图表头随表格输出，折叠条文字使用粘性�
   assert.doesNotMatch(ctx.un.html, /<thead>/);
   assert.match(ctx.sp.html, /<tr class="collapsed"[^>]*><td colspan="4"><span class="fold-lbl">/);
 });
+
+test('image.grayPatch: 采样读取像素后立即归零释放临时画布', () => {
+  const patchCode = between(script('image-compare.html'), 'function grayPatch', 'function phaseCorr');
+  const canvases = [];
+  const mk = (w, h) => {
+    const c = {
+      width: w, height: h,
+      getContext: () => ({
+        fillRect() {}, save() {}, restore() {}, translate() {}, scale() {}, rotate() {}, drawImage() {},
+        getImageData: () => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      }),
+    };
+    canvases.push(c);
+    return c;
+  };
+  const ctx = { mk }; vm.createContext(ctx);
+  vm.runInContext(patchCode + ';this.grayPatch=grayPatch;', ctx);
+  ctx.grayPatch({ width: 64, height: 64 }, 32, 1, 0, false, false, 64, 64);
+  assert.equal(canvases.length, 1);
+  assert.equal(canvases[0].width, 0);
+  assert.equal(canvases[0].height, 0);
+});
