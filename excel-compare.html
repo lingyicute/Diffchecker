@@ -97,7 +97,7 @@ tr.focus td,th.focus{box-shadow:inset 0 -2px 0 var(--accent)}
 footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));border-top:1px solid var(--border)}
 .hidden{display:none!important}
 .file-input{position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);pointer-events:none}
-@media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{min-height:52px;gap:8px 14px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));flex-wrap:wrap}.offline-tools{gap:14px}.offline-tools a{min-height:44px}.offline-actions{gap:8px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px max(14px,env(safe-area-inset-right)) 32px max(14px,env(safe-area-inset-left))}}
+@media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{min-height:52px;gap:8px 14px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));flex-wrap:wrap}.offline-tools{gap:14px}.offline-tools a{min-height:44px}.offline-actions{gap:8px;padding:6px 0}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px max(14px,env(safe-area-inset-right)) 32px max(14px,env(safe-area-inset-left))}}
 @media (max-width:480px){.offline-navigation{gap:4px 10px;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left))}.offline-tools{gap:10px}.offline-actions{gap:6px}.offline-language{padding:5px 8px;font-size:12px}.choices{grid-template-columns:1fr}}
 @media (max-width:640px){.hero{margin:2px 0 12px}.hero h1{font-size:24px}.drop{min-height:120px;margin:8px;padding:12px}.preview{margin:0 8px 8px;max-height:180px}.details select,.details input[type=number]{font-size:16px}.details input[type=number]{width:84px}.toolbar{position:static}.stats{margin-left:0;width:100%}.grid-wrap{max-height:70vh;max-height:70dvh}table.grid{--nw:36px;font-size:12px}table.grid th,table.grid td{padding:2px 6px;min-width:7ch;max-width:min(240px,68vw)}table.grid th.num,table.grid td.num{padding:2px 4px}.modal{padding:16px}}
 @media (max-height:520px){.toolbar{position:static}}
@@ -107,7 +107,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 </head>
 <body>
 <header class="offline-header"><nav class="offline-navigation">
-  <a class="offline-brand" href="text-compare.html"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#20a464"/><path d="M9 9h6v14H9zM17 9h6v14h-6z" fill="#fff" opacity=".9"/></svg><span>Diffchecker</span></a>
+  <a class="offline-brand" href="text-compare.html" aria-label="Diffchecker"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#20a464"/><path d="M9 9h6v14H9zM17 9h6v14h-6z" fill="#fff" opacity=".9"/></svg><span>Diffchecker</span></a>
   <div class="offline-tools"><a href="text-compare.html" data-i18n="nav.text">Text</a><a href="image-compare.html" data-i18n="nav.images">Images</a><a href="excel-compare.html" aria-current="page" data-i18n="nav.excel">Excel</a></div>
   <div class="offline-actions"><span class="offline-badge"><span>●</span><span data-i18n="offline">Offline · no network</span></span><button class="offline-language" id="themeBtn">Dark</button><button class="offline-language" id="langBtn">中文</button></div>
 </nav></header>

@@ -139,7 +139,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 .hidden{display:none!important}
 .file-input{position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);pointer-events:none}
 #printResult{display:none;color:var(--fg);background:var(--bg)}
-@media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{min-height:52px;gap:8px 14px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));flex-wrap:wrap}.offline-tools{gap:14px}.offline-tools a{min-height:44px}.offline-actions{gap:8px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px max(14px,env(safe-area-inset-right)) 32px max(14px,env(safe-area-inset-left))}}
+@media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{min-height:52px;gap:8px 14px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));flex-wrap:wrap}.offline-tools{gap:14px}.offline-tools a{min-height:44px}.offline-actions{gap:8px;padding:6px 0}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px max(14px,env(safe-area-inset-right)) 32px max(14px,env(safe-area-inset-left))}}
 @media (max-width:480px){.offline-navigation{gap:4px 10px;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left))}.offline-tools{gap:10px}.offline-actions{gap:6px}.offline-language{padding:5px 8px;font-size:12px}.choices{grid-template-columns:1fr}}
 @media (max-width:640px){.hero{margin:2px 0 12px}.hero h1{font-size:24px}.input-card textarea{min-height:160px;font-size:16px}.row select,.row input[type=text],.rule input{font-size:16px}.toolbar{position:static}.stats{margin-left:0;width:100%}.diff-head{font-size:12px}.diff-head>div{padding:6px 8px}table.diff thead th{padding:6px 8px;font-size:12px}.diff-scroll{max-height:70vh;max-height:70dvh}table.diff{font-size:12px}table.diff td{padding:0 6px 0 4px}table.diff td.num{width:36px;min-width:36px;padding:0 5px 0 3px;font-size:11px}table.diff col.cn{width:36px}table.diff td.sign,table.diff col.cs{width:14px;min-width:14px;padding-left:3px}table.diff.is-split:not(.nowrap){min-width:580px}.modal{padding:16px}}
 @media (max-height:520px){.toolbar{position:static}}
@@ -149,7 +149,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 </head>
 <body>
 <header class="offline-header"><nav class="offline-navigation">
-  <a class="offline-brand" href="text-compare.html"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#20a464"/><path d="M9 9h6v14H9zM17 9h6v14h-6z" fill="#fff" opacity=".9"/></svg><span>Diffchecker</span></a>
+  <a class="offline-brand" href="text-compare.html" aria-label="Diffchecker"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#20a464"/><path d="M9 9h6v14H9zM17 9h6v14h-6z" fill="#fff" opacity=".9"/></svg><span>Diffchecker</span></a>
   <div class="offline-tools"><a href="text-compare.html" aria-current="page" data-i18n="nav.text">Text</a><a href="image-compare.html" data-i18n="nav.images">Images</a><a href="excel-compare.html" data-i18n="nav.excel">Excel</a></div>
   <div class="offline-actions"><span class="offline-badge"><span>●</span><span data-i18n="offline">Offline · no network</span></span><button class="offline-language" id="themeBtn" data-i18n="dark">Dark</button><button class="offline-language" id="langBtn">中文</button></div>
 </nav></header>
