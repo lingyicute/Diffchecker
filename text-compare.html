@@ -130,6 +130,7 @@ tr.focus td.code{box-shadow:inset 3px 0 0 var(--accent)}
 [data-theme="dark"] .offline-notice{border-color:#2f4a3a;background:#1c2b23;color:#c8f5e6;box-shadow:0 5px 24px #00000066}
 footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));border-top:1px solid var(--border)}
 .hidden{display:none!important}
+.file-input{position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);pointer-events:none}
 #printResult{display:none;color:var(--fg);background:var(--bg)}
 @media (max-width:900px){.inputs{grid-template-columns:1fr}.offline-navigation{min-height:52px;gap:8px 14px;padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));flex-wrap:wrap}.offline-tools{gap:14px}.offline-tools a{min-height:44px}.offline-actions{gap:8px}.offline-brand>span{display:none}.offline-badge{display:none}main{padding:14px max(14px,env(safe-area-inset-right)) 32px max(14px,env(safe-area-inset-left))}}
 @media (max-width:480px){.offline-navigation{gap:4px 10px;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left))}.offline-tools{gap:10px}.offline-actions{gap:6px}.offline-language{padding:5px 8px;font-size:12px}.choices{grid-template-columns:1fr}}
@@ -156,7 +157,7 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
       <textarea id="txtB" spellcheck="false" data-i18n-ph="phB" placeholder="Paste or type the changed text here…"></textarea>
     </div>
   </section>
-  <input type="file" id="fileInput" class="hidden" accept=".txt,.md,.markdown,.json,.jsonl,.js,.mjs,.cjs,.jsx,.ts,.tsx,.css,.scss,.less,.html,.htm,.xml,.svg,.csv,.tsv,.py,.rb,.php,.java,.kt,.swift,.c,.h,.cpp,.hpp,.cs,.go,.rs,.sh,.bat,.ps1,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.properties,.vue,.sql,.log,.diff,.patch,.diffchecker,text/*" />
+  <input type="file" id="fileInput" class="file-input" tabindex="-1" aria-hidden="true" />
   <div class="actions">
     <button class="btn primary" id="findBtn" data-i18n="find">Find difference</button>
     <button class="btn" id="exampleBtn" data-i18n="tryExample">Try example</button>
