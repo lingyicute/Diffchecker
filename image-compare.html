@@ -35,7 +35,9 @@ main{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:22px max(28px,env(
 .drop img{max-width:100%;max-height:200px;border-radius:6px;box-shadow:0 1px 6px rgba(0,0,0,.15)}
 .drop.has{border-style:solid;background:var(--bg)}
 .drop .meta{font-size:12px;color:var(--fg2);font-family:var(--mono);max-width:100%;overflow-wrap:anywhere}
-.drop .rm{position:absolute;top:8px;right:8px}
+.drop .pick{position:absolute;inset:0;border:0;border-radius:inherit;background:transparent;padding:0}
+.drop .pick:focus-visible{outline-offset:-4px}
+.drop .rm{position:absolute;top:8px;right:8px;z-index:1}
 .btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);font-weight:500;font-size:13px;white-space:nowrap}
 .btn:hover{background:var(--bg2)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}.btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
 .btn.sm{min-height:28px;padding:3px 9px;font-size:12px;border-radius:6px}.btn.ghost{border-color:transparent;background:transparent}.btn.ghost:hover{background:var(--bg3)}.btn:disabled{opacity:.5;cursor:not-allowed}
@@ -132,8 +134,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 <main>
   <section class="hero"><h1 data-i18n="hero.title">Compare Images</h1><p><span data-i18n="hero.d1">Find the difference between pictures or other images!</span> <span data-i18n="hero.d2">Enter two images and the difference will show up below.</span></p></section>
   <section class="inputs">
-    <div class="drop" id="dropA" tabindex="0" role="button"><span class="lbl" data-i18n="original">Original image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" data-i18n="browse">or click to browse files · paste with Ctrl+V</div></div>
-    <div class="drop" id="dropB" tabindex="0" role="button"><span class="lbl" data-i18n="changed">Changed image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" data-i18n="browse">or click to browse files · paste with Ctrl+V</div></div>
+    <div class="drop" id="dropA"><span class="lbl" id="imageLabelA" data-i18n="original">Original image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" id="imageDescA" data-i18n="browse">or click to browse files · paste with Ctrl+V</div><button type="button" class="pick" aria-labelledby="imageLabelA" aria-describedby="imageDescA"></button></div>
+    <div class="drop" id="dropB"><span class="lbl" id="imageLabelB" data-i18n="changed">Changed image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" id="imageDescB" data-i18n="browse">or click to browse files · paste with Ctrl+V</div><button type="button" class="pick" aria-labelledby="imageLabelB" aria-describedby="imageDescB"></button></div>
   </section>
   <input type="file" id="fileInput" class="file-input" accept="image/*" tabindex="-1" aria-hidden="true" />
   <div class="actions">
@@ -299,7 +301,7 @@ function clearComparison(){
   stage.replaceChildren();clearList($('chgList'));$('result').classList.add('hidden');
 }
 const hasFiles=e=>!!e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files');
-for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(e.target.closest('.rm'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};d.onkeydown=e=>{if(e.target!==d||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();d.click()};
+for(const side of ['A','B']){const d=$('drop'+side);d.onclick=e=>{if(!e.target.closest('.pick'))return;openTarget=side;$('fileInput').value='';$('fileInput').click()};
   d.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();d.classList.add('drag')});d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drag')});d.addEventListener('drop',e=>{d.classList.remove('drag');if(!hasFiles(e))return;e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f,side)})}
 $('fileInput').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f,openTarget)};
 document.addEventListener('paste',e=>{
@@ -339,15 +341,19 @@ function setImage(side,img,name,quiet){
   S[side]={c,name,w:c.width,h:c.height,thumb};renderInput(side);
   S.align=defAlign();if(!quiet&&S.A&&S.B)maybePromptAlign();
 }
-function renderInput(side){
-  const image=S[side],d=$('drop'+side),key=side==='A'?'original':'changed';
-  const label=`<span class="lbl" data-i18n="${key}">${t(key)}</span>`;
+function renderInput(side,restoreFocus=false){
+  const image=S[side],d=$('drop'+side),key=side==='A'?'original':'changed',focused=restoreFocus||d.contains(document.activeElement);
+  const label=`<span class="lbl" id="imageLabel${side}" data-i18n="${key}">${t(key)}</span>`;
+  const pick=`<button type="button" class="pick" aria-labelledby="imageLabel${side}" aria-describedby="imageDesc${side}"></button>`;
   d.classList.toggle('has',!!image);
-  if(!image){d.innerHTML=label+`<div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;return}
-  const {name,w,h,thumb}=image;
-  d.innerHTML=label+`<img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
-  d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name?name+' · ':''}${w}×${h}`;
-  d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);S[side]=null;clearComparison();dropCanvas(image.c);renderInput(side);d.focus()};
+  if(!image)d.innerHTML=label+`<div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" id="imageDesc${side}" data-i18n="browse">${t('browse')}</div>`+pick;
+  else{
+    const {name,w,h,thumb}=image;
+    d.innerHTML=label+`<img alt=""><div class="meta" id="imageDesc${side}"></div>`+pick+`<button type="button" class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
+    d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name?name+' · ':''}${w}×${h}`;
+    d.querySelector('.rm').onclick=()=>{cancelLoad(side);S[side]=null;clearComparison();dropCanvas(image.c);renderInput(side,true)};
+  }
+  if(focused)d.querySelector('.pick').focus({preventScroll:true});
 }
 const alignText=r=>t('alignOk',{dx:r.dx.toFixed(0),dy:r.dy.toFixed(0),rot:r.rot.toFixed(1),sc:r.scale.toFixed(3),c:r.conf.toFixed(2)});
 function alignNotice(r){notice(alignText(r))}
