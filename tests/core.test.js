@@ -1987,3 +1987,22 @@ test('文本字符串高亮：转义引号不能充当闭合引号，反斜杠�
   }
   assert.ok(synClasses('`line' + slash, 'js').every(c => c === 's'));
 });
+
+test('图片视口：只有高度改变时也重新适应，手动放大后保留中心点和缩放', () => {
+  const code = between(script('image-compare.html'), 'function fit()', "\nviewport.addEventListener('wheel'");
+  const viewport = { clientWidth: 380, clientHeight: 400 }, S = { W: 400, H: 200, mode: 'highlight' };
+  const ctx = { viewport, S, lastVpW: 0, lastVpH: 0, viewFitted: true, $: () => ({}), applyTransform() {}, drawOverlay() {}, scheduleOverlay() {} };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';fit();', ctx);
+  const initialY = S.py;
+  viewport.clientHeight = 300;
+  vm.runInContext('syncViewportSize();', ctx);
+  assert.equal(S.py, initialY - 50);
+  vm.runInContext('setZoom(2,190,150);', ctx);
+  const center = [(190 - S.px) / S.zoom, (150 - S.py) / S.zoom];
+  viewport.clientWidth = 540;
+  viewport.clientHeight = 250;
+  vm.runInContext('syncViewportSize();', ctx);
+  assert.equal(S.zoom, 2);
+  assert.deepEqual([(270 - S.px) / S.zoom, (125 - S.py) / S.zoom], center);
+});
