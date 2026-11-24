@@ -256,7 +256,7 @@ function comparisonFrame(a,b,al){
   if(!(al.scale>0)||!Number.isSafeInteger(w)||!Number.isSafeInteger(h)||w>64*MAX_CANVAS_DIM||h>64*MAX_CANVAS_DIM)throw new Error('alignOutOfRange');
   return {x:left||0,y:top||0,w,h};
 }
-let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0,highlightTimer=0;
+let baseA,baseB,dataA,dataB,diffMap,signMap,diffCount=0,holdSide=0,flickTimer=null,flickState=0,scanTimer=0,highlightTimer=0,lastVpW=0;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
 
 /* ===================== loading ===================== */
@@ -270,7 +270,7 @@ function clearComparison(){
   closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
   $('pmGo').onclick=$('pmSkip').onclick=null;
   clearInterval(flickTimer);clearTimeout(scanTimer);clearTimeout(highlightTimer);scanTimer=highlightTimer=0;holdSide=0;flickState=0;
-  S.W=S.H=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
+  S.W=S.H=0;lastVpW=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
   baseA=baseB=dataA=dataB=diffMap=signMap=overlay=sliderEl=mainCanvas=null;
   stage.replaceChildren();$('chgList').replaceChildren();$('result').classList.add('hidden');
   for(const id of ['alignA','alignB']){$(id).width=$(id).height=1}
@@ -423,7 +423,7 @@ function paintOverlay(cx,zoom){cx.clearRect(0,0,S.W,S.H);if(!S.regions.length)re
   if(S.darken){cx.fillStyle='rgba(0,0,0,.5)';cx.fillRect(0,0,S.W,S.H);cx.globalCompositeOperation='destination-out';cx.fillStyle='#000';for(const r of S.regions){cx.fillRect(r.x,r.y,r.w,r.h)}cx.globalCompositeOperation='source-over'}
   if(S.boxes){const lw=Math.max(1,2/zoom);S.regions.forEach((r,i)=>{cx.lineWidth=i===S.active?lw*2:lw;cx.strokeStyle=i===S.active?'#ffb400':'#ff3b30';cx.strokeRect(r.x-lw,r.y-lw,r.w+2*lw,r.h+2*lw);cx.font=`${Math.max(10,14/zoom)}px system-ui`;const lbl=String(i+1);const tw=cx.measureText(lbl).width+6/zoom;const th=Math.max(12,16/zoom),ly=Math.max(0,r.y-lw-th);cx.fillStyle=i===S.active?'#ffb400':'#ff3b30';cx.fillRect(r.x-lw,ly,tw,th);cx.fillStyle='#fff';cx.fillText(lbl,r.x-lw+3/zoom,ly+th*0.78)})}}
 function applyTransform(){stage.classList.toggle('pix',S.zoom>=3);stage.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`;stage.style.setProperty('--iz',String(1/S.zoom));const pad=Math.min(S.H/2,24/S.zoom),midY=(viewport.clientHeight/2-S.py)/S.zoom;stage.style.setProperty('--ky',Math.max(pad,Math.min(S.H-pad,midY))+'px');$('zoomRange').value=Math.round(S.zoom*100);$('zoomVal').textContent=Math.round(S.zoom*100)+'%';$('hud').textContent=`${S.W}×${S.H}${S.scale<1?t('hudScale',{s:S.scale.toFixed(2)}):''} · ${t('hudDiff',{p:(100*diffCount/(S.W*S.H)).toFixed(2)})}`}
-function fit(){const vw=viewport.clientWidth,vh=viewport.clientHeight;if(!vw||!vh||!S.W||!S.H)return;const sp=S.mode==='split',sw=sp?S.W*2+16:S.W,tag=sp?24:0;S.zoom=Math.min(1,Math.max(.05,Math.min(Math.max(1,vw-24)/sw,Math.max(1,vh-24-tag)/S.H)));S.px=(vw-sw*S.zoom)/2;S.py=(vh-(S.H*S.zoom+tag))/2;applyTransform();drawOverlay()}
+function fit(){const vw=viewport.clientWidth,vh=viewport.clientHeight;if(!vw||!vh||!S.W||!S.H)return;lastVpW=vw;const sp=S.mode==='split',sw=sp?S.W*2+16:S.W,tag=sp?24:0;S.zoom=Math.min(1,Math.max(.05,Math.min(Math.max(1,vw-24)/sw,Math.max(1,vh-24-tag)/S.H)));S.px=(vw-sw*S.zoom)/2;S.py=(vh-(S.H*S.zoom+tag))/2;applyTransform();drawOverlay()}
 $('fitBtn').onclick=fit;
 $('zoomRange').oninput=e=>{setZoom(e.target.value/100,viewport.clientWidth/2,viewport.clientHeight/2)};
 function setZoom(z,cx,cy){z=Math.max(.05,Math.min(8,z));const k=z/S.zoom;S.px=cx-(cx-S.px)*k;S.py=cy-(cy-S.py)*k;S.zoom=z;applyTransform();drawOverlay()}
@@ -534,7 +534,7 @@ function renderList(){const el=$('chgList');el.innerHTML='';$('chgCount').textCo
 function focusRegion(r){if(S.mode==='split'){S.mode='highlight';$('modeSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode==='highlight')));renderStage()}const vw=viewport.clientWidth,vh=viewport.clientHeight;const z=Math.max(.05,Math.min(6,Math.min(vw/(r.w+80),vh/(r.h+80))));S.zoom=z;S.px=vw/2-(r.x+r.w/2)*z;S.py=vh/2-(r.y+r.h/2)*z;applyTransform();drawOverlay()}
 
 /* ===================== alignment ===================== */
-const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0};
+const AL=$('alignModal');let alTmp=null,alView={z:1,x:0,y:0,w:0,h:0};
 $('alignBtn').onclick=()=>{if(!S.A||!S.B)return;stopAuto();alTmp={...S.align};$('alignErr').textContent='';AL.showModal();initAlignView()};
 $('alignCancel').onclick=closeAlign;
 const alignFields=[['alDx','dx'],['alDy','dy'],['alRot','rot'],['alScale','scale']];
@@ -547,14 +547,17 @@ $('alignApply').onclick=()=>{
 };
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
 function initAlignView(){
-  const v=$('alignView'),f=S.frame,w=workingFrame(f.w,f.h);alView.sx=w.w/f.w;alView.sy=w.h/f.h;
-  alView.z=Math.max(.02,Math.min((v.clientWidth-20)/w.w,(v.clientHeight-20)/w.h));
-  alView.x=(v.clientWidth-w.w*alView.z)/2-f.x*alView.sx*alView.z;alView.y=(v.clientHeight-w.h*alView.z)/2-f.y*alView.sy*alView.z;
+  const v=$('alignView'),f=S.frame,w=workingFrame(f.w,f.h),cw=v.clientWidth,ch=v.clientHeight;
+  alView.sx=w.w/f.w;alView.sy=w.h/f.h;alView.w=cw;alView.h=ch;
+  alView.z=Math.max(.02,Math.min(Math.max(1,cw-20)/w.w,Math.max(1,ch-20)/w.h));
+  alView.x=(cw-w.w*alView.z)/2-f.x*alView.sx*alView.z;alView.y=(ch-w.h*alView.z)/2-f.y*alView.sy*alView.z;
   syncAlignInputs();drawAlign();
 }
 function drawAlign(){
-  const v=$('alignView'),w=v.clientWidth,h=v.clientHeight,k=Math.min(2,window.devicePixelRatio||1),sx=alView.sx*alView.z,sy=alView.sy*alView.z;
-  for(const side of ['A','B']){const canvas=$('align'+side),pw=Math.round(w*k),ph=Math.round(h*k);
+  if(!S.A||!S.B||!alTmp)return;
+  const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(!w||!h)return;
+  alView.w=w;alView.h=h;const k=Math.min(2,window.devicePixelRatio||1),sx=alView.sx*alView.z,sy=alView.sy*alView.z;
+  for(const side of ['A','B']){const canvas=$('align'+side),pw=Math.max(1,Math.round(w*k)),ph=Math.max(1,Math.round(h*k));
     if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
     const ctx=canvas.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,pw,ph);
     ctx.setTransform(k,0,0,k,alView.x*k,alView.y*k);
@@ -721,7 +724,8 @@ $('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-ord
 function clearPrintReport(){printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
 window.addEventListener('afterprint',()=>{if(printing)clearPrintReport()});
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
-window.addEventListener('resize',()=>{if(S.W&&!$('result').classList.contains('hidden'))fit()});
+window.addEventListener('resize',()=>{if(AL.open){const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}}
+  if(S.W&&!$('result').classList.contains('hidden')){const w=viewport.clientWidth;if(w&&w!==lastVpW)fit()}});
 /* Optional OpenCV hook: if a full opencv.js (+ .wasm) is loaded before this script, feature-based (ORB) alignment is used automatically. */
 (async()=>{try{if(typeof window.cv==='function'&&!window.cv.Mat){const m=await window.cv(window.Module||{});if(m&&m.Mat)window.cv=m}else if(window.cv&&typeof window.cv.then==='function'){window.cv=await window.cv}}catch(e){console.warn('OpenCV bootstrap skipped',e)}})();
 // 原生对话框处理焦点与 Esc；对齐取消和跳过提示仍走各自的业务逻辑。
