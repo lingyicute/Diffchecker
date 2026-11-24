@@ -2062,3 +2062,14 @@ test('表格文件识别尊重会话名及 ZIP 签名，不把笼统 ZIP MIME �
   assert.equal(workbookKind({ name: 'data.XLSM' }, ole), 'encrypted');
   assert.equal(workbookKind({ name: 'data.xls' }, ole), 'legacyXls');
 });
+
+test('Excel 按表头排序后，排序同权但实际不同的列仍按同一顺序配对', () => {
+  const grid = rows => ({ rows: rows.map(r => r.map(v => ({ v }))) });
+  const a = 'é', b = 'e\u0301', old = { ...excel.opts };
+  try {
+    Object.assign(excel.opts, { mode: 'table', matchHeaders: false, sortCols: true, sortRows: false });
+    const result = excel.compare(grid([[a, b], ['one', 'two']]), grid([[b, a], ['two', 'one']]), 0, 0);
+    assert.equal(result.identical, true);
+    assert.equal(result.stats.cells, 0);
+  } finally { Object.assign(excel.opts, old); }
+});

@@ -557,6 +557,8 @@ function pairBlock(delIdx,insIdx,rowKeyA,rowKeyB,cellsA,cellsB){// returns order
     ps.forEach((x,k)=>{if(!keepK.has(k)){usedB.delete(pairs.get(x));pairs.delete(x)}})}
   let bp=0;for(let x=0;x<delIdx.length;x++){if(pairs.has(x)){const y=pairs.get(x);while(bp<y){if(!usedB.has(bp))out.push({type:'ins',bi:insIdx[bp]});bp++}out.push({type:'chg',ai:delIdx[x],bi:insIdx[y]});bp=y+1}else out.push({type:'del',ai:delIdx[x]})}
   while(bp<insIdx.length){if(!usedB.has(bp))out.push({type:'ins',bi:insIdx[bp]});bp++}return out}
+// localeCompare 可以把不同的列名排为同一顺位；在按位置配对前仍须给它们确定的先后顺序。
+const compareLabels=(a,b)=>a.localeCompare(b)||(a<b?-1:a>b?1:0);
 const MAX_COMPARE_CELLS=500000;
 function compare(gA,gB,hA,hB){
   const rowsA=trimRows(gA.rows),rowsB=trimRows(gB.rows);let columns=[];let dataA,dataB,startA,startB;
@@ -570,9 +572,9 @@ function compare(gA,gB,hA,hB){
       const byPred=new Map();let pred=-1;for(let j=0;j<nB;j++){if(usedB.has(j))pred=j;else{if(!byPred.has(pred))byPred.set(pred,[]);byPred.get(pred).push(j)}}
       (byPred.get(-1)||[]).forEach(j=>columns.push({name:String(cellText(headB[j])||colName(j)),ia:-1,ib:j,st:'ins'}));
       for(let i=0;i<nA;i++){const j=mapAB.has(i)?mapAB.get(i):-1;columns.push({name:String(cellText(headA[i])||colName(i)),ia:i,ib:j,st:j<0?'del':movedA.has(i)&&!opts.sortCols?'mov':'eq'/* 对列排序后列的先后不再有意义，不标记“已移动” */});if(j>=0)(byPred.get(j)||[]).forEach(jj=>columns.push({name:String(cellText(headB[jj])||colName(jj)),ia:-1,ib:jj,st:'ins'}))}
-    }else{/* 按位置匹配时，“对列排序”要先把两侧的列各自按表头排好再逐个对应：否则只是把已经按原位置配好的列换个显示顺序，仅列顺序不同的两张表仍会被逐列报成修改 */const ord=(h,m)=>{const o=Array.from({length:m},(_,i)=>i);if(opts.sortCols){const key=o.map(i=>normalize(String(cellText(h[i])||'')));o.sort((x,y)=>key[x].localeCompare(key[y])||x-y)}return o},oA=ord(headA,nA),oB=ord(headB,nB);
+    }else{/* 按位置匹配时，“对列排序”要先把两侧的列各自按表头排好再逐个对应：否则只是把已经按原位置配好的列换个显示顺序，仅列顺序不同的两张表仍会被逐列报成修改 */const ord=(h,m)=>{const o=Array.from({length:m},(_,i)=>i);if(opts.sortCols){const key=o.map(i=>normalize(String(cellText(h[i])||'')));o.sort((x,y)=>compareLabels(key[x],key[y])||x-y)}return o},oA=ord(headA,nA),oB=ord(headB,nB);
       const n=Math.max(nA,nB);for(let i=0;i<n;i++){const ia=i<nA?oA[i]:-1,ib=i<nB?oB[i]:-1,ha=ia>=0?String(cellText(headA[ia])||''):'',hb=ib>=0?String(cellText(headB[ib])||''):'',hc=ia>=0&&ib>=0&&normalize(ha)!==normalize(hb);columns.push({name:hc?(ha&&hb?`${ha} → ${hb}`:`${JSON.stringify(ha)} → ${JSON.stringify(hb)}`):(hb||ha||colName(ia>=0?ia:ib)),ia,ib,st:ia<0?'ins':ib<0?'del':'eq',hdrChg:hc})}}
-    if(opts.sortCols)columns.sort((x,y)=>x.name.localeCompare(y.name));
+    if(opts.sortCols)columns.sort((x,y)=>compareLabels(x.name,y.name));
     dataA=rowsA.slice(hA+1);dataB=rowsB.slice(hB+1);startA=hA+2;startB=hB+2;
   }else{const cA=usedCols(rowsA),cB=usedCols(rowsB),n=Math.max(cA,cB);for(let i=0;i<n;i++)columns.push({name:colName(i),ia:i<cA?i:-1,ib:i<cB?i:-1,st:i>=cA?'ins':i>=cB?'del':'eq'});dataA=rowsA;dataB=rowsB;startA=1;startB=1}
   // 两个稀疏网格合并后仍会按行 × 列展开；在分配中间数组或渲染前限制实际展开量。
