@@ -633,7 +633,7 @@ async function exportPng(){
     const right=r.r!=null&&(!unified||r.changed)?wrap(d.B[r.r],segs,'r'):null;
     if(unified){if(left)add({...r,left});if(right)add({...r,right})}else add({...r,left,right});
   }
-  const H=HEADER+total*LH;cv.height=H;ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';
+  const H=HEADER+total*LH;cv.height=H;ctx.fillStyle=dark?'#17191c':'#fff';ctx.fillRect(0,0,W,H);if(ctx.getImageData(0,0,1,1).data[3]!==255)throw Object.assign(new Error('image too tall'),{tooTall:true});ctx.font='bold 15px system-ui';ctx.fillStyle=dark?'#ebedef':'#202329';
   const hA=`${t('original')}${fileNames.A?' · '+fileNames.A:''}`,hB=`${t('changed')}${fileNames.B?' · '+fileNames.B:''}`;ctx.fillText(unified?`${hA}  →  ${hB}`:hA,PAD,PAD+14,unified?colW:colW-PAD);if(!unified)ctx.fillText(hB,W/2+PAD,PAD+14,colW-PAD);
   ctx.font=font;let y=PAD+40;
   // 统一视图与页面一致，用两列行号（原始 / 修改后）；删除行只有原始行号，新增行只有修改后行号
