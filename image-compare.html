@@ -705,7 +705,7 @@ function exportCanvas(native=false){
     if(split){const c=need(mk(w*2+16,h)),cx=c.getContext('2d');cx.drawImage(a,0,0);cx.drawImage(b,w+16,0);return c}
     const c=need(mk(w,h));
     try{compositeCanvas(S.mode,a,b,c);
-      if(overlay){const ov=need(mk(w,h));try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
+      if(overlay&&S.regions.length&&(S.boxes||S.darken)){const ov=need(mk(w,h));try{const ox=ov.getContext('2d');ox.scale(w/S.W,h/S.H);paintOverlay(ox,w/S.W);c.getContext('2d').drawImage(ov,0,0)}finally{dropCanvas(ov)}}
       return c;
     }catch(e){dropCanvas(c);throw e}
   }finally{if(fresh){dropCanvas(a);dropCanvas(b)}}
