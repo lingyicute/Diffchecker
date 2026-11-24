@@ -235,6 +235,7 @@ I18N.zh.invalidAlignment='请输入有效的对齐数值，缩放比例必须为
 Object.assign(I18N.en,{pauseFlicker:'Pause',resumeFlicker:'Resume',flickSpeed:'Flicker speed',shiftX:'Horizontal shift (pixels)',shiftY:'Vertical shift (pixels)'});
 Object.assign(I18N.zh,{pauseFlicker:'暂停',resumeFlicker:'继续',flickSpeed:'闪烁速度',shiftX:'水平平移（像素）',shiftY:'垂直平移（像素）'});
 let lang=lsGet('offline-lang'),theme=lsGet('offline-theme');if(theme!=='dark'&&theme!=='light')theme=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(lang!=='en'&&lang!=='zh')lang=/^zh/i.test(navigator.language||'')?'zh':'en';
+if(matchMedia('(pointer:coarse)').matches){I18N.en.browse='or tap to choose an image';I18N.zh.browse='或点击选择图片'}// 触屏设备没有 Ctrl+V
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
 const labeledControls={fadeRange:'opacity',flickRange:'flickSpeed',hlMode:'hlStyle',hlThr:'threshold',zoomRange:'zoom',alDx:'shiftX',alDy:'shiftY',alRot:'rotate',alScale:'scale',alOpacity:'opacity'};
