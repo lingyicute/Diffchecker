@@ -353,14 +353,21 @@ $('resetBtn').onclick=()=>{cancelLoads();clearComparison();S.align=defAlign();S.
 
 /* ===================== compositing ===================== */
 function makeBases(w,h){
-  const f=S.frame,sx=w/f.w,sy=h/f.h,a=mk(w,h),b=mk(w,h),bx=b.getContext('2d');
-  a.getContext('2d').drawImage(S.A.c,-f.x*sx,-f.y*sy,S.A.w*sx,S.A.h*sy);
-  bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy);
-  return [a,b];
+  const f=S.frame,sx=w/f.w,sy=h/f.h,a=mk(w,h);
+  if(!canvasUsable(a)){dropCanvas(a);throw new Error('compareFailed')}
+  const b=mk(w,h);
+  if(!canvasUsable(b)){dropCanvas(a);dropCanvas(b);throw new Error('compareFailed')}
+  try{const bx=b.getContext('2d');a.getContext('2d').drawImage(S.A.c,-f.x*sx,-f.y*sy,S.A.w*sx,S.A.h*sy);
+    bx.translate(-f.x*sx,-f.y*sy);drawAligned(bx,S.B.c,S.align,sx,sy);return [a,b];
+  }catch(e){dropCanvas(a);dropCanvas(b);throw e}
 }
 function buildBases(){const nextFrame=comparisonFrame(S.A,S.B,S.align),frame=workingFrame(nextFrame.w,nextFrame.h);
   dropCanvas(baseA);dropCanvas(baseB);dropCanvas(mainCanvas);dropCanvas(overlay);baseA=baseB=mainCanvas=overlay=dataA=dataB=diffMap=signMap=null;stage.replaceChildren();clearList($('chgList'));
-  S.frame=nextFrame;S.W=frame.w;S.H=frame.h;S.scale=frame.scale;[baseA,baseB]=makeBases(S.W,S.H);
+  S.frame=nextFrame;
+  for(let k=1;k>.2;k*=Math.SQRT1_2){
+    const w=Math.max(1,Math.round(frame.w*k)),h=Math.max(1,Math.round(frame.h*k));
+    try{[baseA,baseB]=makeBases(w,h);S.W=w;S.H=h;S.scale=frame.scale*k;break}catch(e){if(k*Math.SQRT1_2<=.2)throw e}
+  }
   dataA=baseA.getContext('2d').getImageData(0,0,S.W,S.H);dataB=baseB.getContext('2d').getImageData(0,0,S.W,S.H);computeDiffMap()}
 function drawAligned(ctx,img,al,sx,sy=sx){ctx.save();ctx.scale(sx,sy);const w=img.width,h=img.height;ctx.translate(w/2+al.dx,h/2+al.dy);ctx.rotate((al.rot%360)*Math.PI/180);ctx.scale(al.scale*(al.fh?-1:1),al.scale*(al.fv?-1:1));ctx.drawImage(img,-w/2,-h/2);ctx.restore()}
 function diffPixels(a,b,map,sign,rgba){
