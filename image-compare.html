@@ -123,8 +123,8 @@ footer{text-align:center;color:var(--fg3);font-size:12px;padding:16px max(16px,e
 <main>
   <section class="hero"><h1 data-i18n="hero.title">Compare Images</h1><p><span data-i18n="hero.d1">Find the difference between pictures or other images!</span> <span data-i18n="hero.d2">Enter two images and the difference will show up below.</span></p></section>
   <section class="inputs">
-    <div class="drop" id="dropA" tabindex="0"><span class="lbl" data-i18n="original">Original image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" data-i18n="browse">or click to browse files · paste with Ctrl+V</div></div>
-    <div class="drop" id="dropB" tabindex="0"><span class="lbl" data-i18n="changed">Changed image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" data-i18n="browse">or click to browse files · paste with Ctrl+V</div></div>
+    <div class="drop" id="dropA" tabindex="0" role="button"><span class="lbl" data-i18n="original">Original image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" data-i18n="browse">or click to browse files · paste with Ctrl+V</div></div>
+    <div class="drop" id="dropB" tabindex="0" role="button"><span class="lbl" data-i18n="changed">Changed image</span><div class="big" data-i18n="dropHere">Drop image here</div><div class="hint" data-i18n="browse">or click to browse files · paste with Ctrl+V</div></div>
   </section>
   <input type="file" id="fileInput" class="file-input" accept="image/*" tabindex="-1" aria-hidden="true" />
   <div class="actions">
@@ -236,7 +236,7 @@ let lang=lsGet('offline-lang'),theme=lsGet('offline-theme');if(theme!=='dark'&&t
 const t=(k,v)=>{let s=(I18N[lang][k]??I18N.en[k]??k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
 const $=id=>document.getElementById(id);
 const labeledControls={fadeRange:'opacity',flickRange:'flickSpeed',hlMode:'hlStyle',hlThr:'threshold',zoomRange:'zoom',alDx:'shiftX',alDy:'shiftY',alRot:'rotate',alScale:'scale',alOpacity:'opacity'};
-function applyLang(){for(const [id,key] of Object.entries(labeledControls))$(id).setAttribute('aria-label',t(key));document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});if(S.W){applyTransform();redrawFlicker()}syncFlickerButton();sliderEl?.setAttribute('aria-label',t('m.slider'));renderPasses();renderList()}
+function applyLang(){for(const [id,key] of Object.entries(labeledControls))$(id).setAttribute('aria-label',t(key));document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('langBtn').textContent=lang==='en'?'中文':'English';$('themeBtn').textContent=t(theme==='dark'?'light':'dark');document.querySelectorAll('[data-i18n-title]').forEach(e=>{e.title=t(e.dataset.i18nTitle);if(e.matches('.rm,#sbToggle'))e.setAttribute('aria-label',e.title)});document.title=t('hero.title')+' — Diffchecker';document.querySelectorAll('.switch').forEach(s=>{const l=s.previousElementSibling;if(l)s.setAttribute('aria-label',l.textContent)});if(S.W){applyTransform();redrawFlicker()}syncFlickerButton();sliderEl?.setAttribute('aria-label',t('m.slider'));renderPasses();renderList()}
 function applyTheme(){document.documentElement.dataset.theme=theme;$('themeBtn').textContent=t(theme==='dark'?'light':'dark')}
 $('langBtn').onclick=()=>{lang=lang==='en'?'zh':'en';lsSet('offline-lang',lang);applyLang()};
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';lsSet('offline-theme',theme);applyTheme()};
@@ -310,7 +310,7 @@ function setImage(side,img,name,quiet,keepOld){
   if(thumb==='data:,'){if(c!==img)dropCanvas(c);throw new Error('Could not render the image thumbnail')}
   const prev=S[side]?.c;clearComparison();if(prev&&prev!==c&&!keepOld)dropCanvas(prev);
   S[side]={c,name,w:c.width,h:c.height};const d=$('drop'+side);d.classList.add('has');
-  d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}">✕</button>`;
+  d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><img alt=""><div class="meta"></div><button class="btn sm ghost rm" data-i18n-title="remove" title="${t('remove')}" aria-label="${t('remove')}">✕</button>`;
   d.querySelector('img').src=thumb;d.querySelector('.meta').textContent=`${name} · ${c.width}×${c.height}`;
   d.querySelector('.rm').onclick=e=>{e.stopPropagation();cancelLoad(side);const old=S[side]?.c;S[side]=null;clearComparison();dropCanvas(old);d.classList.remove('has');
     d.innerHTML=`<span class="lbl" data-i18n="${side==='A'?'original':'changed'}">${t(side==='A'?'original':'changed')}</span><div class="big" data-i18n="dropHere">${t('dropHere')}</div><div class="hint" data-i18n="browse">${t('browse')}</div>`;d.focus()};
@@ -462,7 +462,7 @@ document.addEventListener('keyup',e=>{if((e.key==='1'||e.key==='2')&&holdSide===
 window.addEventListener('blur',()=>hold(0,false));
 $('hlMode').onchange=e=>{S.hlMode=e.target.value;renderStage()};$('hlThr').oninput=e=>{S.hlThr=+e.target.value;$('hlThrVal').textContent=e.target.value;clearTimeout(highlightTimer);highlightTimer=setTimeout(()=>{highlightTimer=0;if(S.W&&S.mode==='highlight')renderStage()},60)};
 $('swBoxes').onclick=()=>{S.boxes=!S.boxes;$('swBoxes').setAttribute('aria-checked',S.boxes);drawOverlay()};$('swDarken').onclick=()=>{S.darken=!S.darken;$('swDarken').setAttribute('aria-checked',S.darken);drawOverlay()};
-$('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('sbToggle');/* 收起后按钮仍写着“收起侧边栏”、aria-expanded 也不变，读屏与悬停提示都对不上当前状态 */b.setAttribute('aria-expanded',String(!c));b.dataset.i18nTitle=c?'sbTipOpen':'sbTip';b.title=t(b.dataset.i18nTitle);b.textContent=c?'⇤':'⇥'};
+$('sbToggle').onclick=()=>{const c=$('work').classList.toggle('collapsed'),b=$('sbToggle');/* 收起后按钮仍写着“收起侧边栏”、aria-expanded 也不变，读屏与悬停提示都对不上当前状态 */b.setAttribute('aria-expanded',String(!c));b.dataset.i18nTitle=c?'sbTipOpen':'sbTip';b.title=t(b.dataset.i18nTitle);b.setAttribute('aria-label',b.title);b.textContent=c?'⇤':'⇥'};
 
 /* ===================== compare pipeline ===================== */
 function compare(){if(!S.A||!S.B)return false;
@@ -527,7 +527,7 @@ function scan(keepPasses){clearTimeout(scanTimer);scanTimer=0;const W=S.W,H=S.H;
   const keep=dedupeRegions(all);
   keep.sort((a,b)=>(b.w*b.h)-(a.w*a.h)||a.y-b.y||a.x-b.x);S.regions=keep.slice(0,500);S.truncated=truncated||keep.length>500;S.active=-1;if(keepPasses!==true)renderPasses();renderList();drawOverlay()}
 function renderPasses(){const el=$('passes');$('addPass').disabled=S.passes.length>=MAX_PASSES;/* 重绘会把所有检测卡片换掉：先记下焦点在第几张卡片的哪个控件上，绘完还回去。否则用键盘切换预设或启停检测时，每操作一次焦点就丢一次 */const ae=document.activeElement,fi=el.contains(ae)?[...el.children].indexOf(ae.closest('.pass')):-1,fq=fi<0?'':ae.dataset?.k?`[data-k="${ae.dataset.k}"]`:ae.matches('[data-en]')?'[data-en]':'';el.innerHTML='';S.passes.forEach((p,i)=>{const d=document.createElement('div');d.className='pass';const o=p.options;
-    d.innerHTML=`<div class="ph"><span>${t('scan',{n:i+1})}</span><span><button class="btn sm ghost" data-en aria-pressed="${p.enabled}" title="${t('toggleScan')}">${p.enabled?'●':'○'}</button><button class="btn sm ghost" data-rm title="${t('removeScan')}">✕</button></span></div>
+    d.innerHTML=`<div class="ph"><span>${t('scan',{n:i+1})}</span><span><button class="btn sm ghost" data-en aria-pressed="${p.enabled}" title="${t('toggleScan')}" aria-label="${t('toggleScan')}">${p.enabled?'●':'○'}</button><button class="btn sm ghost" data-rm title="${t('removeScan')}" aria-label="${t('removeScan')}">✕</button></span></div>
     <div class="row"><span>${t('preset')}</span><select data-k="preset" aria-label="${t('preset')}"><option value="__custom__" ${p.linked?'':'selected'}>${t('custom')}</option>${Object.keys(PRESETS).map(k=>`<option value="${k}" ${p.linked&&p.presetId===k?'selected':''}>${t({'tiny-specks':'tinySpecks','words-sentences':'wordsSentences','graphics-large-blocks':'graphics'}[k])}</option>`).join('')}</select></div>
     ${[['diffThreshold',0,255,1,t('diffThreshold')],['groupingRadius',0,30,1,t('grouping')],['minBlobArea',1,2000,1,t('minBlob')],['maxBlobAreaFraction',1,100,1,t('maxRegion')]].map(([k,mn,mx,st,lbl])=>`<div class="row"><span title="${k}">${lbl}</span><input type="range" data-k="${k}" aria-label="${lbl}" min="${mn}" max="${mx}" step="${st}" value="${k==='maxBlobAreaFraction'?Math.round(o[k]*100):o[k]}"><span class="val">${k==='maxBlobAreaFraction'?Math.round(o[k]*100)+'%':o[k]}</span></div>`).join('')}`;
     d.querySelector('[data-rm]').onclick=()=>{S.passes.splice(i,1);scan()};d.querySelector('[data-en]').onclick=()=>{p.enabled=!p.enabled;scan()};
