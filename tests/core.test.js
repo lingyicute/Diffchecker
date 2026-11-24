@@ -1670,3 +1670,29 @@ test('弹窗遮罩：触控目标为文本节点时仍可识别未溢出弹窗�
     assert.equal(blocked, 1, f);
   }
 });
+
+test('文本页 scrollToEl: 并排视图横向溢出时定位到纯新增或纯删除一侧，双侧改动不强行横滚', () => {
+  const code = between(script('text-compare.html'), 'const scrollBehavior=', '\nfunction goChange');
+  const ctx = { matchMedia: () => ({ matches: false }), window: { innerHeight: 800 } };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';this.scrollToEl=scrollToEl;', ctx);
+  let got = null;
+  const mkBox = scrollLeft => ({
+    scrollTop: 0, scrollLeft, clientHeight: 400, clientWidth: 360, scrollWidth: 640,
+    getBoundingClientRect: () => ({ top: 100, bottom: 500, left: 0, right: 360 }),
+    querySelector: () => ({ getBoundingClientRect: () => ({ height: 32 }) }),
+    scrollTo: o => { got = o; },
+    scrollIntoView: () => {},
+  });
+  const mkRow = (delRect, insRect) => ({
+    classList: { contains: c => c === 'split' },
+    getBoundingClientRect: () => ({ top: 300, height: 20 }),
+    querySelector: s => s === 'td.code.del' ? (delRect && { getBoundingClientRect: () => delRect }) : s === 'td.code.ins' ? (insRect && { getBoundingClientRect: () => insRect }) : null,
+  });
+  ctx.scrollToEl(mkBox(0), mkRow(null, { left: 340, right: 620 }));
+  assert.equal(got.left, 296);
+  ctx.scrollToEl(mkBox(280), mkRow({ left: -240, right: 20 }, null));
+  assert.equal(got.left, 0);
+  ctx.scrollToEl(mkBox(100), mkRow({ left: -60, right: 200 }, { left: 240, right: 500 }));
+  assert.equal(got.left, undefined);
+});
