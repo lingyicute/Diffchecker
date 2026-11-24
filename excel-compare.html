@@ -701,7 +701,7 @@ $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('modeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.mode=b.dataset.mode;saveOpts();syncUI();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
 $('valSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.val=b.dataset.val;saveOpts();syncUI();for(const s of ['A','B'])if(WB[s])renderDetails(s);if(RES)run()};
 function setPanel(open){const panel=$('panel'),bg=$('panelBg'),el=$(open?'panelClose':'toolsBtn');panel.inert=!open;panel.classList.toggle('open',open);if(bg)bg.classList.toggle('open',open);$('toolsBtn').setAttribute('aria-expanded',String(open));try{el.focus({preventScroll:true})}catch(e){el.focus()}}
-$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);{const bg=$('panelBg');if(bg)bg.addEventListener('pointerdown',()=>setPanel(false))}
+$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);{const bg=$('panelBg');if(bg)bg.addEventListener('click',()=>setPanel(false))}
 document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{const k=sw.dataset.opt;opts[k]=!opts[k];saveOpts();syncUI();if(!RES)return;if(k==='hideRows'){expanded=new Set();render()}else if(k==='hideCols'||k==='showOld')render();else run()});
 function syncUI(){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));$('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===opts.mode)));$('valSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.val===opts.val)))}
 
@@ -759,7 +759,9 @@ $('exampleBtn').onclick=()=>{cancelLoads();setWorkbook('A',exampleWb(0),'work-or
 /* Esc 关闭侧栏与弹窗 */
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open&&$('panel').classList.contains('open')){e.preventDefault();setPanel(false)}});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
-$('exportModal').addEventListener('pointerdown',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
+/* 按下时就关闭会让触屏随后合成的 click 落到遮罩下面的页面上：按下与点击都落在遮罩上才关闭 */
+function closeOnBackdrop(dlg,close){let down=false;dlg.addEventListener('pointerdown',e=>{down=e.target===dlg});dlg.addEventListener('click',e=>{const hit=down&&e.target===dlg;down=false;if(hit)close()})}
+closeOnBackdrop($('exportModal'),()=>$('exportModal').close());
 applyTheme();syncUI();applyLang();
 </script>
 </body>
