@@ -634,7 +634,7 @@ async function loadFile(f,side){const saved=/\.diffchecker$/i.test(f.name);if(sa
       mergeOpts(j.options);saveOpts();syncUI();
       setWorkbook('A',left,typeof j.leftName==='string'?j.leftName:'');setWorkbook('B',right,typeof j.rightName==='string'?j.rightName:'');
       for(const [sd,g] of [['A',j.left],['B',j.right]])if(g.header!=null){SEL[sd].header=g.header;SEL[sd].auto=false;renderDetails(sd)}
-      notice(t('restored'));run();return}
+      notice(t('restored'));if(run())$('result').scrollIntoView({behavior:scrollBehavior(),block:'start'});return}
     else{const text=decodeBuf(buf);if(text.includes('\0'))throw new Error(t('binaryTable'));wb=parseCsv(text,/\.tsv$/i.test(f.name)?'\t':undefined)}
     setWorkbook(side,wb,f.name);if(!RES||run())notice(t('loaded',{name:f.name}))}catch(e){if(!current())return;console.error(e);$('err'+side).textContent=t('parseError',{name:f.name,msg:e.message})}}
 function validateSavedRows(rows,error){
