@@ -80,6 +80,8 @@ npm test
 
 GitHub Actions runs the same tests on every push and pull request.
 
+Optional smoke tests cover mobile layouts, gestures and offline import/export in Chromium and WebKit. Install Playwright outside this checkout, download both browsers with `playwright install chromium webkit`, then run `node scripts/browser-smoke.cjs` with `PLAYWRIGHT_PACKAGE` set to the absolute path of that package.
+
 ## License
 
 [AGPL-3.0](LICENSE)

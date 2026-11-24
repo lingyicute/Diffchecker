@@ -80,6 +80,8 @@ npm test
 
 每次推送和 PR 都会通过 GitHub Actions 运行同样的测试。
 
+可选的浏览器冒烟测试覆盖 Chromium 和 WebKit 的移动尺寸、手势及离线导入导出；测试依赖不进项目。可在仓库外安装 Playwright，运行 `playwright install chromium webkit` 下载浏览器，然后以 `PLAYWRIGHT_PACKAGE` 指向该包的绝对路径，运行 `node scripts/browser-smoke.cjs`。
+
 ## 许可
 
 [AGPL-3.0](LICENSE)
