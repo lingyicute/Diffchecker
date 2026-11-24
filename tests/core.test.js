@@ -1633,3 +1633,26 @@ test('image.grayPatch: 采样读取像素后立即归零释放临时画布', () 
   assert.equal(canvases[0].width, 0);
   assert.equal(canvases[0].height, 0);
 });
+
+test('scrollToEl: 在结果容器内定位差异时不拖动外层页面，表格页同时横向滚到改动单元格', () => {
+  for (const [f, end] of [['text-compare.html', '\nfunction goChange'], ['excel-compare.html', "\n$('prevBtn')"]]) {
+    const code = between(script(f), 'const scrollBehavior=', end);
+    const ctx = { matchMedia: () => ({ matches: false }), window: { innerHeight: 800 } };
+    vm.createContext(ctx);
+    vm.runInContext(code + ';this.scrollToEl=scrollToEl;', ctx);
+    let outer = 0, got = null;
+    const box = {
+      scrollTop: 0, scrollLeft: 0, clientHeight: 400, clientWidth: 360,
+      getBoundingClientRect: () => ({ top: 100, bottom: 500, left: 0, right: 360 }),
+      querySelector: s => s === 'thead' ? { getBoundingClientRect: () => ({ height: 36 }) } : s === 'th.num.b' ? { getBoundingClientRect: () => ({ right: 80 }) } : null,
+      scrollTo: o => { got = o; },
+      scrollIntoView: () => { outer++; },
+    };
+    const cell = { getBoundingClientRect: () => ({ left: 620, right: 700 }) };
+    const row = { tagName: 'TR', getBoundingClientRect: () => ({ top: 900, height: 20 }), querySelector: () => cell };
+    ctx.scrollToEl(box, row);
+    assert.equal(outer, 0, f);
+    assert.equal(got.top, 592, f);
+    if (f.startsWith('excel')) assert.equal(got.left, 528);
+  }
+});
