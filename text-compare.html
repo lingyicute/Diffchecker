@@ -599,7 +599,7 @@ $('exportGo').onclick=async()=>{$('exportModal').close();if(rt)run(true);if(!las
   try{if(exportFmt==='pdf')printComparison(exportLayout);else if(exportFmt==='png')await exportPng();else if(exportFmt==='xlsx')exportXlsx();else exportDiffFile()}
   catch(e){console.error(e);notice(t(e&&e.tooTall?'exportTooTall':e?.message==='exportXlsxLimit'?'exportXlsxLimit':'exportFailed'))}};
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
-const baseName=()=>(stem(lastDiff?.input?.leftName??fileNames.A,'original')+'-vs-'+stem(lastDiff?.input?.rightName??fileNames.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'diffchecker';
+const baseName=()=>(stem(lastDiff?.input?.leftName??fileNames.A,'original')+'-vs-'+stem(lastDiff?.input?.rightName??fileNames.B,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/^[. ]+|[. ]+$/g,'')||'diffchecker';
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}
 function exportDiffFile(){const j={type:'text',version:1,...lastDiff.input,options:{...opts},createdAt:new Date().toISOString()};download(new Blob([JSON.stringify(j)],{type:'application/json'}),baseName()+'.diffchecker')}
 /* rows for tabular exports (pairs of left/right lines) */

@@ -724,7 +724,7 @@ function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(
 /* ===================== export ===================== */
 let expFmt='png',expDiff='subtract';
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
-const baseName=()=>(stem(S.A?.name,'original')+'-vs-'+stem(S.B?.name,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'image-comparison';
+const baseName=()=>(stem(S.A?.name,'original')+'-vs-'+stem(S.B?.name,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/^[. ]+|[. ]+$/g,'')||'image-comparison';
 const printMedia=matchMedia('print');
 $('exportBtn').onclick=()=>{if(printing&&!printMedia.matches)clearPrintReport();if(scanTimer)scan(true);$('exportModal').showModal()};$('exportCancel').onclick=()=>$('exportModal').close();
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;expFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)));$('pngOptions').classList.toggle('hidden',expFmt!=='png');$('pdfOptions').classList.toggle('hidden',expFmt!=='pdf')};
