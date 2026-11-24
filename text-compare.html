@@ -719,7 +719,7 @@ $('exampleBtn').onclick=()=>{cancelLoads();txtA.value=EX_A;txtB.value=EX_B;fileN
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').open&&$('panel').classList.contains('open')){e.preventDefault();setPanel(false)}});
 /* 点击导出弹窗的遮罩（而不是弹窗本身）即可关闭，与 Esc 一致 */
 /* 按下时就关闭会让触屏随后合成的 click 落到遮罩下面的页面上：按下与点击都落在遮罩上才关闭；在遮罩上拖动也不去滚动背后的页面 */
-function closeOnBackdrop(dlg,close){let down=false;dlg.addEventListener('pointerdown',e=>{down=e.target===dlg});dlg.addEventListener('click',e=>{const hit=down&&e.target===dlg;down=false;if(hit)close()});dlg.addEventListener('touchmove',e=>{if(e.target===dlg)e.preventDefault()},{passive:false})}
+function closeOnBackdrop(dlg,close){let down=false;dlg.addEventListener('pointerdown',e=>{down=e.target===dlg});dlg.addEventListener('pointercancel',()=>{down=false});dlg.addEventListener('click',e=>{const hit=down&&e.target===dlg;down=false;if(hit)close()});dlg.addEventListener('touchmove',e=>{if(e.target===dlg){e.preventDefault();return}const box=e.target?.closest?.('.modal');if(box&&box.scrollHeight<=box.clientHeight&&!e.target.closest('input,textarea,select'))e.preventDefault()},{passive:false})}
 closeOnBackdrop($('exportModal'),()=>$('exportModal').close());
 applyTheme();syncUI(true);applyLang();updateMeta();
 </script>
