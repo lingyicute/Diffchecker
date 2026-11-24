@@ -280,7 +280,7 @@ const setAlignMsg=(m,ok=false)=>{const e=$('alignErr');e.textContent=m;e.classLi
 function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('')}
 function closeAlign(){stopAuto();clearAlignPtrs();$('alignModal').close();for(const id of ['alignA','alignB'])dropCanvas($(id))}
 function clearComparison(){
-  closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
+  clearPrintReport();closeAlign();$('promptModal').close();$('exportModal').close();clearVpPtrs();
   $('pmGo').onclick=$('pmSkip').onclick=null;
   clearInterval(flickTimer);clearTimeout(scanTimer);clearTimeout(highlightTimer);scanTimer=highlightTimer=0;holdSide=0;flickState=0;
   S.W=S.H=0;lastVpW=0;S.frame=null;S.regions=[];S.active=-1;diffCount=0;
