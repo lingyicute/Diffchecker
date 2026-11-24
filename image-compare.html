@@ -276,7 +276,8 @@ const clearList=el=>{listGen++;listObserver?.disconnect();listObserver=null;for(
 /* ===================== loading ===================== */
 let openTarget='A',alignJob=0;
 const loadVersion={A:0,B:0},pending={A:false,B:false};
-function cancelLoad(side){loadVersion[side]++;pending[side]=false}
+function hideLoading(){if(pending.A||pending.B)return;const n=$('notice');if(n.textContent===I18N.en.loading||n.textContent===I18N.zh.loading){clearTimeout(n._t);n.classList.remove('show')}}
+function cancelLoad(side){loadVersion[side]++;pending[side]=false;hideLoading()}
 function cancelLoads(){cancelLoad('A');cancelLoad('B')}
 const setAlignMsg=(m,ok=false)=>{const e=$('alignErr');e.textContent=m;e.classList.toggle('ok',ok&&!!m)};
 function stopAuto(){alignJob++;$('autoAlignBtn').disabled=false;setAlignMsg('')}
@@ -301,9 +302,9 @@ document.addEventListener('paste',e=>{
   e.preventDefault();loadFile(f,focused?focused.id.slice(-1):!S.A&&!pending.A?'A':!S.B&&!pending.B?'B':openTarget);
 });
 async function loadFile(f,side){
-  cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side],other=side==='A'?'B':'A';
-  pending[side]=true;const loadingMsg=t('loading'),lt=setTimeout(()=>{if(current())notice(loadingMsg)},120),url=URL.createObjectURL(f);
-  const clearLoading=()=>{clearTimeout(lt);const n=$('notice');if(!pending[other]&&n.textContent===loadingMsg){clearTimeout(n._t);n.classList.remove('show')}};
+  cancelLoad(side);const version=loadVersion[side],current=()=>version===loadVersion[side];
+  pending[side]=true;const lt=setTimeout(()=>{if(current())notice(t('loading'))},120),url=URL.createObjectURL(f);
+  const clearLoading=()=>{clearTimeout(lt);hideLoading()};
   try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});if(current())pending[side]=false;clearLoading();if(current())setImage(side,img,f.name)}
   catch(e){if(current())pending[side]=false;clearLoading();if(current()){console.error(e);notice(t(e.message==='imageTooLarge'?'imageTooLarge':'decodeFail',{name:f.name||t(side==='A'?'original':'changed')}))}}
   finally{clearTimeout(lt);if(current())pending[side]=false;URL.revokeObjectURL(url)}
