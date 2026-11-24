@@ -466,7 +466,7 @@ function countText(v){let lines=1,words=0,run=false;const n=v.length;for(let i=0
   if(c===10||c===13){if(c===13&&v.charCodeAt(i+1)===10)i++;if(i<n-1)lines++;run=false}else if(isWs(c))run=false;else if(isCjk(c)){words++;run=false}else if(!run){run=true;words++}}
   return {lines,words,chars:n}}
 function updateMeta(side){for(const [s,id,ta] of [['A','metaA',txtA],['B','metaB',txtB]])if(!side||side===s){const v=ta.value,c=(n,k)=>`${n} ${t(n===1?k+'1':k)}`;/* 数量为 1 时英文用单数（1 line · 1 word），与差异统计的写法一致 */if(!v){$(id).textContent='';continue}const {lines,words,chars}=countText(v);$(id).textContent=`${c(lines,'lines')} · ${c(words,'words')} · ${c(chars,'characters')}`}}
-function run(keep){clearTimeout(rt);rt=0;const input={left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B},d=computeDiff(input.left,input.right,opts);d.input=input;lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:'smooth',block:'start'})}
+function run(keep){clearPrintResult();clearTimeout(rt);rt=0;const input={left:txtA.value,right:txtB.value,leftName:fileNames.A,rightName:fileNames.B},d=computeDiff(input.left,input.right,opts);d.input=input;lastDiff=d;expanded=new Set();focusIdx=-1;$('result').classList.remove('hidden');render();if(!opts.realtime&&!keep)$('result').scrollIntoView({behavior:'smooth',block:'start'})}
 const CTX=3;// 隐藏未修改行时，每个折叠块首尾各保留的行数（页面、PNG 导出共用）
 function render(){
   const d=lastDiff;if(!d)return;const scroll=$('diffScroll');
@@ -534,7 +534,7 @@ function goChange(dir){const box=$('diffScroll'),n=+box.dataset.changes||0;if(!n
 $('prevBtn').onclick=()=>goChange(-1);$('nextBtn').onclick=()=>goChange(1);
 $('findBtn').onclick=()=>run();
 let rt=0;const mt={A:0,B:0},loadVersion={A:0,B:0};/* 统计改为停顿 150ms 后再做：超大文本下每敲一个键都把全文扫一遍会卡住输入；两侧各用一个计时器，快速切换输入框时另一侧的统计不会被取消 */
-function clearResult(){clearTimeout(rt);rt=0;lastDiff=null;expanded.clear();$('result').classList.add('hidden');$('exportModal').close();$('diffScroll').replaceChildren()}
+function clearResult(){clearPrintResult();clearTimeout(rt);rt=0;lastDiff=null;focusIdx=-1;expanded.clear();$('result').classList.add('hidden');$('exportModal').close();$('diffScroll').replaceChildren()}
 const cancelLoads=()=>{loadVersion.A++;loadVersion.B++};
 const realtimeRun=side=>{loadVersion[side]++;clearTimeout(mt[side]);mt[side]=setTimeout(()=>updateMeta(side),150);if(opts.realtime){clearTimeout(rt);rt=setTimeout(()=>run(true),250)}else clearResult()};
 txtA.addEventListener('input',()=>realtimeRun('A'));txtB.addEventListener('input',()=>realtimeRun('B'));
@@ -583,6 +583,7 @@ $('exportLayout').onclick=e=>{const b=e.target.closest('button');if(!b)return;ex
 // 打印树与交互树隔离：浏览器异步打印时也不会暂时改动或保存当前布局、主题。
 function clearPrintResult(){$('printResult').replaceChildren();document.body.classList.remove('printing-text-result')}
 window.addEventListener('afterprint',clearPrintResult);
+matchMedia('print').addEventListener?.('change',e=>{if(!e.matches)clearPrintResult()});
 function printComparison(layout){
   const wrap=document.createElement('div'),scroll=document.createElement('div'),identical=lastDiff.nDel===0&&lastDiff.nIns===0;
   wrap.className='diff-wrap preset-'+opts.preset;scroll.className='diff-scroll';scroll.innerHTML=diffView(lastDiff,layout,false).html;
