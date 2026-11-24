@@ -599,9 +599,10 @@ $('alignApply').onclick=()=>{
   S.align={...alTmp};closeAlign();compare();
 };
 $('alignUndo').onclick=()=>{stopAuto();alTmp=defAlign();syncAlignInputs();drawAlign()};
-function syncAlignLayout(){if(!AL.open)return;const vh=window.visualViewport?.height||window.innerHeight;AL.classList.toggle('kb',vh<540);const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}}
+function alignKeyboardOpen(){const vv=window.visualViewport,vh=vv?.height||window.innerHeight;return vh<540||(!!vv&&window.innerHeight-vh>120)}
+function syncAlignLayout(){if(!AL.open)return;AL.classList.toggle('kb',alignKeyboardOpen());const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}}
 function initAlignView(){
-  AL.classList.toggle('kb',(window.visualViewport?.height||window.innerHeight)<540);
+  AL.classList.toggle('kb',alignKeyboardOpen());
   const v=$('alignView'),f=S.frame,w=workingFrame(f.w,f.h),cw=v.clientWidth,ch=v.clientHeight;
   alView.sx=w.w/f.w;alView.sy=w.h/f.h;alView.w=cw;alView.h=ch;
   alView.z=Math.max(.02,Math.min(Math.max(1,cw-20)/w.w,Math.max(1,ch-20)/w.h));
