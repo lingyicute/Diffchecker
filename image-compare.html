@@ -302,11 +302,17 @@ async function loadFile(f,side){
   catch(e){if(current()){console.error(e);notice(t(e.message==='imageTooLarge'?'imageTooLarge':'decodeFail',{name:f.name}))}}
   finally{if(current())pending[side]=false;URL.revokeObjectURL(url)}
 }
+// iOS Safari 等浏览器的单张画布面积上限更小（约 1677 万像素），超出时不报错，只得到一张画不上任何内容的画布：
+// 先画一个不透明像素再读回来探测，不可用就按面积减半逐级缩小，避免载入后缩略图与对比结果全是空白。
+function canvasUsable(c){try{const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,1,1);const ok=x.getImageData(0,0,1,1).data[3]===255;x.clearRect(0,0,1,1);return ok}catch(e){return false}}
+function sourceCanvas(img,w,h){
+  for(let k=1;k>.2;k*=Math.SQRT1_2){const c=mk(w*k,h*k);if(canvasUsable(c)){c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c}dropCanvas(c)}
+  throw new Error('imageTooLarge');
+}
 function setImage(side,img,name,quiet,keepOld){
   const w=img.naturalWidth||img.width||1024,h=img.naturalHeight||img.height||768;
   if(!fitsCanvas(w,h,MAX_SOURCE_PIXELS))throw new Error('imageTooLarge');
-  const c=img instanceof HTMLCanvasElement?img:mk(w,h);
-  if(c!==img)c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  const c=img instanceof HTMLCanvasElement?img:sourceCanvas(img,w,h);
   const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);let thumb;
   try{th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}finally{dropCanvas(th)}
   if(thumb==='data:,'){if(c!==img)dropCanvas(c);throw new Error('Could not render the image thumbnail')}
