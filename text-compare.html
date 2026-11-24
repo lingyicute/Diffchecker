@@ -571,7 +571,7 @@ $('addRule').onclick=()=>$('rules').appendChild(ruleRow(''));
 $('applyRules').onclick=()=>{opts.rules=[...$('rules').querySelectorAll('input')].map(i=>i.value).filter(Boolean);saveOpts();if(lastDiff||opts.realtime)run(true);setPanel(false)};
 function syncUI(withRules){document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.setAttribute('aria-checked',String(!!opts[sw.dataset.opt])));document.querySelectorAll('select[data-sel]').forEach(s=>s.value=opts[s.dataset.sel]||'');
   $('typeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.type===opts.type)));$('levelSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.level===opts.level)));
-  txtA.classList.toggle('wrap',!opts.noWrap);txtB.classList.toggle('wrap',!opts.noWrap);if(withRules){const R=$('rules');R.innerHTML='';(opts.rules||[]).forEach(r=>R.appendChild(ruleRow(r)))}}
+  txtA.classList.toggle('wrap',!opts.noWrap);txtB.classList.toggle('wrap',!opts.noWrap);txtA.wrap=txtB.wrap=opts.noWrap?'off':'soft';if(withRules){const R=$('rules');R.innerHTML='';(opts.rules||[]).forEach(r=>R.appendChild(ruleRow(r)))}}
 
 /* ===================== export ===================== */
 let exportFmt='pdf',exportLayout='split';
