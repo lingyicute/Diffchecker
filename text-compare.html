@@ -552,7 +552,7 @@ $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.ty
 $('levelSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;opts.level=b.dataset.level;saveOpts();syncUI();render()};
 /* tools panel */
 function setPanel(open){const panel=$('panel'),bg=$('panelBg'),el=$(open?'panelClose':'toolsBtn');panel.inert=!open;panel.classList.toggle('open',open);if(bg)bg.classList.toggle('open',open);$('toolsBtn').setAttribute('aria-expanded',String(open));try{el.focus({preventScroll:true})}catch(e){el.focus()}}
-$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);$('panelBg').addEventListener('click',()=>setPanel(false));$('panel').ontouchmove=e=>{if(!e.target.closest('.panel-body'))e.preventDefault()};
+$('toolsBtn').onclick=()=>setPanel(!$('panel').classList.contains('open'));$('panelClose').onclick=()=>setPanel(false);
 document.querySelectorAll('.switch[data-opt]').forEach(sw=>sw.onclick=()=>{opts[sw.dataset.opt]=!opts[sw.dataset.opt];saveOpts();syncUI();const k=sw.dataset.opt;if(k==='hideUnchanged'){expanded=new Set();if(lastDiff)render()}else if(k==='noWrap'){if(lastDiff)render()}else if(k==='realtime'){if(opts.realtime||rt)run(true)}else if(lastDiff||opts.realtime)run(true)});
 document.querySelectorAll('select[data-sel]').forEach(s=>s.onchange=()=>{opts[s.dataset.sel]=s.value;saveOpts();if(lastDiff)render()});
 function ruleRow(v){const div=document.createElement('div');div.className='rule';div.innerHTML=`<input type="text" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" value="${esc(v||'')}" placeholder="${esc(t('rulePh'))}" aria-label="${esc(t('rulePh'))}"><button class="btn sm ghost" title="${esc(t('remove'))}" aria-label="${esc(t('remove'))}">✕</button>`;div.querySelector('button').onclick=()=>{div.remove()};return div}
@@ -721,6 +721,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('exportModal').o
 /* 按下时就关闭会让触屏随后合成的 click 落到遮罩下面的页面上：按下与点击都落在遮罩上才关闭；在遮罩上拖动也不去滚动背后的页面 */
 function closeOnBackdrop(dlg,close){let down=false;dlg.addEventListener('pointerdown',e=>{down=e.target===dlg});dlg.addEventListener('pointercancel',()=>{down=false});dlg.addEventListener('click',e=>{const hit=down&&e.target===dlg;down=false;if(hit)close()});dlg.addEventListener('touchmove',e=>{if(e.target===dlg){e.preventDefault();return}const box=e.target?.closest?.('.modal');if(box&&box.scrollHeight<=box.clientHeight&&!e.target.closest('input,textarea,select'))e.preventDefault()},{passive:false})}
 closeOnBackdrop($('exportModal'),()=>$('exportModal').close());
+closeOnBackdrop($('panelBg'),()=>setPanel(false));
+$('panel').addEventListener('touchmove',e=>{const b=e.target.closest('.panel-body');if(!b||(b.scrollHeight<=b.clientHeight&&!e.target.closest('input,textarea,select')))e.preventDefault()},{passive:false});
 applyTheme();syncUI(true);applyLang();updateMeta();
 </script>
 </body>
