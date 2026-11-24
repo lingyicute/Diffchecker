@@ -670,7 +670,8 @@ function alignWithOpenCV(A,B){const cv=window.cv,del=[];const keep=x=>(del.push(
 let expFmt='png',expDiff='subtract';
 const stem=(n,d)=>{n=n||d;return n.replace(/\.[^.]+$/,'')||n};
 const baseName=()=>(stem(S.A?.name,'original')+'-vs-'+stem(S.B?.name,'changed')).replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').slice(0,100).replace(/[. ]+$/,'')||'image-comparison';
-$('exportBtn').onclick=()=>{if(scanTimer)scan(true);$('exportModal').showModal()};$('exportCancel').onclick=()=>$('exportModal').close();
+const printMedia=matchMedia('print');
+$('exportBtn').onclick=()=>{if(printing&&!printMedia.matches)clearPrintReport();if(scanTimer)scan(true);$('exportModal').showModal()};$('exportCancel').onclick=()=>$('exportModal').close();
 $('fmtChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;expFmt=b.dataset.fmt;$('fmtChoices').querySelectorAll('.choice').forEach(c=>c.setAttribute('aria-pressed',String(c===b)));$('pngOptions').classList.toggle('hidden',expFmt!=='png');$('pdfOptions').classList.toggle('hidden',expFmt!=='pdf')};
 $('expDiffStyle').onclick=e=>{const b=e.target.closest('button');if(!b)return;expDiff=b.dataset.s;$('expDiffStyle').querySelectorAll('button').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))};
 function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
@@ -712,7 +713,7 @@ function decodeReportImage(img){if(img.decode)return img.decode();if(img.complet
   return new Promise((r,j)=>{img.addEventListener('load',r,{once:true});img.addEventListener('error',j,{once:true})})}
 let exporting=false,printing=false;
 $('exportGo').onclick=async()=>{
-  $('exportModal').close();if(!S.W||exporting||printing)return;
+  $('exportModal').close();if(printing&&!printMedia.matches)clearPrintReport();if(!S.W||exporting||printing)return;
   exporting=true;const rep=$('report');
   try{if(scanTimer)scan(true);if(expFmt==='png'){
       const filename=baseName()+'.png',c=exportCanvas(!$('expWorking').checked);let blob;
@@ -737,6 +738,7 @@ function makeExample(variant){const c=mk(900,620),x=c.getContext('2d');x.fillSty
 $('exampleBtn').onclick=()=>{cancelLoads();setImage('A',makeExample(0),'work-order-v1.png',true);setImage('B',makeExample(1),'work-order-v2.png',true);compare();$('result').scrollIntoView({behavior:'smooth'})};
 function clearPrintReport(){printing=false;document.body.classList.remove('printing-image-report');$('report').replaceChildren()}
 window.addEventListener('afterprint',()=>{if(printing)clearPrintReport()});
+printMedia.addEventListener?.('change',e=>{if(!e.matches&&printing)clearPrintReport()});
 ['dragover','drop'].forEach(n=>window.addEventListener(n,e=>{if(hasFiles(e))e.preventDefault()}));
 window.addEventListener('resize',()=>{if(AL.open){const v=$('alignView'),w=v.clientWidth,h=v.clientHeight;if(w&&h&&(w!==alView.w||h!==alView.h)){alView.x+=(w-alView.w)/2;alView.y+=(h-alView.h)/2;drawAlign()}}
   if(S.W&&!$('result').classList.contains('hidden')){const w=viewport.clientWidth;if(w&&w!==lastVpW)fit()}});
