@@ -2073,3 +2073,20 @@ test('Excel 按表头排序后，排序同权但实际不同的列仍按同一�
     assert.equal(result.stats.cells, 0);
   } finally { Object.assign(excel.opts, old); }
 });
+
+test('替换图片失败时保留输入，并尝试恢复为载入腾空的对比画布', () => {
+  const code = between(script('image-compare.html'), 'function setImage(', 'function renderInput');
+  const old = { c: {} }, S = { W: 120, A: old, B: { c: {} } }, events = [];
+  const ctx = {
+    S, HTMLCanvasElement: class {}, MAX_SOURCE_PIXELS: 1, fitsCanvas: () => true,
+    clearComparison() { events.push('release'); S.W = 0; },
+    sourceCanvas() { throw new Error('imageTooLarge'); }, dropCanvas() {},
+    compare() { events.push('compare'); S.W = 120; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  assert.throws(() => ctx.setImage('A', { naturalWidth: 60, naturalHeight: 60 }, 'replacement'), /imageTooLarge/);
+  assert.equal(S.A, old);
+  assert.equal(S.W, 120);
+  assert.deepEqual(events, ['release', 'compare']);
+});

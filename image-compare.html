@@ -328,14 +328,21 @@ function sourceCanvas(img,w,h){
 function setImage(side,img,name,quiet){
   const w=img.naturalWidth||img.width||1024,h=img.naturalHeight||img.height||768;
   if(!fitsCanvas(w,h,MAX_SOURCE_PIXELS))throw new Error('imageTooLarge');
-  const prev=S[side]?.c,owned=!(img instanceof HTMLCanvasElement);
-  if(owned)clearComparison();
-  const c=owned?sourceCanvas(img,w,h):img;
-  const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);let thumb='';
+  const prev=S[side]?.c,owned=!(img instanceof HTMLCanvasElement),hadComparison=S.W>0;
+  if(owned)clearComparison(); // 先归零工作画布，给移动浏览器腾出空间。
+  let c,thumb='';
   try{
-    if(canvasUsable(th)){th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}
-    if(!thumb||thumb==='data:,')throw new Error('Could not render the image thumbnail');
-  }catch(e){if(owned)dropCanvas(c);throw e}finally{dropCanvas(th)}
+    c=owned?sourceCanvas(img,w,h):img;
+    const k=Math.min(1,600/Math.max(c.width,c.height)),th=mk(c.width*k,c.height*k);
+    try{
+      if(canvasUsable(th)){th.getContext('2d').drawImage(c,0,0,th.width,th.height);thumb=th.toDataURL('image/png')}
+      if(!thumb||thumb==='data:,')throw new Error('Could not render the image thumbnail');
+    }finally{dropCanvas(th)}
+  }catch(e){
+    // 输入尚未替换；新分配失败后尽可能重建刚为它释放的比较结果。
+    if(owned){dropCanvas(c);if(hadComparison)compare()}
+    throw e;
+  }
   if(!owned)clearComparison();
   if(prev&&prev!==c)dropCanvas(prev);
   S[side]={c,name,w:c.width,h:c.height,thumb};renderInput(side);
