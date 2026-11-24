@@ -2049,3 +2049,16 @@ test('交换图片时复用两张源图和已生成的缩略图', () => {
   assert.equal(S.align, inverse);
   assert.deepEqual(shown, ['two', 'one']);
 });
+
+test('表格文件识别尊重会话名及 ZIP 签名，不把笼统 ZIP MIME 当成工作簿', () => {
+  const s = script('excel-compare.html');
+  const code = between(s, 'const isZipSig=', '// OOXML 部件') + between(s, 'function workbookKind', 'async function loadFile');
+  const { workbookKind } = run(code, 'workbookKind');
+  const plain = Uint8Array.from([65, 44, 66]).buffer, zip = Uint8Array.of(0x50, 0x4B, 3, 4).buffer, ole = Uint8Array.of(0xD0, 0xCF, 0x11, 0xE0).buffer;
+  assert.equal(workbookKind({ name: 'save.diffchecker', type: 'application/zip' }, plain), 'saved');
+  assert.equal(workbookKind({ name: 'data.csv', type: 'application/zip' }, plain), 'csv');
+  assert.equal(workbookKind({ name: 'data.tsv', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }, plain), 'csv');
+  assert.equal(workbookKind({ name: 'data.dat' }, zip), 'xlsx');
+  assert.equal(workbookKind({ name: 'data.XLSM' }, ole), 'encrypted');
+  assert.equal(workbookKind({ name: 'data.xls' }, ole), 'legacyXls');
+});
