@@ -627,7 +627,7 @@ async function loadFile(f,side){const saved=/\.diffchecker$/i.test(f.name);if(sa
   const start={...loadVersion},current=()=>loadVersion[side]===start[side]&&(!saved||(loadVersion.A===start.A&&loadVersion.B===start.B));
   $('err'+side).textContent='';try{let wb;const buf=await readBuf(f);if(!current())return;const mg=new Uint8Array(buf,0,Math.min(4,buf.byteLength)),isZip=isZipSig(mg),isOle=mg[0]===0xD0&&mg[1]===0xCF&&mg[2]===0x11&&mg[3]===0xE0;
     if(isOle&&/\.(xlsx|xlsm|xltx|xltm)$/i.test(f.name))throw new Error(t('encrypted'));/* 加密的 .xlsx 外层是 OLE 容器，不是旧版 .xls */
-    if(isOle||(/\.xls$/i.test(f.name)&&!isZip))throw new Error(t('legacyXls'));if(isZip||/\.(xlsx|xlsm|xltx|xltm)$/i.test(f.name)||f.type.includes('spreadsheetml')||f.type.includes('zip')){wb=parseXlsx(buf)}
+    if(isOle||(/\.xls$/i.test(f.name)&&!isZip))throw new Error(t('legacyXls'));if(isZip||/\.(xlsx|xlsm|xltx|xltm)$/i.test(f.name)||(f.type||'').includes('spreadsheetml')||(f.type||'').includes('zip')){wb=parseXlsx(buf)}
     else if(saved){let j;try{j=JSON.parse(decodeBuf(buf))}catch(e){throw new Error(t('wrongFile'))}
       if(j?.type!=='excel'||(j.version!=null&&j.version!==1))throw new Error(t('wrongFile'));
       const left=fromJsonGrid(j.left),right=fromJsonGrid(j.right); // 两侧都验证通过才替换当前会话。
