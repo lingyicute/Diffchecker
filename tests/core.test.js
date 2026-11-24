@@ -1874,3 +1874,44 @@ test('image.alignKeyboardOpen 与 drawAlign: 大屏软键盘弹出取消吸顶�
   assert.deepEqual(drawn, ['B']);
 });
 
+test('scrollToEl: 仅顶部或底部窄条可见时滚入视口，短容器完整可见时不额外滚动', () => {
+  for (const [f, end] of [['text-compare.html', '\nfunction goChange'], ['excel-compare.html', "\n$('prevBtn')"]]) {
+    const code = between(script(f), 'const scrollBehavior=', end);
+    const ctx = { matchMedia: () => ({ matches: false }), window: { innerHeight: 667 } };
+    vm.createContext(ctx);
+    vm.runInContext(code + ';this.scrollToEl=scrollToEl;', ctx);
+    const runWith = (top, bottom) => {
+      let outer = 0;
+      const box = {
+        scrollTop: 0, scrollLeft: 0, clientHeight: bottom - top, clientWidth: 360, scrollWidth: 360,
+        getBoundingClientRect: () => ({ top, bottom, left: 0, right: 360 }),
+        querySelector: () => null, scrollTo() {}, scrollIntoView() { outer++; },
+      };
+      const row = { tagName: 'TR', getBoundingClientRect: () => ({ top: top + 20, height: 20 }), querySelector: () => null };
+      ctx.scrollToEl(box, row);
+      return outer;
+    };
+    assert.equal(runWith(600, 1000), 1, f);
+    assert.equal(runWith(-340, 60), 1, f);
+    assert.equal(runWith(100, 180), 0, f);
+    assert.equal(runWith(0, 600), 0, f);
+  }
+});
+
+test('翻译插值与导出文件名: 单遍替换不误改文件名中的占位符，开头点号与空格被剔除', () => {
+  for (const [f, fnVars, exp] of [
+    ['text-compare.html', 'const lastDiff={input:{leftName:".env",rightName:"b.txt"}},fileNames={A:"x",B:"y"};', 'env-vs-b'],
+    ['image-compare.html', 'const S={A:{name:".hidden.png"},B:{name:"b.png"}};', 'hidden-vs-b'],
+    ['excel-compare.html', 'const NAMES={A:".book.xlsx",B:"new.xlsx"};', 'book-vs-new'],
+  ]) {
+    const s = script(f);
+    const tLine = s.split('\n').find(l => l.startsWith('const t=('));
+    const stemLine = s.split('\n').find(l => l.startsWith('const stem='));
+    const baseLine = s.split('\n').find(l => l.startsWith('const baseName='));
+    const ctx = { lang: 'en', I18N: { en: { m: '{name}: {msg}' } } };
+    vm.createContext(ctx);
+    vm.runInContext([tLine, fnVars, stemLine, baseLine, 'this.t=t;this.baseName=baseName;'].join('\n'), ctx);
+    assert.equal(ctx.t('m', { name: 'a{msg}.txt', msg: 'err' }), 'a{msg}.txt: err', f);
+    assert.equal(ctx.baseName(), exp, f);
+  }
+});
