@@ -1720,3 +1720,37 @@ test('image.cropThumb: 编码缩略图后立即归零释放临时画布，且忽
   assert.equal(created[1].width, 0);
   assert.equal(created[1].height, 0);
 });
+
+test('image.buildBases: 画布不可用时释放失败画布并按比例降级，不再静默读出全零像素', () => {
+  const s = script('image-compare.html');
+  const code = between(s, 'function makeBases', 'function drawAligned');
+  const canvases = [];
+  const ctx = {
+    S: { A: { c: {}, w: 2000, h: 2000 }, B: { c: {}, w: 2000, h: 2000 }, align: { dx: 0, dy: 0, rot: 0, scale: 1, fh: false, fv: false }, W: 0, H: 0, scale: 1, frame: null },
+    baseA: null, baseB: null, mainCanvas: null, overlay: null, dataA: null, dataB: null, diffMap: null, signMap: null,
+    stage: { replaceChildren() {} },
+    $: () => ({}),
+    clearList() {},
+    comparisonFrame: () => ({ x: 0, y: 0, w: 2000, h: 2000 }),
+    workingFrame: () => ({ w: 2000, h: 2000, scale: 1 }),
+    mk: (w, h) => {
+      const c = {
+        width: Math.round(w), height: Math.round(h),
+        getContext: () => ({ drawImage() {}, translate() {}, getImageData: () => ({ data: new Uint8ClampedArray(4) }) }),
+      };
+      canvases.push(c);
+      return c;
+    },
+    canvasUsable: c => c.width * c.height <= 2000000,
+    dropCanvas: c => { if (c) { c.width = 0; c.height = 0; } },
+    drawAligned() {},
+    computeDiffMap() {},
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code + ';this.buildBases=buildBases;', ctx);
+  ctx.buildBases();
+  assert.ok(ctx.S.W < 2000 && ctx.S.W * ctx.S.H <= 2000000);
+  assert.ok(ctx.S.scale < 1);
+  assert.equal(canvases[0].width, 0);
+  assert.equal(canvases[0].height, 0);
+});
